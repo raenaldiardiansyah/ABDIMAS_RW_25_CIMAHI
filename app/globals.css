@@ -1,26 +1,516 @@
 @import "tailwindcss";
 
+/* ── KRITIS: Tailwind v4 dark mode via class (bukan media query) ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Design Tokens ────────────────────────────────────────── */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Brand — Warm Brown */
+  --brand-900: #2c1a0e;
+  --brand-800: #3d2414;
+  --brand-700: #462b18;
+  --brand-600: #5c3a21;
+  --brand-500: #7a5230;
+  --brand-400: #a07650;
+  --brand-300: #c4a07a;
+  --brand-200: #e0c9a8;
+  --brand-100: #f5e8d5;
+  --brand-50: #fdf6ee;
+
+  /* Status */
+  --status-success: #16a34a;
+  --status-warning: #d97706;
+  --status-error: #dc2626;
+
+  /* Surface */
+  --surface-primary: #ffffff;
+  --surface-secondary: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+
+  /* === MEGA MENDUNG TOKENS === */
+  /* Warna utama */
+  --color-brown-dark: #3d1f0d;
+  --color-brown-main: #4a2810;
+  --color-brown-card: #5a3018;
+  --color-copper: #b87333;
+  --color-copper-light: #d4956a;
+  --color-cream-gold: #e8c090;
+  --color-cream-light: #f5e6c8;
+  --color-bg-page: #f0ece6;
+
+  /* Typography di atas kartu */
+  --card-text-primary: #ffffff;
+  --card-text-secondary: rgba(255, 255, 255, 0.72);
+  --card-badge-bg: rgba(255, 255, 255, 0.15);
+
+  /* Radius */
+  --radius-card: 18px;
+  --radius-badge: 20px;
+  --radius-icon: 50%;
+
+  /* Pattern Mega Mendung */
+  --pattern-mega-mendung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='32'%3E%3Cpath d='M0,18 Q20,-2 40,12 Q60,26 80,8' fill='none' stroke='%23b87333' stroke-width='2.8'/%3E%3Cpath d='M0,28 Q20,8 40,22 Q60,36 80,18' fill='none' stroke='%23d4956a' stroke-width='1.4'/%3E%3Cpath d='M0,8 Q20,-12 40,2 Q60,16 80,-2' fill='none' stroke='%23e8c090' stroke-width='0.8'/%3E%3C/svg%3E");
+
+  /* === HISTORY PAGE RECOLOR === */
+  --brand: #4a2810;
+  --brand-dark: #2e1908;
+  --brand-mid: #6b3c1a;
+  --brand-faint: #f5ede7;
+  --card-text: #F8EDE5;
+  --card-sub: #C8A888;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+
+  --surface-primary: #09090b;
+  --surface-secondary: #18181b;
+  --surface-muted: #27272a;
+  --border-color: #3f3f46;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ── Base ─────────────────────────────────────────────────── */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar Styling ────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 100px;
+}
+
+/* ── Keyframe Animations ──────────────────────────────────── */
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(92, 58, 33, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(92, 58, 33, 0);
+  }
+}
+
+@keyframes floatIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes splashFade {
+  0% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* ── Utility Classes ──────────────────────────────────────── */
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float-in {
+  animation: floatIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-splash {
+  animation: splashFade 2.5s ease-in-out forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Stagger children for list animations */
+.stagger-children>* {
+  opacity: 0;
+  animation: floatIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.stagger-children>*:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.stagger-children>*:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.stagger-children>*:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.stagger-children>*:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.stagger-children>*:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.stagger-children>*:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.stagger-children>*:nth-child(7) {
+  animation-delay: 0.35s;
+}
+
+.stagger-children>*:nth-child(8) {
+  animation-delay: 0.4s;
+}
+
+/* ── Glassmorphism Card ───────────────────────────────────── */
+
+.glass-card {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Safe Area (Mobile PWA) ───────────────────────────────── */
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 2rem);
+}
+
+/* ── Mega Mendung Card Components ─────────────────────────── */
+
+/* === BASE CARD === */
+.card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-brown-main);
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  text-align: left;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.card:hover {
+  opacity: 0.98;
+  transform: scale(1.01);
+  box-shadow: 0 12px 40px rgba(74, 40, 16, 0.35);
+}
+
+.card:active {
+  opacity: 0.9;
+  transform: scale(0.99);
+}
+
+.card--big {
+  min-height: 145px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card--small {
+  min-height: 215px;
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* === PATTERN LAYER === */
+@keyframes wave-drift {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 80px 0;
+  }
+
+  /* lebar 1 tile pattern */
+}
+
+.card-pattern-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--pattern-mega-mendung);
+  background-repeat: repeat;
+  -webkit-mask-image: radial-gradient(ellipse 130% 130% at 100% 0%, black 0%, black 30%, transparent 68%);
+  mask-image: radial-gradient(ellipse 130% 130% at 100% 0%, black 0%, black 30%, transparent 68%);
+}
+
+/* Intensitas berbeda per kartu */
+.card--big .card-pattern-layer {
+  -webkit-mask-image: radial-gradient(ellipse 140% 140% at 100% 0%, black 0%, black 35%, transparent 72%);
+  mask-image: radial-gradient(ellipse 140% 140% at 100% 0%, black 0%, black 35%, transparent 72%);
+}
+
+.card--small .card-pattern-layer {
+  -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 0%, black 0%, black 25%, transparent 60%);
+  mask-image: radial-gradient(ellipse 110% 110% at 100% 0%, black 0%, black 25%, transparent 60%);
+  opacity: 0.85;
+}
+
+/* === CARD CONTENT === */
+.card-content {
+  position: relative;
+  z-index: 1;
+  /* selalu di atas layer motif */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card--big .card-content {
+  padding: 20px;
+}
+
+.card--small .card-content {
+  padding: 20px;
+}
+
+
+/* === BADGE === */
+.card-badge {
+  display: inline-block;
+  background: var(--card-badge-bg);
+  color: var(--color-cream-light);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-badge);
+  margin-bottom: 8px;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+/* === TYPOGRAPHY === */
+.card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--card-text-primary);
+  margin-bottom: 5px;
+  letter-spacing: 0.025em;
+}
+
+.card-title--sm {
+  font-size: 15px;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--card-text-secondary);
+  line-height: 1.5;
+  max-width: 75%;
+  /* beri ruang kosong di kanan untuk motif */
+  font-weight: 300;
+}
+
+.card--small .card-desc {
+  max-width: 100%;
+  flex: 1;
+  padding-right: 32px;
+  padding-bottom: 8px;
+}
+
+
+/* === ICON === */
+.card-icon {
+  border-radius: var(--radius-icon);
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card--big .card-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.card--small .card-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.card-icon svg {
+  stroke: var(--color-cream-light);
+}
+
+.card--big .card-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.card--small .card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+
+/* === ARROW BUTTON === */
+.card-arrow {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--card-text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.card--big .card-arrow {
+  bottom: 24px;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+}
+
+.card--small .card-arrow {
+  bottom: 20px;
+  right: 20px;
+  width: 28px;
+  height: 28px;
+}
+
+.card:hover .card-arrow {
+  background: rgba(255, 255, 255, 0.32);
+  transform: scale(1.1);
 }
