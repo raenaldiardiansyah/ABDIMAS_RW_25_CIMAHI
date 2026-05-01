@@ -9,14 +9,20 @@
   --background: #f8fafc;
   --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #171717;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #171717;
+  --popover-foreground: #0f172a;
 
   /* Primary System */
   --primary: #1a7a3c;
-  --secondary: #3b82f6;
   --primary-foreground: #ffffff;
+
+  /*
+    Secondary sekarang mengikuti primary.
+    Bukan biru lagi, supaya UI tidak bentrok secara visual.
+  */
+  --secondary: #e8f5ee;
+  --secondary-foreground: #145c2f;
 
   --primary-950: color-mix(in srgb, var(--primary), black 72%);
   --primary-900: color-mix(in srgb, var(--primary), black 60%);
@@ -31,14 +37,13 @@
   --primary-50: color-mix(in srgb, var(--primary), white 92%);
 
   /* ShadCN-style semantic tokens */
-  --secondary-foreground: #ffffff;
-  --accent: color-mix(in srgb, var(--primary), white 84%);
+  --accent: color-mix(in srgb, var(--primary), white 88%);
   --accent-foreground: var(--primary-900);
-  --muted: rgba(15, 23, 42, 0.06);
+  --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --input: #e2e8f0;
-  --border: #e2e8f0;
-  --ring: color-mix(in srgb, var(--primary), transparent 60%);
+  --input: #dbe5df;
+  --border: #dbe5df;
+  --ring: color-mix(in srgb, var(--primary), transparent 58%);
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   --radius: 0.625rem;
@@ -50,13 +55,14 @@
   /* Overlays */
   --overlay: rgba(15, 23, 42, 0.5);
   --overlay-strong: rgba(15, 23, 42, 0.9);
-  --panel-tint: rgba(255, 255, 255, 0.6);
+  --panel-tint: rgba(255, 255, 255, 0.68);
 
   /* Admin surface */
-  --admin-background: #0b1220;
+  --admin-background: #07130d;
   --admin-foreground: #ffffff;
 
   /* Brand aliases */
+  --brand-950: var(--primary-950);
   --brand-900: var(--primary-900);
   --brand-800: var(--primary-800);
   --brand-700: var(--primary-700);
@@ -72,17 +78,18 @@
   --status-success: #16a34a;
   --status-warning: #f59e0b;
   --status-error: #dc2626;
+  --status-info: var(--primary-600);
 
   /* Surface */
   --surface-primary: #ffffff;
   --surface-secondary: #f8fafc;
   --surface-muted: #f1f5f9;
-  --border-color: #e2e8f0;
+  --border-color: #dbe5df;
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
 
-  /* Mega Mendung Tokens */
+  /* Mega Mendung Tokens - now fully primary-based */
   --color-brand-deep: var(--primary-950);
   --color-brand-main: var(--primary-800);
   --color-brand-card: var(--primary-700);
@@ -93,79 +100,109 @@
   --color-bg-page: var(--primary-50);
 
   /* Card Typography */
-  --card-text-primary: #ffffff;
-  --card-text-secondary: rgba(255, 255, 255, 0.82);
-  --card-badge-bg: rgba(255, 255, 255, 0.15);
+  --card-text-primary: var(--foreground);
+  --card-text-secondary: var(--muted-foreground);
+  --card-badge-bg: var(--primary-50);
 
   /* Radius */
   --radius-card: 18px;
   --radius-badge: 20px;
   --radius-icon: 50%;
 
-  /* Pattern Mega Mendung */
-  --pattern-mega-mendung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='32'%3E%3Cpath d='M0,18 Q20,-2 40,12 Q60,26 80,8' fill='none' stroke='%2377c1dd' stroke-width='2.4'/%3E%3Cpath d='M0,28 Q20,8 40,22 Q60,36 80,18' fill='none' stroke='%23a8d7e8' stroke-width='1.2'/%3E%3Cpath d='M0,8 Q20,-12 40,2 Q60,16 80,-2' fill='none' stroke='%23d6edf6' stroke-width='0.7'/%3E%3C/svg%3E");
+  /*
+    Pattern Mega Mendung
+    Sebelumnya biru, sekarang hijau turunan primary.
+  */
+  --pattern-mega-mendung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='32'%3E%3Cpath d='M0,18 Q20,-2 40,12 Q60,26 80,8' fill='none' stroke='%231a7a3c' stroke-width='2.4'/%3E%3Cpath d='M0,28 Q20,8 40,22 Q60,36 80,18' fill='none' stroke='%235aa873' stroke-width='1.2'/%3E%3Cpath d='M0,8 Q20,-12 40,2 Q60,16 80,-2' fill='none' stroke='%23b9dec8' stroke-width='0.7'/%3E%3C/svg%3E");
 
   /* History Page */
   --brand: var(--primary);
   --brand-dark: var(--primary-900);
   --brand-mid: var(--primary-700);
   --brand-faint: var(--primary-50);
-  --card-text: #ffffff;
-  --card-sub: rgba(255, 255, 255, 0.8);
+  --card-text: var(--foreground);
+  --card-sub: var(--muted-foreground);
 
-  /* Multi-accent (same family, not monotone) */
-  --accent-mint: #16a34a;
+  /*
+    Multi-accent
+    Jangan semua dibuat hijau total, nanti UI kehilangan hierarchy.
+    Tapi warna "sky/violet" tidak boleh biru mencolok lagi.
+  */
+  --accent-mint: var(--primary-600);
   --accent-amber: #f59e0b;
   --accent-coral: #dc2626;
-  --accent-violet: #3b82f6;
-  --accent-sky: #3b82f6;
+  --accent-violet: #5f7f3a;
+  --accent-sky: #2f8f62;
 
   --chip-surface: #ffffff;
   --chip-border: #cbd5e1;
   --chip-active: var(--primary);
   --chip-active-shadow: color-mix(in srgb, var(--primary-900), transparent 76%);
   --panel-soft: #ffffff;
-  --panel-soft-border: #e2e8f0;
+  --panel-soft-border: #dbe5df;
 }
 
 .dark {
   --primary: #1a7a3c;
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #0d0d10;
-  --card-foreground: #fafafa;
-  --popover: #0d0d10;
-  --popover-foreground: #fafafa;
+  --primary-foreground: #ffffff;
 
-  --secondary: rgba(255, 255, 255, 0.1);
-  --secondary-foreground: #ffffff;
-  --accent: rgba(255, 255, 255, 0.14);
-  --accent-foreground: #ffffff;
+  --background: #090f0b;
+  --foreground: #f8fafc;
+  --card: #0d1510;
+  --card-foreground: #f8fafc;
+  --popover: #0d1510;
+  --popover-foreground: #f8fafc;
+
+  /*
+    Secondary dark juga mengikuti primary.
+    Jangan pakai putih polos terlalu kuat.
+  */
+  --secondary: color-mix(in srgb, var(--primary), transparent 84%);
+  --secondary-foreground: #d8f3df;
+
+  --accent: color-mix(in srgb, var(--primary), transparent 82%);
+  --accent-foreground: #d8f3df;
   --muted: rgba(255, 255, 255, 0.08);
-  --muted-foreground: #a1a1aa;
-  --input: rgba(255, 255, 255, 0.16);
-  --border: rgba(255, 255, 255, 0.16);
-  --ring: color-mix(in srgb, var(--primary), transparent 55%);
+  --muted-foreground: #a7b7ad;
+  --input: rgba(255, 255, 255, 0.14);
+  --border: rgba(255, 255, 255, 0.14);
+  --ring: color-mix(in srgb, var(--primary), transparent 50%);
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
   --panel-on-brand: #ffffff;
   --panel-on-brand-foreground: #0f172a;
 
-  --overlay: rgba(9, 9, 11, 0.55);
-  --overlay-strong: rgba(9, 9, 11, 0.9);
-  --panel-tint: rgba(9, 9, 11, 0.4);
+  --overlay: rgba(9, 15, 11, 0.58);
+  --overlay-strong: rgba(9, 15, 11, 0.92);
+  --panel-tint: rgba(9, 15, 11, 0.45);
 
-  --admin-background: #0b1220;
+  --admin-background: #07130d;
   --admin-foreground: #ffffff;
 
-  --surface-primary: #09090b;
-  --surface-secondary: #18181b;
-  --surface-muted: #27272a;
-  --border-color: #3f3f46;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --surface-primary: #090f0b;
+  --surface-secondary: #101a13;
+  --surface-muted: #18251c;
+  --border-color: rgba(255, 255, 255, 0.14);
+  --text-primary: #f8fafc;
+  --text-secondary: #a7b7ad;
+  --text-muted: #728078;
+
+  --card-text-primary: var(--foreground);
+  --card-text-secondary: var(--muted-foreground);
+  --card-badge-bg: color-mix(in srgb, var(--primary), transparent 82%);
+
+  --brand: var(--primary);
+  --brand-dark: var(--primary-900);
+  --brand-mid: var(--primary-700);
+  --brand-faint: color-mix(in srgb, var(--primary), transparent 88%);
+
+  --chip-surface: #101a13;
+  --chip-border: rgba(255, 255, 255, 0.16);
+  --chip-active: var(--primary);
+  --chip-active-shadow: color-mix(in srgb, var(--primary), transparent 70%);
+  --panel-soft: #0d1510;
+  --panel-soft-border: rgba(255, 255, 255, 0.14);
 }
 
 @theme inline {
@@ -435,25 +472,27 @@ body {
   overflow: hidden;
   border-radius: 1rem;
   background: var(--card);
+  color: var(--card-foreground);
   cursor: pointer;
+  text-align: left;
+  border: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   transition:
     transform 0.15s ease,
     opacity 0.15s ease,
-    box-shadow 0.15s ease;
-  text-align: left;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-  border: 1px solid var(--border);
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .card:hover {
   opacity: 1;
   transform: none;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
 .card:active {
   opacity: 1;
-  transform: none;
+  transform: scale(0.99);
 }
 
 .card--big {
@@ -485,7 +524,7 @@ body {
   pointer-events: none;
   background-image: var(--pattern-mega-mendung);
   background-repeat: repeat;
-  opacity: 0.9;
+  opacity: 0.18;
   -webkit-mask-image: radial-gradient(
     ellipse 130% 130% at 100% 0%,
     black 0%,
@@ -500,7 +539,7 @@ body {
   );
 }
 
-/* Subtle motif for primary surfaces only (profile/header/badges) */
+/* Subtle motif for primary surfaces only */
 .batik-primary-overlay {
   position: absolute;
   inset: 0;
@@ -553,7 +592,7 @@ body {
     black 25%,
     transparent 60%
   );
-  opacity: 0.78;
+  opacity: 0.14;
 }
 
 /* Card Content */
@@ -578,7 +617,7 @@ body {
 .card-badge {
   display: inline-block;
   background: var(--card-badge-bg);
-  color: var(--primary-100);
+  color: var(--primary-800);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
@@ -586,14 +625,18 @@ body {
   border-radius: var(--radius-badge);
   margin-bottom: 8px;
   width: fit-content;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
+}
+
+.dark .card-badge {
+  color: var(--primary-300);
 }
 
 /* Typography */
 .card-title {
   font-size: 17px;
   font-weight: 700;
-  color: var(--card-text-primary);
+  color: var(--foreground);
   margin-bottom: 5px;
   letter-spacing: 0.025em;
 }
@@ -604,10 +647,10 @@ body {
 
 .card-desc {
   font-size: 12px;
-  color: var(--card-text-secondary);
+  color: var(--muted-foreground);
   line-height: 1.5;
   max-width: 75%;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .card--small .card-desc {
@@ -620,12 +663,13 @@ body {
 /* Icon */
 .card-icon {
   border-radius: var(--radius-icon);
-  background: color-mix(in srgb, var(--primary), white 88%);
+  background: var(--primary-50);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
-  border: 1px solid color-mix(in srgb, var(--primary), white 70%);
+  border: none;
 }
 
 .card--big .card-icon {
@@ -657,15 +701,21 @@ body {
   position: absolute;
   z-index: 2;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--card-text-primary);
+  background: var(--muted);
+  color: var(--muted-foreground);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+  border: none;
+}
+
+.card-arrow svg {
+  stroke: currentColor;
 }
 
 .card--big .card-arrow {
@@ -683,6 +733,7 @@ body {
 }
 
 .card:hover .card-arrow {
-  background: rgba(255, 255, 255, 0.32);
-  transform: scale(1.1);
+  background: var(--primary-50);
+  color: var(--primary);
+  transform: scale(1.06);
 }

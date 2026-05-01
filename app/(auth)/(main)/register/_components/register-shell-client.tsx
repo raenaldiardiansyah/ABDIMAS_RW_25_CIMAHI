@@ -14,7 +14,7 @@ export default function RegisterShellClient() {
 
 function RegisterPageSkeleton() {
   return (
-    <main className="min-h-screen bg-[color:var(--brand-600)] text-white">
+    <main className="min-h-screen bg-(--brand-600) text-white">
       <div className="mx-auto w-full max-w-md min-h-screen flex flex-col animate-pulse">
         <PageHeader
           title=" "
@@ -25,7 +25,7 @@ function RegisterPageSkeleton() {
           rightSlot={<div className="h-10 w-10 rounded-full border border-white/10 bg-secondary" />}
         />
 
-        <section className="mt-auto bg-[color:var(--panel-on-brand)] text-[color:var(--panel-on-brand-foreground)] rounded-t-[28px] px-6 pt-6 pb-10 shadow-2xl">
+        <section className="mt-auto bg-(--panel-on-brand) text-(--panel-on-brand-foreground) rounded-t-[28px] px-6 pt-6 pb-10 shadow-2xl">
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="h-12 rounded-xl bg-slate-100" />
