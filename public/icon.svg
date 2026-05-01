@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="RW 25 Cimahi">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0b1220"/>
+  <rect x="48" y="48" width="416" height="416" rx="96" fill="url(#g)" opacity="0.18"/>
+  <path d="M156 166c20 0 34 13 41 34l27 76 27-76c7-21 21-34 41-34 22 0 38 16 38 39 0 6-1 12-3 18l-56 150c-8 22-22 34-47 34s-39-12-47-34l-56-150c-2-6-3-12-3-18 0-23 16-39 38-39z" fill="#ffffff"/>
+  <path d="M270 346h116c14 0 26 12 26 26s-12 26-26 26H270c-14 0-26-12-26-26s12-26 26-26z" fill="#ffffff" opacity="0.92"/>
+</svg>

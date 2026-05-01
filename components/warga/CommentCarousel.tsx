@@ -1,86 +1,191 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRef } from 'react';
+import { ArrowRight, Landmark, MessageSquare } from 'lucide-react';
+
+import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 const MOCK_COMMENTS = [
-  { id: 1, name: "Budi Santoso", category: "Infrastruktur", report: "Jalan berlubang di RT 03", comment: "Sudah dikoordinasikan dengan dinas PU, akan diperbaiki minggu depan.", time: "2 jam yang lalu" },
-  { id: 2, name: "Siti Aminah", category: "Fasilitas Umum", report: "Lampu jalan mati", comment: "Petugas sudah ke lokasi untuk pengecekan dan penggantian lampu.", time: "5 jam yang lalu" },
-  { id: 3, name: "Ahmad Riyadi", category: "Kebersihan", report: "Tumpukan sampah di pinggir kali", comment: "Jadwal pengangkutan sampah tambahan sedang diatur.", time: "1 hari yang lalu" },
-  { id: 4, name: "Rina Kusuma", category: "Keamanan", report: "Pos ronda butuh perbaikan atap", comment: "Dana swadaya sudah terkumpul, perbaikan dimulai akhir bulan ini.", time: "2 hari yang lalu" }
+  {
+    id: 1,
+    name: 'Budi Santoso',
+    category: 'Infrastruktur',
+    report: 'Jalan berlubang di RT 03',
+    comment:
+      'Sudah dikoordinasikan dengan dinas PU, akan diperbaiki minggu depan.',
+    time: '2 jam yang lalu',
+  },
+  {
+    id: 2,
+    name: 'Siti Aminah',
+    category: 'Fasilitas Umum',
+    report: 'Lampu jalan mati',
+    comment:
+      'Petugas sudah ke lokasi untuk pengecekan dan penggantian lampu.',
+    time: '5 jam yang lalu',
+  },
+  {
+    id: 3,
+    name: 'Ahmad Riyadi',
+    category: 'Kebersihan',
+    report: 'Tumpukan sampah di pinggir kali',
+    comment: 'Jadwal pengangkutan sampah tambahan sedang diatur.',
+    time: '1 hari yang lalu',
+  },
+  {
+    id: 4,
+    name: 'Rina Kusuma',
+    category: 'Keamanan',
+    report: 'Pos ronda butuh perbaikan atap',
+    comment:
+      'Dana swadaya sudah terkumpul, perbaikan dimulai akhir bulan ini.',
+    time: '2 hari yang lalu',
+  },
 ];
+
+const CATEGORY_TONE: Record<
+  string,
+  {
+    chip: string;
+    soft: string;
+    dot: string;
+  }
+> = {
+  Infrastruktur: {
+    chip: 'text-[color:var(--accent-sky)] bg-[color:var(--accent-sky)]/10',
+    soft: 'bg-[color:var(--accent-sky)]/8',
+    dot: 'bg-[color:var(--accent-sky)]',
+  },
+  'Fasilitas Umum': {
+    chip: 'text-[color:var(--accent-mint)] bg-[color:var(--accent-mint)]/10',
+    soft: 'bg-[color:var(--accent-mint)]/8',
+    dot: 'bg-[color:var(--accent-mint)]',
+  },
+  Kebersihan: {
+    chip: 'text-[color:var(--accent-amber)] bg-[color:var(--accent-amber)]/10',
+    soft: 'bg-[color:var(--accent-amber)]/8',
+    dot: 'bg-[color:var(--accent-amber)]',
+  },
+  Keamanan: {
+    chip:
+      'text-[color:var(--accent-violet)] bg-[color:var(--accent-violet)]/10',
+    soft: 'bg-[color:var(--accent-violet)]/8',
+    dot: 'bg-[color:var(--accent-violet)]',
+  },
+};
 
 export default function CommentCarousel() {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
-
-  useEffect(() => {
-    if (isHovered) return;
-
-    const interval = setInterval(() => {
-      if (scrollRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-        if (scrollLeft + clientWidth >= scrollWidth - 10) {
-          // Reset to start if we reached the end
-          scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          // Scroll slightly to the right
-          scrollRef.current.scrollBy({ left: clientWidth * 0.85, behavior: 'smooth' });
-        }
-      }
-    }, 4000); // 4 seconds interval
-
-    return () => clearInterval(interval);
-  }, [isHovered]);
 
   return (
-    <div className="w-full bg-[#f8f5f2] dark:bg-[#1a1a1a] border-t border-[#e5dcd3] dark:border-zinc-800 pt-5 pb-8 flex flex-col mt-auto shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
-      <div className="px-5 flex justify-between items-center mb-4">
-        <h3 className="font-bold text-[#4a2810] dark:text-zinc-100 flex items-center gap-2 text-[15px]">
-          <MessageSquare size={18} className="text-[#8a5d3b] dark:text-[#c4a888]" />
-          Tanggapan Laporan
-        </h3>
-        <Link href="/warga/history" className="text-xs font-semibold text-[#8a5d3b] dark:text-[#c4a888] flex items-center gap-1 hover:text-[#4a2810] dark:hover:text-zinc-200 transition-colors bg-[#f0eadd] dark:bg-zinc-800 px-3 py-1.5 rounded-full">
-          Lihat Semua <ArrowRight size={14} />
-        </Link>
-      </div>
-
-      <div 
-        ref={scrollRef}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onTouchStart={() => setIsHovered(true)}
-        onTouchEnd={() => setIsHovered(false)}
-        className="w-full overflow-x-auto flex gap-4 px-5 pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-      >
-        {MOCK_COMMENTS.map((item) => (
-          <div 
-            key={item.id} 
-            className="snap-center shrink-0 w-[85%] max-w-[320px] bg-white dark:bg-zinc-800/80 rounded-2xl p-4 shadow-sm border border-[#f0eadd] dark:border-zinc-700/50 flex flex-col gap-3"
-          >
-            <div className="flex justify-between items-start gap-2">
-              <div>
-                <p className="text-[10px] font-bold text-[#8a5d3b] dark:text-[#c4a888] uppercase tracking-wider">{item.category}</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1 mt-0.5">{item.report}</p>
-              </div>
-              <span className="text-[10px] font-medium text-gray-400 dark:text-zinc-500 whitespace-nowrap bg-gray-50 dark:bg-zinc-900 px-2 py-0.5 rounded-md">{item.time}</span>
-            </div>
-            
-            <div className="bg-[#f8f5f2] dark:bg-zinc-900/80 rounded-xl p-3 border-l-2 border-[#8a5d3b] dark:border-[#c4a888] mt-1">
-              <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed italic">
-                "{item.comment}"
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <div className="w-4 h-4 rounded-full bg-[#4a2810] dark:bg-[#c4a888] flex items-center justify-center">
-                  <span className="text-[8px] font-bold text-white dark:text-[#1a1a1a]">RW</span>
-                </div>
-                <p className="text-[10px] font-semibold text-gray-600 dark:text-zinc-400">Admin RW 25</p>
-              </div>
-            </div>
+    <Card className="w-full overflow-hidden rounded-4xl border-0 bg-card shadow-none px-0">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-3 pt-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/70">
+            <MessageSquare className="size-4 text-primary" />
           </div>
-        ))}
-      </div>
-    </div>
+
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Tanggapan
+            </p>
+            <h3 className="mt-0.5 text-base font-bold tracking-tight text-foreground">
+              Update laporan warga
+            </h3>
+          </div>
+        </div>
+
+        <Link
+          href="/warga/history"
+          className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+        >
+          Lihat semua
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </CardHeader>
+
+      <CardContent className="px-4 pb-4 pt-0">
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div ref={scrollRef} className="flex w-max gap-3 scroll-smooth">
+            {MOCK_COMMENTS.map((item) => {
+              const tone =
+                CATEGORY_TONE[item.category] ?? CATEGORY_TONE.Infrastruktur;
+
+              return (
+                <article
+                  key={item.id}
+                  className="group relative w-[84%] max-w-82.5 shrink-0 overflow-hidden rounded-3xl border-0 bg-muted/30 p-4 shadow-sm transition-all duration-300 hover:bg-muted/45 hover:shadow-md active:scale-[0.98]"
+                >
+                  <div
+                    className={cn(
+                      'pointer-events-none absolute -right-6 -top-6 size-24 rounded-full blur-2xl transition-opacity duration-300',
+                      tone.dot,
+                      'opacity-0 group-hover:opacity-25',
+                    )}
+                    aria-hidden="true"
+                  />
+
+                  <div className="relative z-10 mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full border-0 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+                          tone.chip
+                        )}
+                      >
+                        {item.category}
+                      </span>
+
+                      <h4 className="mt-2 line-clamp-1 text-sm font-bold text-foreground">
+                        {item.report}
+                      </h4>
+
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Oleh {item.name}
+                      </p>
+                    </div>
+
+                    <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                      {item.time}
+                    </span>
+                  </div>
+
+                  <div className={cn('relative z-10 rounded-2xl border-0 p-3', tone.soft)}>
+                    <p className="line-clamp-3 text-xs leading-relaxed text-foreground/80">
+                      “{item.comment}”
+                    </p>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <div
+                        className={cn(
+                          'flex size-6 items-center justify-center rounded-full',
+                          tone.dot
+                        )}
+                      >
+                        <Landmark
+                          className="size-3.5 text-primary-foreground"
+                          aria-hidden="true"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] font-semibold leading-none text-foreground">
+                          Admin RW 25
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          Pemerintah Desa
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

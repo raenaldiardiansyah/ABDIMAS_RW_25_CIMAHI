@@ -10,6 +10,7 @@ import {
   Shield,
   Info,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { BansosResult, StatusBansos } from '@/types/warga';
 
 interface BansosResultSheetProps {
@@ -29,21 +30,21 @@ const STATUS_CONFIG: Record<
 > = {
   aktif: {
     label: 'Aktif',
-    dotColor: 'bg-emerald-400',
-    badgeBg: 'bg-[#1a5c2a]',
-    badgeText: 'text-[#8ed8a8]',
+    dotColor: 'bg-[color:var(--accent-mint)]',
+    badgeBg: 'bg-[color:var(--accent-mint)]/18',
+    badgeText: 'text-[color:var(--accent-mint)]',
   },
   diverifikasi: {
     label: 'Diverifikasi',
-    dotColor: 'bg-amber-400',
-    badgeBg: 'bg-[#5c4510]',
-    badgeText: 'text-[#f0d080]',
+    dotColor: 'bg-[color:var(--accent-amber)]',
+    badgeBg: 'bg-[color:var(--accent-amber)]/18',
+    badgeText: 'text-[color:var(--accent-amber)]',
   },
   tidak_layak: {
     label: 'Tidak Layak',
-    dotColor: 'bg-red-400',
-    badgeBg: 'bg-[#6b1818]',
-    badgeText: 'text-[#f0a0a0]',
+    dotColor: 'bg-[color:var(--accent-coral)]',
+    badgeBg: 'bg-[color:var(--accent-coral)]/18',
+    badgeText: 'text-[color:var(--accent-coral)]',
   },
 };
 
@@ -95,17 +96,17 @@ export default function BansosResultSheet({
       />
 
       {/* Sheet */}
-      <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-[2rem] shadow-2xl animate-slide-up max-h-[92vh] overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-md bg-background rounded-t-[2rem] shadow-2xl animate-slide-up max-h-[92vh] overflow-hidden flex flex-col border border-input">
         {/* Drag Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-300 dark:bg-zinc-700 rounded-full" />
+          <div className="w-10 h-1 bg-muted-foreground/35 rounded-full" />
         </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto pb-2">
           {/* ═══ MEGA MENDUNG HEADER ═══ */}
           <div
-            className="relative mx-4 mt-1 rounded-2xl overflow-hidden bg-[#4a2810]"
+            className="relative mx-4 mt-1 rounded-2xl overflow-hidden bg-primary"
             style={{ minHeight: '140px' }}
           >
             {/* Pattern layer */}
@@ -120,18 +121,21 @@ export default function BansosResultSheet({
             />
 
             {/* Close chevron - top right */}
-            <button
+            <Button
+              type="button"
               onClick={onClose}
-              className="absolute top-4 right-4 z-20 w-7 h-7 rounded-full bg-white/15 flex items-center justify-center text-white/70 hover:bg-white/25 transition-colors"
+              variant="secondary"
+              size="icon"
+              className="absolute top-4 right-4 z-20 h-7 w-7 rounded-full bg-white/15 text-white/70 hover:bg-white/25 transition-colors"
             >
               <ChevronUp className="w-4 h-4" />
-            </button>
+            </Button>
 
             {/* Header content */}
             <div className="relative z-10 p-5 pt-4">
               {/* Top row: Date + Status Badge (pojok kanan) */}
               <div className="flex items-center gap-2 mb-4 pr-9">
-                <span className="text-[12px] text-[#c4a888] font-medium">
+                <span className="text-[12px] text-primary-foreground/70 font-medium">
                   {today}
                 </span>
                 <span
@@ -149,9 +153,14 @@ export default function BansosResultSheet({
 
               {/* Title */}
               <h3 className="text-[17px] font-bold text-white mb-1">
-                Cek Bansos — {result.program}
+                {result.status === 'aktif'
+                  ? 'ANDA BERHAK MENERIMA BANSOS'
+                  : result.status === 'tidak_layak'
+                    ? 'ANDA TIDAK TERDAFTAR'
+                    : 'DATA SEDANG DIPROSES'}
               </h3>
-              <p className="text-[13px] text-[#c4a888]">{programFullName}</p>
+              <p className="text-[13px] text-primary-foreground/80">{programFullName}</p>
+              <p className="text-[11px] text-primary-foreground/70 mt-1">Pembaruan terakhir: {today}</p>
             </div>
           </div>
 
@@ -168,13 +177,14 @@ export default function BansosResultSheet({
         </div>
 
         {/* ═══ BOTTOM ACTIONS ═══ */}
-        <div className="px-4 pb-5 pt-4 flex justify-center text-center gap-2 border-t border-gray-100 dark:border-zinc-800 bg-transparent">
-          <button
+        <div className="px-4 pb-5 pt-4 flex justify-center text-center gap-2 border-t border-input bg-transparent">
+          <Button
+            type="button"
             onClick={onClose}
-            className="w-full py-3.5 rounded-xl text-[14px] font-bold text-center bg-[#4a2810] text-white hover:bg-[#5a3318] transition-colors block"
+            className="w-full py-3.5 rounded-xl text-[14px] font-bold text-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors block"
           >
             Tutup
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -193,7 +203,7 @@ function AktifContent({
   return (
     <div className="px-4 py-4 flex flex-col gap-2">
       {/* White info card */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
+      <div className="bg-background rounded-2xl border border-input shadow-sm p-4">
         <InfoRow label="Nama Penerima" value={result.nama} bold />
         <InfoRow label="NIK" value={result.nik} mono />
         <InfoRow label="Program" value={result.program} />
@@ -201,9 +211,9 @@ function AktifContent({
       </div>
 
       {/* Brown detail card */}
-      <div className="bg-[#4a2810] rounded-2xl p-4 shadow-md">
+      <div className="bg-primary rounded-2xl p-4 shadow-md">
         <h4 className="text-[13px] font-bold text-white mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#c4a888]" />
+          <FileText className="w-4 h-4 text-primary-foreground/70" />
           Detail Penerima
         </h4>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -213,15 +223,16 @@ function AktifContent({
           <DetailItem label="DTKS" value={result.dtks || '-'} />
           <DetailItem label="Tanggal Cek" value={today} />
           <DetailItem label="Status" value="Penerima Aktif" highlight />
+          <DetailItem label="Sumber Data" value="DTKS Kemensos / Operator Desa" />
         </div>
       </div>
 
       {/* Green keterangan */}
       {result.keterangan && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/30">
+      <div className="bg-[color:var(--accent-mint)]/10 rounded-xl p-4 border border-[color:var(--accent-mint)]/25">
           <div className="flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-            <p className="text-[13px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
+            <CheckCircle2 className="w-4 h-4 text-[color:var(--accent-mint)] mt-0.5 shrink-0" />
+            <p className="text-[13px] text-[color:var(--accent-mint)] leading-relaxed">
               {result.keterangan}
             </p>
           </div>
@@ -237,9 +248,9 @@ function TidakLayakContent({ result }: { result: BansosResult }) {
   return (
     <div className="px-4 py-4 flex flex-col gap-2">
       {/* Brown data card */}
-      <div className="bg-[#4a2810] rounded-2xl p-4 shadow-md">
+      <div className="bg-primary rounded-2xl p-4 shadow-md">
         <h4 className="text-[13px] font-bold text-white mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[#c4a888]" />
+          <FileText className="w-4 h-4 text-primary-foreground/70" />
           Data Pemohon
         </h4>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -247,25 +258,26 @@ function TidakLayakContent({ result }: { result: BansosResult }) {
           <DetailItem label="NIK" value={result.nik} />
           <DetailItem label="Program" value={result.program} />
           <DetailItem label="Status" value="Tidak Layak" />
+          <DetailItem label="Sumber Data" value="DTKS Kemensos / Operator Desa" />
         </div>
       </div>
 
       {/* Keterangan bullets */}
-      <div className="bg-[#4a2810] rounded-2xl p-4 shadow-md">
+      <div className="bg-primary rounded-2xl p-4 shadow-md">
         <h4 className="text-[13px] font-bold text-white mb-3 flex items-center gap-2">
-          <Info className="w-4 h-4 text-[#c4a888]" />
+          <Info className="w-4 h-4 text-primary-foreground/70" />
           Keterangan
         </h4>
         <div className="space-y-3">
           <div className="flex items-start gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-red-400 mt-1.5 shrink-0" />
-            <p className="text-[12px] text-[#e0c9a8] leading-relaxed">
+            <div className="w-2 h-2 rounded-full bg-[color:var(--accent-coral)] mt-1.5 shrink-0" />
+            <p className="text-[12px] text-primary-foreground/80 leading-relaxed">
               {result.keterangan}
             </p>
           </div>
           <div className="flex items-start gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
-            <p className="text-[12px] text-[#e0c9a8] leading-relaxed">
+            <div className="w-2 h-2 rounded-full bg-[color:var(--accent-amber)] mt-1.5 shrink-0" />
+            <p className="text-[12px] text-primary-foreground/80 leading-relaxed">
               Jika kondisi berubah, silakan ajukan kembali melalui kelurahan
               setempat.
             </p>
@@ -274,10 +286,10 @@ function TidakLayakContent({ result }: { result: BansosResult }) {
       </div>
 
       {/* Red warning */}
-      <div className="bg-red-50 dark:bg-red-950/20 rounded-xl p-4 border border-red-100 dark:border-red-900/30">
+      <div className="bg-[color:var(--accent-coral)]/10 rounded-xl p-4 border border-[color:var(--accent-coral)]/25">
         <div className="flex items-start gap-1.5">
-          <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-          <p className="text-[13px] text-red-700 dark:text-red-400 leading-relaxed">
+          <AlertTriangle className="w-4 h-4 text-[color:var(--accent-coral)] mt-0.5 shrink-0" />
+          <p className="text-[13px] text-[color:var(--accent-coral)] leading-relaxed">
             Anda tidak memenuhi kriteria penerima bantuan sosial berdasarkan
             data DTKS terbaru.
           </p>
@@ -293,16 +305,16 @@ function DiverifikasiContent({ result }: { result: BansosResult }) {
   return (
     <div className="px-4 py-4 flex flex-col gap-2">
       {/* White brief info */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
+      <div className="bg-background rounded-2xl border border-input shadow-sm p-4">
         <InfoRow label="Nama" value={result.nama} bold />
         <InfoRow label="Program" value={result.program} />
         <InfoRow label="Status" value="Dalam Verifikasi" />
       </div>
 
       {/* Brown timeline card */}
-      <div className="bg-[#4a2810] rounded-2xl p-4 shadow-md">
+      <div className="bg-primary rounded-2xl p-4 shadow-md">
         <h4 className="text-[13px] font-bold text-white mb-4 flex items-center gap-1.5">
-          <Shield className="w-4 h-4 text-[#c4a888]" />
+          <Shield className="w-4 h-4 text-primary-foreground/70" />
           Progress Verifikasi
         </h4>
         <div className="space-y-4">
@@ -328,10 +340,10 @@ function DiverifikasiContent({ result }: { result: BansosResult }) {
       </div>
 
       {/* Amber info */}
-      <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 border border-amber-100 dark:border-amber-900/30">
+      <div className="bg-[color:var(--accent-amber)]/10 rounded-xl p-4 border border-[color:var(--accent-amber)]/25">
         <div className="flex items-start gap-1.5">
-          <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-          <p className="text-[13px] text-amber-700 dark:text-amber-400 leading-relaxed">
+          <Clock className="w-4 h-4 text-[color:var(--accent-amber)] mt-0.5 shrink-0" />
+          <p className="text-[13px] text-[color:var(--accent-amber)] leading-relaxed">
             {result.keterangan}
           </p>
         </div>
@@ -354,12 +366,12 @@ function InfoRow({
   mono?: boolean;
 }) {
   return (
-    <div className="flex justify-between py-2.5 border-b border-gray-100 dark:border-zinc-800 last:border-0">
-      <span className="text-[13px] text-gray-500 dark:text-zinc-500">
+    <div className="flex justify-between py-2.5 border-b border-input last:border-0">
+      <span className="text-[13px] text-muted-foreground">
         {label}
       </span>
       <span
-        className={`text-[13px] text-right ${bold ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-700 dark:text-zinc-300'} ${mono ? 'font-mono tracking-wide' : ''}`}
+        className={`text-[13px] text-right ${bold ? 'font-bold text-foreground' : 'font-semibold text-foreground/80'} ${mono ? 'font-mono tracking-wide' : ''}`}
       >
         {value}
       </span>
@@ -378,11 +390,11 @@ function DetailItem({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] text-[#c4a888] uppercase tracking-wider font-medium">
+      <span className="text-[10px] text-primary-foreground/70 uppercase tracking-wider font-medium">
         {label}
       </span>
       <span
-        className={`text-[13px] font-semibold ${highlight ? 'text-emerald-400' : 'text-white'}`}
+        className={`text-[13px] font-semibold ${highlight ? 'text-[color:var(--accent-mint)]' : 'text-white'}`}
       >
         {value}
       </span>
@@ -403,12 +415,12 @@ function TimelineStep({
 }) {
   const dotColor =
     status === 'done'
-      ? 'bg-emerald-400'
+      ? 'bg-[color:var(--accent-mint)]'
       : status === 'current'
-        ? 'bg-amber-400 animate-pulse'
-        : 'bg-zinc-600';
-  const lineColor = status === 'done' ? 'bg-emerald-400' : 'bg-zinc-700';
-  const textColor = status === 'pending' ? 'text-zinc-500' : 'text-white';
+        ? 'bg-[color:var(--accent-amber)] animate-pulse'
+        : 'bg-white/30';
+  const lineColor = status === 'done' ? 'bg-[color:var(--accent-mint)]' : 'bg-white/30';
+  const textColor = status === 'pending' ? 'text-white/60' : 'text-white';
 
   return (
     <div className="flex items-start gap-1.5">
@@ -418,7 +430,7 @@ function TimelineStep({
       </div>
       <div className="flex-1 -mt-0.5">
         <p className={`text-[13px] font-semibold ${textColor}`}>{label}</p>
-        <p className="text-[11px] text-[#c4a888] mt-0.5">{desc}</p>
+        <p className="text-[11px] text-primary-foreground/70 mt-0.5">{desc}</p>
       </div>
     </div>
   );

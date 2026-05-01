@@ -3,6 +3,9 @@
 import { ReactNode } from 'react';
 import StatusBadge from './StatusBadge';
 import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface HistoryCardProps {
   tanggal: string;
@@ -26,48 +29,44 @@ export default function HistoryCard({
   children
 }: HistoryCardProps) {
   return (
-    <div className="w-full bg-[var(--brand)] rounded-2xl overflow-hidden shadow-sm transition-all duration-200">
-      <button
+    <Card className="w-full border border-input rounded-2xl overflow-hidden shadow-sm transition-all duration-200 bg-card">
+      <Button
+        type="button"
         onClick={onClick}
-        className="
-          w-full flex items-center gap-3 p-4 text-left
-          hover:opacity-95 active:scale-[0.99]
-          transition-all duration-200 relative
-        "
+        variant="ghost"
+        className="w-full h-auto flex items-center justify-start gap-3 p-4 text-left hover:bg-muted/30 transition-all duration-200 relative rounded-none"
       >
-        {/* Pattern Layer */}
-        <div className="card-pattern-layer opacity-40"></div>
-
         <div className="flex-1 min-w-0 relative z-10">
           <div className="flex items-center gap-2 mb-2.5">
-            <span className="text-[11px] text-[var(--card-sub)] font-medium opacity-80">{tanggal}</span>
+            <span className="text-[11px] text-muted-foreground font-semibold">{tanggal}</span>
             <StatusBadge status={status} color={statusColor} />
           </div>
 
-          <div className="w-full border-t border-white/10 mb-2.5" />
+          <div className="w-full border-t border-input mb-2.5" />
 
-          <h4 className="text-[15px] font-bold text-white truncate">{judul}</h4>
-          <p className="text-[12px] text-[var(--card-sub)] mt-0.5 truncate">{deskripsi}</p>
+          <h4 className="text-[15px] font-bold text-foreground truncate">{judul}</h4>
+          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{deskripsi}</p>
         </div>
         
         <div className={`shrink-0 relative z-10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-          <ChevronDown className="w-5 h-5 text-white/50" />
+          <div className="h-8 w-8 rounded-full bg-muted border border-input flex items-center justify-center">
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          </div>
         </div>
-      </button>
+      </Button>
 
       {/* Expanded Content */}
-      <div 
-        className={`grid transition-all duration-300 ease-in-out bg-white ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+      <div
+        className={cn("grid transition-all duration-300 ease-in-out bg-card", isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}
       >
         <div className="overflow-hidden">
-          {/* Pembatas antara coklat dengan canvas putih */}
-          <div className="p-4 pt-4 bg-white border-t-[3px] border-[#a07650]/30 shadow-inner">
+          <div className="p-4 pt-4 bg-(--panel-soft) border-t border-(--panel-soft-border)">
             <div className="mt-1">
               {children}
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

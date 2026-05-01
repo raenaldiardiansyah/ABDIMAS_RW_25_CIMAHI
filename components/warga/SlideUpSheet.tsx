@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface SlideUpSheetProps {
   isOpen: boolean;
@@ -12,64 +13,21 @@ interface SlideUpSheetProps {
 }
 
 export default function SlideUpSheet({ isOpen, onClose, title, deskripsi, children }: SlideUpSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-
-  // Tutup dengan tombol Escape
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div
-        ref={sheetRef}
-        className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-[2rem] shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col"
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="bottom"
+        className="mx-auto w-full max-w-md rounded-t-[2rem] border-0 px-0 pb-0 pt-3 shadow-2xl"
       >
-        {/* Drag Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-300 dark:bg-zinc-700 rounded-full" />
+        <div className="flex justify-center pb-2">
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
         </div>
-
-        {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-2 pb-4">
-          <div className="flex-1 pr-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
-            {deskripsi && (
-              <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1 leading-relaxed">{deskripsi}</p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors mt-1 shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Konten */}
-        <div className="flex-1 overflow-y-auto px-6 pb-8">
-          {children}
-        </div>
-      </div>
-    </div>
+        <SheetHeader className="px-6 pb-4">
+          <SheetTitle>{title}</SheetTitle>
+          {deskripsi ? <SheetDescription>{deskripsi}</SheetDescription> : null}
+        </SheetHeader>
+        <ScrollArea className="max-h-[70vh] px-6 pb-8">{children}</ScrollArea>
+      </SheetContent>
+    </Sheet>
   );
 }

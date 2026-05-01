@@ -1,29 +1,76 @@
 @import "tailwindcss";
 
-/* ── KRITIS: Tailwind v4 dark mode via class (bukan media query) ── */
+/* Tailwind v4 dark mode via class */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Design Tokens ────────────────────────────────────────── */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
 
-  /* Brand — Warm Brown */
-  --brand-900: #2c1a0e;
-  --brand-800: #3d2414;
-  --brand-700: #462b18;
-  --brand-600: #5c3a21;
-  --brand-500: #7a5230;
-  --brand-400: #a07650;
-  --brand-300: #c4a07a;
-  --brand-200: #e0c9a8;
-  --brand-100: #f5e8d5;
-  --brand-50: #fdf6ee;
+  /* Primary System */
+  --primary: #1a7a3c;
+  --secondary: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  --primary-950: color-mix(in srgb, var(--primary), black 72%);
+  --primary-900: color-mix(in srgb, var(--primary), black 60%);
+  --primary-800: color-mix(in srgb, var(--primary), black 48%);
+  --primary-700: color-mix(in srgb, var(--primary), black 34%);
+  --primary-600: var(--primary);
+  --primary-500: color-mix(in srgb, var(--primary), white 10%);
+  --primary-400: color-mix(in srgb, var(--primary), white 25%);
+  --primary-300: color-mix(in srgb, var(--primary), white 40%);
+  --primary-200: color-mix(in srgb, var(--primary), white 62%);
+  --primary-100: color-mix(in srgb, var(--primary), white 82%);
+  --primary-50: color-mix(in srgb, var(--primary), white 92%);
+
+  /* ShadCN-style semantic tokens */
+  --secondary-foreground: #ffffff;
+  --accent: color-mix(in srgb, var(--primary), white 84%);
+  --accent-foreground: var(--primary-900);
+  --muted: rgba(15, 23, 42, 0.06);
+  --muted-foreground: #64748b;
+  --input: #e2e8f0;
+  --border: #e2e8f0;
+  --ring: color-mix(in srgb, var(--primary), transparent 60%);
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --radius: 0.625rem;
+
+  /* Fixed surface */
+  --panel-on-brand: #ffffff;
+  --panel-on-brand-foreground: #0f172a;
+
+  /* Overlays */
+  --overlay: rgba(15, 23, 42, 0.5);
+  --overlay-strong: rgba(15, 23, 42, 0.9);
+  --panel-tint: rgba(255, 255, 255, 0.6);
+
+  /* Admin surface */
+  --admin-background: #0b1220;
+  --admin-foreground: #ffffff;
+
+  /* Brand aliases */
+  --brand-900: var(--primary-900);
+  --brand-800: var(--primary-800);
+  --brand-700: var(--primary-700);
+  --brand-600: var(--primary-600);
+  --brand-500: var(--primary-500);
+  --brand-400: var(--primary-400);
+  --brand-300: var(--primary-300);
+  --brand-200: var(--primary-200);
+  --brand-100: var(--primary-100);
+  --brand-50: var(--primary-50);
 
   /* Status */
   --status-success: #16a34a;
-  --status-warning: #d97706;
+  --status-warning: #f59e0b;
   --status-error: #dc2626;
 
   /* Surface */
@@ -35,20 +82,19 @@
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
 
-  /* === MEGA MENDUNG TOKENS === */
-  /* Warna utama */
-  --color-brown-dark: #3d1f0d;
-  --color-brown-main: #4a2810;
-  --color-brown-card: #5a3018;
-  --color-copper: #b87333;
-  --color-copper-light: #d4956a;
-  --color-cream-gold: #e8c090;
-  --color-cream-light: #f5e6c8;
-  --color-bg-page: #f0ece6;
+  /* Mega Mendung Tokens */
+  --color-brand-deep: var(--primary-950);
+  --color-brand-main: var(--primary-800);
+  --color-brand-card: var(--primary-700);
+  --color-copper: var(--primary-400);
+  --color-copper-light: var(--primary-300);
+  --color-cream-gold: var(--primary-200);
+  --color-cream-light: var(--primary-100);
+  --color-bg-page: var(--primary-50);
 
-  /* Typography di atas kartu */
+  /* Card Typography */
   --card-text-primary: #ffffff;
-  --card-text-secondary: rgba(255, 255, 255, 0.72);
+  --card-text-secondary: rgba(255, 255, 255, 0.82);
   --card-badge-bg: rgba(255, 255, 255, 0.15);
 
   /* Radius */
@@ -57,20 +103,61 @@
   --radius-icon: 50%;
 
   /* Pattern Mega Mendung */
-  --pattern-mega-mendung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='32'%3E%3Cpath d='M0,18 Q20,-2 40,12 Q60,26 80,8' fill='none' stroke='%23b87333' stroke-width='2.8'/%3E%3Cpath d='M0,28 Q20,8 40,22 Q60,36 80,18' fill='none' stroke='%23d4956a' stroke-width='1.4'/%3E%3Cpath d='M0,8 Q20,-12 40,2 Q60,16 80,-2' fill='none' stroke='%23e8c090' stroke-width='0.8'/%3E%3C/svg%3E");
+  --pattern-mega-mendung: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='32'%3E%3Cpath d='M0,18 Q20,-2 40,12 Q60,26 80,8' fill='none' stroke='%2377c1dd' stroke-width='2.4'/%3E%3Cpath d='M0,28 Q20,8 40,22 Q60,36 80,18' fill='none' stroke='%23a8d7e8' stroke-width='1.2'/%3E%3Cpath d='M0,8 Q20,-12 40,2 Q60,16 80,-2' fill='none' stroke='%23d6edf6' stroke-width='0.7'/%3E%3C/svg%3E");
 
-  /* === HISTORY PAGE RECOLOR === */
-  --brand: #4a2810;
-  --brand-dark: #2e1908;
-  --brand-mid: #6b3c1a;
-  --brand-faint: #f5ede7;
-  --card-text: #F8EDE5;
-  --card-sub: #C8A888;
+  /* History Page */
+  --brand: var(--primary);
+  --brand-dark: var(--primary-900);
+  --brand-mid: var(--primary-700);
+  --brand-faint: var(--primary-50);
+  --card-text: #ffffff;
+  --card-sub: rgba(255, 255, 255, 0.8);
+
+  /* Multi-accent (same family, not monotone) */
+  --accent-mint: #16a34a;
+  --accent-amber: #f59e0b;
+  --accent-coral: #dc2626;
+  --accent-violet: #3b82f6;
+  --accent-sky: #3b82f6;
+
+  --chip-surface: #ffffff;
+  --chip-border: #cbd5e1;
+  --chip-active: var(--primary);
+  --chip-active-shadow: color-mix(in srgb, var(--primary-900), transparent 76%);
+  --panel-soft: #ffffff;
+  --panel-soft-border: #e2e8f0;
 }
 
 .dark {
+  --primary: #1a7a3c;
   --background: #09090b;
   --foreground: #fafafa;
+  --card: #0d0d10;
+  --card-foreground: #fafafa;
+  --popover: #0d0d10;
+  --popover-foreground: #fafafa;
+
+  --secondary: rgba(255, 255, 255, 0.1);
+  --secondary-foreground: #ffffff;
+  --accent: rgba(255, 255, 255, 0.14);
+  --accent-foreground: #ffffff;
+  --muted: rgba(255, 255, 255, 0.08);
+  --muted-foreground: #a1a1aa;
+  --input: rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.16);
+  --ring: color-mix(in srgb, var(--primary), transparent 55%);
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --panel-on-brand: #ffffff;
+  --panel-on-brand-foreground: #0f172a;
+
+  --overlay: rgba(9, 9, 11, 0.55);
+  --overlay-strong: rgba(9, 9, 11, 0.9);
+  --panel-tint: rgba(9, 9, 11, 0.4);
+
+  --admin-background: #0b1220;
+  --admin-foreground: #ffffff;
 
   --surface-primary: #09090b;
   --surface-secondary: #18181b;
@@ -84,7 +171,28 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Inter', var(--font-geist-sans), system-ui, sans-serif;
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Inter", var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -93,7 +201,11 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -109,7 +221,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
+  background: var(--primary-300);
   border-radius: 100px;
 }
 
@@ -182,14 +294,13 @@ body {
 }
 
 @keyframes pulseGlow {
-
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(92, 58, 33, 0.4);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary), transparent 58%);
   }
 
   50% {
-    box-shadow: 0 0 0 8px rgba(92, 58, 33, 0);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--primary), transparent 100%);
   }
 }
 
@@ -247,46 +358,51 @@ body {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.08) 50%, transparent 75%);
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
 
-/* Stagger children for list animations */
-.stagger-children>* {
+/* Stagger children */
+.stagger-children > * {
   opacity: 0;
   animation: floatIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.stagger-children>*:nth-child(1) {
+.stagger-children > *:nth-child(1) {
   animation-delay: 0.05s;
 }
 
-.stagger-children>*:nth-child(2) {
+.stagger-children > *:nth-child(2) {
   animation-delay: 0.1s;
 }
 
-.stagger-children>*:nth-child(3) {
+.stagger-children > *:nth-child(3) {
   animation-delay: 0.15s;
 }
 
-.stagger-children>*:nth-child(4) {
+.stagger-children > *:nth-child(4) {
   animation-delay: 0.2s;
 }
 
-.stagger-children>*:nth-child(5) {
+.stagger-children > *:nth-child(5) {
   animation-delay: 0.25s;
 }
 
-.stagger-children>*:nth-child(6) {
+.stagger-children > *:nth-child(6) {
   animation-delay: 0.3s;
 }
 
-.stagger-children>*:nth-child(7) {
+.stagger-children > *:nth-child(7) {
   animation-delay: 0.35s;
 }
 
-.stagger-children>*:nth-child(8) {
+.stagger-children > *:nth-child(8) {
   animation-delay: 0.4s;
 }
 
@@ -295,38 +411,49 @@ body {
 .glass-card {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid color-mix(in srgb, var(--primary), transparent 86%);
 }
 
-/* ── Safe Area (Mobile PWA) ───────────────────────────────── */
+/* ── Safe Area ────────────────────────────────────────────── */
 
 .safe-bottom {
   padding-bottom: max(env(safe-area-inset-bottom, 0px), 2rem);
 }
 
+.safe-bottom-soft {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+}
+
+.safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 1.25rem);
+}
+
 /* ── Mega Mendung Card Components ─────────────────────────── */
 
-/* === BASE CARD === */
 .card {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-card);
-  background: var(--color-brown-main);
+  border-radius: 1rem;
+  background: var(--card);
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease,
+    box-shadow 0.15s ease;
   text-align: left;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border);
 }
 
 .card:hover {
-  opacity: 0.98;
-  transform: scale(1.01);
-  box-shadow: 0 12px 40px rgba(74, 40, 16, 0.35);
+  opacity: 1;
+  transform: none;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
 }
 
 .card:active {
-  opacity: 0.9;
-  transform: scale(0.99);
+  opacity: 1;
+  transform: none;
 }
 
 .card--big {
@@ -341,8 +468,7 @@ body {
   flex-direction: column;
 }
 
-
-/* === PATTERN LAYER === */
+/* Pattern Layer */
 @keyframes wave-drift {
   0% {
     background-position: 0 0;
@@ -351,8 +477,6 @@ body {
   100% {
     background-position: 80px 0;
   }
-
-  /* lebar 1 tile pattern */
 }
 
 .card-pattern-layer {
@@ -361,27 +485,81 @@ body {
   pointer-events: none;
   background-image: var(--pattern-mega-mendung);
   background-repeat: repeat;
-  -webkit-mask-image: radial-gradient(ellipse 130% 130% at 100% 0%, black 0%, black 30%, transparent 68%);
-  mask-image: radial-gradient(ellipse 130% 130% at 100% 0%, black 0%, black 30%, transparent 68%);
+  opacity: 0.9;
+  -webkit-mask-image: radial-gradient(
+    ellipse 130% 130% at 100% 0%,
+    black 0%,
+    black 30%,
+    transparent 68%
+  );
+  mask-image: radial-gradient(
+    ellipse 130% 130% at 100% 0%,
+    black 0%,
+    black 30%,
+    transparent 68%
+  );
 }
 
-/* Intensitas berbeda per kartu */
+/* Subtle motif for primary surfaces only (profile/header/badges) */
+.batik-primary-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--pattern-mega-mendung);
+  background-repeat: repeat;
+  background-size: 80px 32px;
+  opacity: 0.2;
+  -webkit-mask-image: linear-gradient(
+    to bottom left,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 72%
+  );
+  mask-image: linear-gradient(
+    to bottom left,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 72%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
 .card--big .card-pattern-layer {
-  -webkit-mask-image: radial-gradient(ellipse 140% 140% at 100% 0%, black 0%, black 35%, transparent 72%);
-  mask-image: radial-gradient(ellipse 140% 140% at 100% 0%, black 0%, black 35%, transparent 72%);
+  -webkit-mask-image: radial-gradient(
+    ellipse 140% 140% at 100% 0%,
+    black 0%,
+    black 35%,
+    transparent 72%
+  );
+  mask-image: radial-gradient(
+    ellipse 140% 140% at 100% 0%,
+    black 0%,
+    black 35%,
+    transparent 72%
+  );
 }
 
 .card--small .card-pattern-layer {
-  -webkit-mask-image: radial-gradient(ellipse 110% 110% at 100% 0%, black 0%, black 25%, transparent 60%);
-  mask-image: radial-gradient(ellipse 110% 110% at 100% 0%, black 0%, black 25%, transparent 60%);
-  opacity: 0.85;
+  -webkit-mask-image: radial-gradient(
+    ellipse 110% 110% at 100% 0%,
+    black 0%,
+    black 25%,
+    transparent 60%
+  );
+  mask-image: radial-gradient(
+    ellipse 110% 110% at 100% 0%,
+    black 0%,
+    black 25%,
+    transparent 60%
+  );
+  opacity: 0.78;
 }
 
-/* === CARD CONTENT === */
+/* Card Content */
 .card-content {
   position: relative;
   z-index: 1;
-  /* selalu di atas layer motif */
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -396,12 +574,11 @@ body {
   padding: 20px;
 }
 
-
-/* === BADGE === */
+/* Badge */
 .card-badge {
   display: inline-block;
   background: var(--card-badge-bg);
-  color: var(--color-cream-light);
+  color: var(--primary-100);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
@@ -412,8 +589,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-
-/* === TYPOGRAPHY === */
+/* Typography */
 .card-title {
   font-size: 17px;
   font-weight: 700;
@@ -431,7 +607,6 @@ body {
   color: var(--card-text-secondary);
   line-height: 1.5;
   max-width: 75%;
-  /* beri ruang kosong di kanan untuk motif */
   font-weight: 300;
 }
 
@@ -442,17 +617,15 @@ body {
   padding-bottom: 8px;
 }
 
-
-/* === ICON === */
+/* Icon */
 .card-icon {
   border-radius: var(--radius-icon);
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--primary), white 88%);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid color-mix(in srgb, var(--primary), white 70%);
 }
 
 .card--big .card-icon {
@@ -466,7 +639,7 @@ body {
 }
 
 .card-icon svg {
-  stroke: var(--color-cream-light);
+  stroke: var(--primary);
 }
 
 .card--big .card-icon svg {
@@ -479,8 +652,7 @@ body {
   height: 20px;
 }
 
-
-/* === ARROW BUTTON === */
+/* Arrow Button */
 .card-arrow {
   position: absolute;
   z-index: 2;

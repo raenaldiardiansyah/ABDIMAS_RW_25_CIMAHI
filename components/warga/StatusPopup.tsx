@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 
 type StatusVariant = 'success' | 'warning' | 'error';
 
@@ -17,76 +19,48 @@ interface StatusPopupProps {
 const VARIANT_CONFIG = {
   success: {
     icon: CheckCircle2,
-    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-    iconColor: 'text-emerald-500',
-    ringColor: 'ring-emerald-200 dark:ring-emerald-800',
+    bg: 'bg-[color:var(--accent-mint)]/12 border-[color:var(--accent-mint)]/30',
+    iconColor: 'text-[color:var(--accent-mint)]',
+    ringColor: 'ring-[color:var(--accent-mint)]/30',
   },
   warning: {
     icon: Clock,
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
-    iconColor: 'text-amber-500',
-    ringColor: 'ring-amber-200 dark:ring-amber-800',
+    bg: 'bg-[color:var(--accent-amber)]/12 border-[color:var(--accent-amber)]/30',
+    iconColor: 'text-[color:var(--accent-amber)]',
+    ringColor: 'ring-[color:var(--accent-amber)]/30',
   },
   error: {
     icon: XCircle,
-    bg: 'bg-red-50 dark:bg-red-950/30',
-    iconColor: 'text-red-500',
-    ringColor: 'ring-red-200 dark:ring-red-800',
+    bg: 'bg-[color:var(--accent-coral)]/12 border-[color:var(--accent-coral)]/30',
+    iconColor: 'text-[color:var(--accent-coral)]',
+    ringColor: 'ring-[color:var(--accent-coral)]/30',
   },
 };
 
 export default function StatusPopup({ isOpen, onClose, variant, judul, children, actions }: StatusPopupProps) {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const config = VARIANT_CONFIG[variant];
   const Icon = config.icon;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Popup Card */}
-      <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl animate-scale-in overflow-hidden">
-        {/* Icon Area */}
-        <div className={`flex justify-center pt-8 pb-4 ${config.bg}`}>
-          <div className={`w-16 h-16 rounded-full ${config.bg} ring-4 ${config.ringColor} flex items-center justify-center`}>
-            <Icon className={`w-8 h-8 ${config.iconColor}`} />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full max-w-sm rounded-3xl border-border bg-background p-0 overflow-hidden">
+        <div className={cn('flex justify-center border-b pt-8 pb-4', config.bg)}>
+          <div className={cn('flex h-16 w-16 items-center justify-center rounded-full border ring-4', config.bg, config.ringColor)}>
+            <Icon className={cn('h-8 w-8', config.iconColor)} />
           </div>
         </div>
-
-        {/* Konten */}
         <div className="px-6 pt-4 pb-6 text-center">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">{judul}</h3>
-          <div className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">
-            {children}
-          </div>
+          <DialogTitle className="mb-3 text-lg font-bold text-foreground">{judul}</DialogTitle>
+          <DialogDescription asChild>
+            <div className="text-sm text-muted-foreground leading-relaxed">{children}</div>
+          </DialogDescription>
         </div>
-
-        {/* Aksi */}
         {actions && (
           <div className="px-6 pb-6 flex flex-col gap-2">
             {actions}
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

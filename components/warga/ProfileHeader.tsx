@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { User, Copy, Settings, Moon, Sun, Check } from 'lucide-react';
+import { User, Copy, Settings, Moon, Sun, Check, Landmark } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface ProfileHeaderProps {
   nama: string;
   nik: string;
   isDark: boolean;
   onToggleDark: () => void;
+  statusBadge?: { label: string; variant: "warning" | "error" };
 }
 
 /** Masking NIK: tampilkan hanya 4 digit terakhir */
@@ -17,7 +20,7 @@ function maskNik(nik: string): string {
   return '**** **** **** ' + nik.slice(-4);
 }
 
-export default function ProfileHeader({ nama, nik, isDark, onToggleDark }: ProfileHeaderProps) {
+export default function ProfileHeader({ nama, nik, isDark, onToggleDark, statusBadge }: ProfileHeaderProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -38,51 +41,79 @@ export default function ProfileHeader({ nama, nik, isDark, onToggleDark }: Profi
   };
 
   return (
-    <header className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800/80 transition-colors duration-300">
+    <header className="safe-top flex items-center justify-between border-b border-input px-5 pb-4 transition-colors duration-300">
       <div className="flex items-center gap-3.5">
         {/* Foto Profil */}
-        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#5c3a21] to-[#a07650] overflow-hidden flex items-center justify-center shadow-md ring-2 ring-white/80 dark:ring-zinc-800">
-          <User className="w-5 h-5 text-white/90" />
+        <div className="relative w-11 h-11 rounded-full bg-primary overflow-hidden flex items-center justify-center shadow-sm ring-2 ring-white/80">
+          <div className="batik-primary-overlay" />
+          <User className="relative z-10 w-5 h-5 text-white/90" />
         </div>
 
         {/* Info Pengguna */}
         <div className="flex flex-col">
-          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white leading-tight tracking-tight transition-colors duration-300">
-            {nama}
-          </h2>
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground transition-colors duration-300">
+            <Landmark className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Portal RW 25 Cimahi</span>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <h2 className="text-[15px] font-bold text-foreground leading-tight tracking-tight transition-colors duration-300">
+              {nama}
+            </h2>
+            {statusBadge && (
+              <Badge
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  statusBadge.variant === "warning"
+                    ? "bg-[color:var(--accent-amber)]/14 text-[color:var(--accent-amber)] border-[color:var(--accent-amber)]/35"
+                    : "bg-[color:var(--accent-coral)]/14 text-[color:var(--accent-coral)] border-[color:var(--accent-coral)]/35"
+                }`}
+              >
+                {statusBadge.label}
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[11px] text-gray-400 dark:text-zinc-500 font-mono tracking-wide transition-colors duration-300">
+            <span className="text-[11px] text-muted-foreground font-mono tracking-wide transition-colors duration-300">
               {maskNik(nik)}
             </span>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={handleCopy}
-              className="text-gray-400 hover:text-[#5c3a21] dark:hover:text-[#c4a07a] transition-colors"
+              className="h-auto w-auto text-muted-foreground hover:text-foreground transition-colors"
               title="Salin NIK"
             >
               {copied ? (
-                <Check className="w-3 h-3 text-emerald-500" />
+                <Check className="w-3 h-3 text-[color:var(--accent-mint)]" />
               ) : (
                 <Copy className="w-3 h-3" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Aksi Header */}
       <div className="flex items-center gap-2">
-        <Link
-          href="/warga/settings"
-          className="w-9 h-9 rounded-full bg-gray-50 dark:bg-zinc-800/80 flex items-center justify-center text-gray-500 dark:text-zinc-400 border border-gray-100 dark:border-zinc-700/80 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-all duration-200 shadow-sm"
+        <Button
+          asChild
+          variant="outline"
+          size="icon"
+          className="w-9 h-9 rounded-full bg-card text-muted-foreground border-input hover:text-primary"
         >
-          <Settings className="w-[15px] h-[15px]" />
-        </Link>
-        <button
+          <Link href="/warga/settings">
+            <Settings className="w-[15px] h-[15px]" />
+          </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
           onClick={onToggleDark}
-          className="w-9 h-9 rounded-full bg-gray-50 dark:bg-zinc-800/80 flex items-center justify-center text-gray-500 dark:text-zinc-400 border border-gray-100 dark:border-zinc-700/80 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-all duration-200 shadow-sm"
+          className="w-9 h-9 rounded-full bg-card text-muted-foreground border-input hover:text-primary"
         >
           {isDark ? <Sun className="w-[15px] h-[15px]" /> : <Moon className="w-[15px] h-[15px]" />}
-        </button>
+        </Button>
       </div>
     </header>
   );

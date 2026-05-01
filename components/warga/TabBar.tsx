@@ -1,5 +1,7 @@
 'use client';
 
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 interface TabBarProps {
   tabs: string[];
   activeTab: number;
@@ -7,23 +9,21 @@ interface TabBarProps {
 }
 
 export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
+  const currentTab = tabs[activeTab] ?? tabs[0];
+
   return (
-    <div className="flex gap-1.5 bg-[var(--brand-faint)] p-1.5 rounded-xl">
-      {tabs.map((tab, i) => (
-        <button
-          key={tab}
-          onClick={() => onTabChange(i)}
-          className={`
-            flex-1 py-2.5 px-3 rounded-lg text-[13px] font-bold transition-all duration-300
-            ${i === activeTab
-              ? 'bg-[var(--brand)] text-white shadow-sm'
-              : 'text-[var(--brand)]/60 hover:text-[var(--brand)]'
-            }
-          `}
-        >
-          {tab}
-        </button>
-      ))}
-    </div>
+    <Tabs value={currentTab} onValueChange={(value) => onTabChange(tabs.findIndex((tab) => tab === value))}>
+      <TabsList className="h-auto w-full gap-1.5 rounded-2xl border border-input bg-card p-1.5">
+        {tabs.map((tab) => (
+          <TabsTrigger
+            key={tab}
+            value={tab}
+            className="flex-1 rounded-xl px-3 py-2.5 text-[13px] font-bold text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-white"
+          >
+            {tab}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
