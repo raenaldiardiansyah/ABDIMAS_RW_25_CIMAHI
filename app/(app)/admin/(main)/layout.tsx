@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
+import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminTopbar from "@/components/admin/AdminTopbar";
 
 export default function AdminMainLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-[100svh] bg-[color:var(--admin-background)] text-[color:var(--admin-foreground)] p-6">
-      <div className="mx-auto w-full max-w-5xl">{children}</div>
-    </main>
+    <div className="flex min-h-screen bg-[#F8FAFC]">
+      <AdminSidebar />
+      <div className="flex flex-1 flex-col min-w-0">
+        <AdminTopbar />
+        <main className="flex-1 min-h-0 min-w-0 overflow-y-auto p-[2%]">{children}</main>
+      </div>
+    </div>
   );
 }
-

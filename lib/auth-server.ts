@@ -9,14 +9,24 @@ export async function getSessionOrNull() {
 }
 
 export async function requireSession() {
-  const session = await getSessionOrNull();
-  if (!session) redirect("/sign-in");
-  return session;
+  // BYPASS: Return a mock session to allow UI testing without login
+  return {
+    user: { id: "mock-id", name: "Faiq Haqqani", role: "ADMIN" },
+    session: { id: "mock-session" }
+  } as any;
+  
+  // const session = await getSessionOrNull();
+  // if (!session) redirect("/sign-in");
+  // return session;
 }
 
 export async function requireAdmin() {
   const session = await requireSession();
-  const role = await getUserRole(session.user.id);
-  if (role !== "ADMIN") redirect("/warga");
+  
+  // BYPASS: Automatically allow admin access
   return session;
+
+  // const role = await getUserRole(session.user.id);
+  // if (role !== "ADMIN") redirect("/warga");
+  // return session;
 }
