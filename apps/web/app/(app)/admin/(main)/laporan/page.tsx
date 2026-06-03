@@ -1,4 +1,6 @@
 'use client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import { useEffect, useState } from 'react';
 import { Download, Users, FileText, RefreshCw, Eye, Search, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -76,7 +78,7 @@ export default function LaporanPage() {
         const [summaryResponse, rtResponse, citizenResponse] = await Promise.all([
           platformFetch<SummaryData>('/admin/reports/summary'),
           platformFetch<RtRow[]>('/admin/reports/rt-breakdown'),
-          platformFetch<CitizenRow[]>('/admin/citizens?page=1&limit=500'),
+          platformFetch<CitizenRow[]>('/admin/citizens?page=1&limit=100'),
         ]);
 
         if (!active) return;
@@ -148,27 +150,27 @@ export default function LaporanPage() {
           {activeFilter ? <p className="mt-1 text-sm font-medium text-[#3B82F6]">Filter Aktif: {activeFilter}</p> : null}
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={() => window.open('/api/platform/admin/reports/export/pdf', '_blank')}
             className="flex items-center gap-2 rounded-xl bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2563EB]"
           >
             <Download className="h-4 w-4" />
             Unduh PDF
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => window.open('/api/platform/admin/reports/export/xlsx', '_blank')}
             className="flex items-center gap-2 rounded-xl bg-[#EFF6FF] px-4 py-2.5 text-sm font-semibold text-[#3B82F6] transition hover:bg-[#E0E7FF]"
           >
             <Download className="h-4 w-4" />
             Unduh Excel
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <select
           value={tahun}
-          onChange={(e) => setTahun(e.target.value)}
+          onChange={(e: any) => setTahun(e.target.value)}
           className="h-10 rounded-xl border-0 bg-[#3B82F6] px-4 text-sm font-medium text-white outline-none"
         >
           <option value="2026">2026</option>
@@ -176,7 +178,7 @@ export default function LaporanPage() {
         </select>
         <select
           value={bulan}
-          onChange={(e) => setBulan(e.target.value)}
+          onChange={(e: any) => setBulan(e.target.value)}
           className="h-10 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#64748B] outline-none"
         >
           <option value="">Pilih Bulan</option>
@@ -195,7 +197,7 @@ export default function LaporanPage() {
         </select>
         <select
           value={rt}
-          onChange={(e) => setRt(e.target.value)}
+          onChange={(e: any) => setRt(e.target.value)}
           className="h-10 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#64748B] outline-none"
         >
           <option value="">Pilih RT</option>
@@ -205,12 +207,12 @@ export default function LaporanPage() {
           <option value="RT 04">RT 04</option>
           <option value="RT 05">RT 05</option>
         </select>
-        <button
+        <Button
           onClick={handleApplyFilter}
           className="h-10 rounded-xl bg-[#3B82F6] px-6 text-sm font-semibold text-white transition hover:bg-[#2563EB]"
         >
           Terapkan
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
@@ -303,13 +305,13 @@ export default function LaporanPage() {
                     <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-[#64748B]">{row.produktif}</span>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <button
+                    <Button
                       onClick={() => void handleOpenDetail(row)}
                       className="inline-flex items-center justify-center rounded-xl bg-white p-2 text-[#3B82F6] shadow-sm ring-1 ring-inset ring-gray-200 transition hover:bg-gray-50"
                       title="Lihat Detail Warga"
                     >
                       <Eye className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -328,11 +330,11 @@ export default function LaporanPage() {
           <div className="mt-4 flex flex-col gap-4">
             <div className="relative w-full md:w-1/2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
+              <Input
                 type="text"
                 placeholder="Cari nama atau NIK..."
                 value={searchQuery}
-                onChange={(e) => {
+                onChange={(e: any) => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
@@ -377,21 +379,21 @@ export default function LaporanPage() {
                   Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredPenduduk.length)} dari {filteredPenduduk.length} warga
                 </span>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     disabled={currentPage === 1}
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 disabled:opacity-50 hover:bg-gray-50"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </button>
+                  </Button>
                   <span className="text-sm font-medium text-[#1E293B]">Hal {currentPage} / {totalPages}</span>
-                  <button
+                  <Button
                     onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     disabled={currentPage === totalPages}
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 disabled:opacity-50 hover:bg-gray-50"
                   >
                     <ChevronRight className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}

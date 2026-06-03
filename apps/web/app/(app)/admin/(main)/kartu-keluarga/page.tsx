@@ -1,8 +1,11 @@
 'use client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, Search, SlidersHorizontal, Eye } from 'lucide-react';
+import { ClipboardList, Search, SlidersHorizontal, Eye, UserPlus } from 'lucide-react';
 
 import { platformFetch } from '@/lib/api/platform';
 
@@ -25,9 +28,8 @@ export default function KartuKeluargaPage() {
   const [rows, setRows] = useState<HouseholdRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [tempRt, setTempRt] = useState('');
-  const [activeRt, setActiveRt] = useState('');
+  const [activeRt, setActiveRt] = useState<string>('');
+  const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -51,6 +53,17 @@ export default function KartuKeluargaPage() {
     setLoading(true);
     void load();
 
+    // Check for pending requests
+    platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING')
+      .then((res: any) => {
+        if (active && res.data) {
+          setHasPendingRequests(res.data.length > 0);
+        }
+      })
+      .catch(() => {
+        // silently ignore error
+      });
+
     return () => {
       active = false;
     };
@@ -71,15 +84,20 @@ export default function KartuKeluargaPage() {
     <div className="flex flex-col gap-5">
       <div className="flex items-stretch justify-between gap-4">
         <Link
-          href="/admin/permohonan"
-          className="flex flex-1 items-center gap-4 rounded-2xl bg-[#2563EB] px-6 py-4 text-white transition hover:bg-[#1D4ED8] active:scale-[0.99]"
+          href="/admin/kartu-keluarga/tambah"
+          className="relative flex flex-1 items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#3B82F6] px-6 py-5 text-white shadow-lg transition hover:from-[#1D4ED8] hover:to-[#2563EB] active:scale-[0.99] sm:px-6 sm:py-5"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <ClipboardList className="h-6 w-6" />
+          {/* Decorative circles */}
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/[0.08]" />
+          <div className="pointer-events-none absolute right-16 top-6 h-24 w-24 rounded-full bg-white/[0.12]" />
+          <div className="pointer-events-none absolute -bottom-5 right-40 h-16 w-16 rounded-full bg-white/[0.08]" />
+
+          <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+            <UserPlus className="h-6 w-6 text-white" />
           </div>
-          <div>
-            <p className="text-xl font-bold">Tinjau Permohonan KK</p>
-            <p className="text-sm text-white/80">Buat KK dari pengajuan warga</p>
+          <div className="relative z-10">
+            <p className="text-xl font-bold">Tambah Kepala Keluarga</p>
+            <p className="text-sm text-white/80">Kartu Keluarga</p>
           </div>
         </Link>
 
@@ -89,7 +107,9 @@ export default function KartuKeluargaPage() {
         >
           <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF6FF]">
             <ClipboardList className="h-6 w-6 text-[#3B82F6]" />
-            <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-500" />
+            {hasPendingRequests && (
+              <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-500" />
+            )}
           </div>
           <div className="text-left">
             <p className="text-xl font-bold">Permohonan</p>
@@ -99,61 +119,37 @@ export default function KartuKeluargaPage() {
       </div>
 
       <div className="flex items-center gap-3">
+        <div className="shrink-0 rounded-full bg-[#2563EB] px-6 py-2.5">
+          <span className="text-lg font-bold text-white">{rows.length}</span>
+          <span className="ml-2 text-sm text-white/80">Total Kartu Keluarga</span>
+        </div>
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#3B82F6]" />
-          <input
+          <Input
             type="text"
             placeholder="Cari Kepala Keluarga, NIK, atau No. KK..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: any) => setSearchQuery(e.target.value)}
             className="h-10 w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-[#3B82F6]"
           />
         </div>
-        <div className="relative">
-          <button
-            onClick={() => {
-              setFilterOpen(!filterOpen);
-              setTempRt(activeRt);
-            }}
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${activeRt ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#3B82F6] hover:bg-[#2563EB]'} text-white`}
-            title="Filter Data"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </button>
-
-          {filterOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-gray-100 bg-white p-5 shadow-xl">
-              <h3 className="text-base font-bold text-[#1E293B]">Filter Data</h3>
-              <div className="mt-4 flex flex-col gap-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-                    Filter Berdasarkan RT
-                  </label>
-                  <select
-                    value={tempRt}
-                    onChange={(e) => setTempRt(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-[#3B82F6] focus:bg-white"
-                  >
-                    <option value="">Semua RT</option>
-                    <option value="01">RT 01</option>
-                    <option value="02">RT 02</option>
-                    <option value="03">RT 03</option>
-                    <option value="04">RT 04</option>
-                    <option value="05">RT 05</option>
-                  </select>
-                </div>
-                <button
-                  onClick={() => {
-                    setActiveRt(tempRt);
-                    setFilterOpen(false);
-                  }}
-                  className="rounded-xl bg-[#3B82F6] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2563EB]"
-                >
-                  Terapkan Filter
-                </button>
+        <div className="w-[180px] shrink-0">
+          <Select value={activeRt === '' ? 'ALL' : activeRt} onValueChange={(val: any) => setActiveRt(val === 'ALL' ? '' : val)}>
+            <SelectTrigger className="h-10 rounded-full border border-gray-200 bg-white font-medium text-gray-700 shadow-sm focus:ring-[#3B82F6]">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-[#3B82F6]" />
+                <SelectValue placeholder="Semua RT" />
               </div>
-            </div>
-          )}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua RT</SelectItem>
+              <SelectItem value="01">RT 01</SelectItem>
+              <SelectItem value="02">RT 02</SelectItem>
+              <SelectItem value="03">RT 03</SelectItem>
+              <SelectItem value="04">RT 04</SelectItem>
+              <SelectItem value="05">RT 05</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -204,18 +200,26 @@ export default function KartuKeluargaPage() {
           </tbody>
         </table>
 
-        <div className="flex items-center justify-between bg-[#3B82F6] px-5 py-3 text-white">
+        <div className="flex items-center justify-between border-t-0 bg-[#3B82F6] px-5 py-3 text-white">
           <span className="text-sm">
             Menampilkan {filteredKK.length} dari {rows.length} kartu keluarga
           </span>
           <div className="flex items-center gap-2">
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white"
+            >
               &lt;
-            </button>
+            </Button>
             <span className="text-sm font-medium">Halaman 1</span>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white"
+            >
               &gt;
-            </button>
+            </Button>
           </div>
         </div>
       </div>

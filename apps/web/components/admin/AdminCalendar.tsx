@@ -58,6 +58,8 @@ export default function AdminCalendar() {
     year: 'numeric',
   }).format(today);
 
+  const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
   const firstDay = start.getDay();
   const totalDays = end.getDate();
   const cells: Array<{ iso: string; day: number } | null> = [];
@@ -81,24 +83,27 @@ export default function AdminCalendar() {
   const todayEvents = eventsByDate.get(todayIso) ?? [];
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-lg">
-      <div className="rounded-t-[32px] bg-[#2563EB] p-6 text-center text-white">
-        <CalendarDays className="mx-auto mb-2 h-8 w-8 opacity-90" />
-        <h3 className="text-xl font-bold tracking-wide">{monthName}</h3>
-        <p className="mt-1 text-sm font-medium opacity-80">Kegiatan RW 025</p>
+    <div className="sticky top-6 flex h-full flex-col overflow-hidden rounded-[24px] border border-gray-100 bg-white shadow-lg">
+      {/* Header — Blue gradient */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#2563EB] to-[#3B82F6] px-6 py-5 text-center text-white">
+        <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/[0.08]" />
+        <CalendarDays className="mx-auto mb-2 h-7 w-7 opacity-90" />
+        <h3 className="text-lg font-bold tracking-wide">{capitalizedMonth}</h3>
+        <p className="mt-0.5 text-xs font-medium opacity-75">Kegiatan RW 025</p>
       </div>
 
-      <div className="flex flex-1 flex-col p-6">
-        <div className="mb-6 rounded-[1.5rem] bg-[#F8FAFC] p-4">
+      {/* Calendar grid */}
+      <div className="px-4 pt-4">
+        <div className="rounded-2xl bg-[#F8FAFC] p-3">
           <div className="grid grid-cols-7 gap-1">
             {HARI.map((hari) => (
-              <div key={hari} className="py-1.5 text-center text-[11px] font-bold text-[#64748B]">
+              <div key={hari} className="py-1 text-center text-[11px] font-bold text-[#94A3B8]">
                 {hari}
               </div>
             ))}
           </div>
 
-          <div className="mt-2 grid grid-cols-7 gap-1">
+          <div className="mt-1.5 grid grid-cols-7 gap-1">
             {cells.map((cell, idx) => {
               if (!cell) return <div key={`empty-${idx}`} className="aspect-square" />;
 
@@ -109,46 +114,59 @@ export default function AdminCalendar() {
                 <div
                   key={cell.iso}
                   className={cn(
-                    'relative flex aspect-square flex-col items-center justify-center rounded-xl transition-all',
-                    isToday ? 'bg-[#2563EB] text-white shadow-md' : 'text-[#334155] hover:bg-gray-100',
+                    'relative flex aspect-square flex-col items-center justify-center rounded-lg transition-all',
+                    isToday
+                      ? 'bg-[#2563EB] text-white shadow-md shadow-blue-200'
+                      : 'text-[#334155] hover:bg-gray-100',
                   )}
                 >
-                  <span className={cn('text-[13px] font-bold', !isToday && hasEvents && 'text-[#2563EB]')}>
+                  <span
+                    className={cn(
+                      'text-[12px] font-semibold',
+                      !isToday && hasEvents && 'text-[#2563EB]',
+                    )}
+                  >
                     {cell.day}
                   </span>
                   {hasEvents && !isToday ? (
-                    <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#3B82F6]" />
+                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[#3B82F6]" />
                   ) : null}
                 </div>
               );
             })}
           </div>
         </div>
+      </div>
 
-        <div className="flex-1">
-          <h4 className="mb-4 text-sm font-bold text-[#334155]">Agenda Hari Ini</h4>
-          {todayEvents.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {todayEvents.map((ev) => (
-                <div key={ev.id} className="flex gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
-                    <CalendarDays className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-bold text-[#1E293B]">{ev.title}</p>
-                    <p className="mt-0.5 text-[11px] font-medium text-[#64748B]">
-                      {ev.startTime ?? '-'} • {ev.location}
-                    </p>
-                  </div>
+      {/* Agenda Section */}
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
+        <h4 className="mb-3 text-sm font-bold text-[#334155]">Agenda Hari Ini</h4>
+        {todayEvents.length > 0 ? (
+          <div className="flex flex-col gap-2.5">
+            {todayEvents.map((ev) => (
+              <div
+                key={ev.id}
+                className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]">
+                  <CalendarDays className="h-4 w-4" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-center">
-              <p className="text-[13px] font-medium text-[#64748B]">Tidak ada kegiatan terjadwal hari ini.</p>
-            </div>
-          )}
-        </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-[#1E293B]">{ev.title}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-[#94A3B8]">
+                    {ev.startTime ?? '-'} • {ev.location}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 px-4 py-4 text-center">
+            <p className="text-xs font-medium text-[#94A3B8]">
+              Tidak ada kegiatan terjadwal hari ini.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

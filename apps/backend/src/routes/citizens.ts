@@ -8,7 +8,7 @@ import {
   createCitizenSchema,
   updateCitizenSchema,
 } from "@abdimas/contracts";
-import { citizen, getDb } from "@abdimas/db";
+import { citizen, adminActivityLog, getDb } from "@abdimas/db";
 
 import { conflict, notFound } from "../lib/errors";
 import { buildPageMeta, getOffset } from "../lib/pagination";
@@ -113,6 +113,14 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       })
       .returning();
 
+    await db.insert(adminActivityLog).values({
+      adminId: c.get("sessionUser").id,
+      action: "Menambahkan data warga baru",
+      entityType: "CITIZEN",
+      entityId: inserted.id,
+      metadata: { name: body.name, nik: body.nik },
+    });
+
     const payload = { success: true as const, data: mapCitizen(inserted) };
     citizenResponseSchema.parse(payload);
     return created(c, payload.data);
@@ -165,4 +173,21 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
     const payload = { success: true as const, data: mapCitizen(updated) };
     citizenResponseSchema.parse(payload);
     return ok(c, payload.data);
+  })
+  .delete("/:id", async (c) => {
+    const db = getDb();
+    const citizenId = c.req.param("id");
+
+    const [deleted] = await db.delete(citizen).where(eq(citizen.id, citizenId)).returning();
+    if (!deleted) throw notFound("Citizen not found");
+
+    await db.insert(adminActivityLog).values({
+      adminId: c.get("sessionUser").id,
+      action: "Menghapus data warga",
+      entityType: "CITIZEN",
+      entityId: deleted.id,
+      metadata: { name: deleted.name, nik: deleted.nik },
+    });
+
+    return ok(c, { success: true, message: "Citizen deleted successfully" });
   });

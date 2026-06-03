@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -119,7 +120,7 @@ export default function AdminSettingsPage() {
                   <p className="text-sm font-medium text-[#667085]">{isDark ? t.active : t.inactive}</p>
                 </div>
               </div>
-              <button
+              <Button
                 onClick={() => setIsDark(!isDark)}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                   isDark ? 'bg-[#1F7A6B]' : 'bg-[#D0D5DD]'
@@ -128,7 +129,7 @@ export default function AdminSettingsPage() {
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${
                   isDark ? 'left-[28px]' : 'left-1'
                 }`} />
-              </button>
+              </Button>
             </div>
             
             <div className="mx-6 h-px bg-[#EEF2F6]" />
@@ -168,7 +169,7 @@ export default function AdminSettingsPage() {
                   <p className="text-sm font-medium text-[#667085]">{notifikasi ? t.active : t.inactive}</p>
                 </div>
               </div>
-              <button
+              <Button
                 onClick={() => setNotifikasi(!notifikasi)}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                   notifikasi ? 'bg-[#2C5F75]' : 'bg-[#D0D5DD]'
@@ -177,7 +178,7 @@ export default function AdminSettingsPage() {
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${
                   notifikasi ? 'left-[28px]' : 'left-1'
                 }`} />
-              </button>
+              </Button>
             </div>
             
             <div className="mx-6 h-px bg-[#EEF2F6]" />
@@ -239,13 +240,13 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Logout */}
-        <button
+        <Button
           onClick={() => setShowLogoutConfirm(true)}
           className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-red-100 bg-red-50 py-5 font-bold text-red-600 transition hover:bg-red-100 active:scale-[0.98]"
         >
           <LogOut className="h-6 w-6" />
           <span className="text-lg">{t.logout}</span>
-        </button>
+        </Button>
       </div>
 
       {/* Logout Confirm Dialog */}
@@ -294,7 +295,7 @@ export default function AdminSettingsPage() {
           {activeDialog === 'bahasa' && (
             <div className="flex flex-col gap-3 mt-4">
               {['Indonesia', 'Sunda', 'English'].map((l) => (
-                <button
+                <Button
                   key={l}
                   onClick={() => { setBahasa(l); setActiveDialog(null); }}
                   className={`flex items-center justify-between rounded-xl border p-4 text-left transition-colors ${
@@ -303,7 +304,7 @@ export default function AdminSettingsPage() {
                 >
                   <span className="font-bold">{l}</span>
                   {bahasa === l && <Check className="h-5 w-5" />}
-                </button>
+                </Button>
               ))}
             </div>
           )}

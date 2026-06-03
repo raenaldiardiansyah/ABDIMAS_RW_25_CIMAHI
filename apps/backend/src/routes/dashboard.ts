@@ -18,6 +18,9 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
       [{ pendingRequests }],
       [{ pendingVerifications }],
       [{ pendingMutations }],
+      [{ deltaWarga }],
+      [{ deltaKK }],
+      [{ deltaMutasi }],
       latestLogRows,
     ] = await Promise.all([
       db.select({ totalWarga: sql<number>`count(*)::int` }).from(citizen),
@@ -35,8 +38,24 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
         .select({ pendingMutations: sql<number>`count(*)::int` })
         .from(mutation)
         .where(eq(mutation.status, "PENDING")),
-      db.select().from(adminActivityLog).orderBy(sql`${adminActivityLog.createdAt} desc`).limit(10),
+      db
+        .select({ deltaWarga: sql<number>`count(*)::int` })
+        .from(citizen)
+        .where(sql`${citizen.createdAt} >= now() - interval '7 days'`),
+      db
+        .select({ deltaKK: sql<number>`count(*)::int` })
+        .from(household)
+        .where(sql`${household.createdAt} >= now() - interval '7 days'`),
+      db
+        .select({ deltaMutasi: sql<number>`count(*)::int` })
+        .from(mutation)
+        .where(sql`${mutation.createdAt} >= now() - interval '7 days'`),
+      db.select().from(adminActivityLog).orderBy(sql`${adminActivityLog.createdAt} desc`).limit(50),
     ]);
+
+    const dW = Number(deltaWarga || 0);
+    const dK = Number(deltaKK || 0);
+    const dM = Number(deltaMutasi || 0);
 
     const payload = {
       success: true as const,
@@ -46,11 +65,17 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
           totalKK: Number(totalKK || 0),
           totalMutasi: Number(totalMutasi || 0),
           pendingRequests: Number(pendingRequests || 0),
+          ...(dW > 0 ? { deltaWarga: dW } : {}),
+          ...(dK > 0 ? { deltaKK: dK } : {}),
+          ...(dM > 0 ? { deltaMutasi: dM } : {}),
         },
         latestActivities: latestLogRows.map((row) => ({
+          id: row.id,
           title: row.action,
           subtitle: `${row.entityType}${row.entityId ? ` • ${row.entityId}` : ""}`,
           time: row.createdAt.toISOString(),
+          action: row.action,
+          entityType: row.entityType,
         })),
         notificationBadges: {
           pendingVerifications: Number(pendingVerifications || 0),
@@ -62,3 +87,4 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
     reportSummaryResponseSchema.parse(payload);
     return ok(c, payload.data);
   });
+

@@ -14,12 +14,13 @@ import {
   Menu,
   RefreshCw,
   Settings,
-  ShieldCheck,
   TrendingUp,
+  UserPlus,
   Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { platformFetch } from '@/lib/api/platform';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,6 @@ const MAIN_NAV: NavItem[] = [
 ];
 
 const ACTION_NAV: NavItem[] = [
-  { href: '/admin/verification', label: 'Verifikasi Warga', icon: ShieldCheck },
   { href: '/admin/permohonan', label: 'Permohonan', icon: FileInput, hasNotification: true },
   { href: '/admin/laporan', label: 'Laporan', icon: TrendingUp },
 ];
@@ -54,6 +54,22 @@ const SYSTEM_NAV: NavItem[] = [
 function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?: boolean; mobile?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [hasPendingRequests, setHasPendingRequests] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING')
+      .then(({ data }) => {
+        if (!mounted) return;
+        setHasPendingRequests(data.length > 0);
+      })
+      .catch(() => {
+        // silently ignore error
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
@@ -63,6 +79,7 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
   const renderItem = (item: NavItem) => {
     const active = isActive(item.href);
     const Icon = item.icon;
+    const showNotification = item.href === '/admin/permohonan' ? hasPendingRequests : item.hasNotification;
 
     return (
       <Link
@@ -78,7 +95,7 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
       >
         <div className="relative flex items-center justify-center">
           <Icon className="h-5 w-5 shrink-0" />
-          {item.hasNotification ? (
+          {showNotification ? (
             <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full border-2 border-white bg-rose-500" />
@@ -96,20 +113,20 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
       <div className="space-y-1">{ACTION_NAV.map(renderItem)}</div>
       <div className="mt-auto space-y-1 border-t border-slate-200 pt-4">
         {SYSTEM_NAV.map(renderItem)}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={async () => {
             await authClient.signOut().catch(() => null);
             router.push('/sign-in');
           }}
           className={cn(
-            'flex w-full items-center rounded-xl px-4 py-3 text-sm text-slate-600 transition-colors hover:bg-[#F4F8FF] hover:text-slate-900',
+            'flex h-auto w-full items-center justify-start rounded-xl px-4 py-3 text-sm font-normal text-slate-600 transition-colors hover:bg-[#F4F8FF] hover:text-slate-900',
             isCollapsed && !mobile ? 'justify-center' : 'gap-3',
           )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {(!isCollapsed || mobile) && <span>Logout</span>}
-        </button>
+        </Button>
       </div>
     </nav>
   );

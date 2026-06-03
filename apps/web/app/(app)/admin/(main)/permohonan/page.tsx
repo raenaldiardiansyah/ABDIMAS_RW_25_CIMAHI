@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 
 import { useEffect, useState } from 'react';
 import { FileInput, CheckCircle2, XCircle, Eye, RefreshCw } from 'lucide-react';
@@ -149,27 +150,27 @@ export default function PermohonanPage() {
                 </div>
 
                 <div className="w-full shrink-0 items-center justify-end gap-3 border-t border-gray-100 pt-4 md:flex md:w-auto md:border-none md:pt-0">
-                  <button
+                  <Button
                     onClick={() => setViewedAnggota(item)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 md:flex-none"
                     title="Lihat Daftar Keluarga"
                   >
                     <Eye className="h-4 w-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => void handleReject(item.id)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 md:flex-none"
                   >
                     <XCircle className="h-4 w-4" />
                     <span className="hidden md:inline">Tolak</span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => void handleApprove(item.id)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 md:flex-none"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="hidden md:inline">Setujui</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             );
@@ -241,27 +242,27 @@ export default function PermohonanPage() {
                 </div>
 
                 <div className="w-full shrink-0 items-center justify-end gap-3 border-t border-gray-100 pt-4 md:flex md:w-auto md:border-none md:pt-0">
-                  <button
+                  <Button
                     onClick={() => setViewedMutasi(item)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 md:flex-none"
                     title="Lihat Keterangan"
                   >
                     <Eye className="h-4 w-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => void handleReject(item.id)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 md:flex-none"
                   >
                     <XCircle className="h-4 w-4" />
                     <span className="hidden md:inline">Tolak</span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => void handleApprove(item.id)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 md:flex-none"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="hidden md:inline">Setujui</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             );

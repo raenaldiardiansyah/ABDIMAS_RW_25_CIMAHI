@@ -1,5 +1,8 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -54,8 +57,10 @@ export default function MutasiPage() {
   const [rows, setRows] = useState<MutationRow[]>([]);
   const [citizens, setCitizens] = useState<Record<string, CitizenRow>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeType, setActiveType] = useState<string>('ALL');
   const [viewedMutasi, setViewedMutasi] = useState<MutationRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasPendingRequests, setHasPendingRequests] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -84,6 +89,16 @@ export default function MutasiPage() {
 
     void load();
 
+    platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING')
+      .then((res: any) => {
+        if (active && res.data) {
+          setHasPendingRequests(res.data.length > 0);
+        }
+      })
+      .catch(() => {
+        // silently ignore error
+      });
+
     return () => {
       active = false;
     };
@@ -92,13 +107,14 @@ export default function MutasiPage() {
   const filteredRows = rows.filter((row) => {
     const citizen = citizens[row.citizenId];
     const search = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       citizen?.name.toLowerCase().includes(search) ||
       citizen?.nik.includes(searchQuery) ||
       row.reason?.toLowerCase().includes(search) ||
       row.toAddress?.toLowerCase().includes(search) ||
-      row.fromAddress?.toLowerCase().includes(search)
-    );
+      row.fromAddress?.toLowerCase().includes(search);
+    const matchesType = activeType === 'ALL' || row.type === activeType;
+    return matchesSearch && matchesType;
   });
 
   const stats = {
@@ -125,15 +141,17 @@ export default function MutasiPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-stretch gap-4">
         <Link
-          href="/admin/permohonan"
-          className="flex min-w-[200px] flex-1 items-center gap-4 rounded-2xl bg-[#2563EB] px-[clamp(16px,2vw,24px)] py-[clamp(12px,1.5vh,16px)] text-white transition hover:bg-[#1D4ED8] active:scale-[0.99]"
+          href="/admin/mutasi/tambah"
+          className="relative overflow-hidden flex min-w-[200px] flex-1 items-center gap-4 rounded-2xl bg-[#2563EB] px-[clamp(16px,2vw,24px)] py-[clamp(12px,1.5vh,16px)] text-white transition hover:bg-[#1D4ED8] active:scale-[0.99]"
         >
+          <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/[0.08]" />
+          <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-white/[0.12]" />
           <div className="flex h-[clamp(36px,5vh,48px)] w-[clamp(36px,5vh,48px)] items-center justify-center rounded-full bg-white/20">
             <RefreshCw className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[clamp(14px,1.5vw,20px)] font-bold">Tinjau Permohonan Mutasi</p>
-            <p className="text-[clamp(11px,1vw,14px)] text-white/80">Verifikasi mutasi warga</p>
+            <p className="text-[clamp(14px,1.5vw,20px)] font-bold">Tambah Mutasi</p>
+            <p className="text-[clamp(11px,1vw,14px)] text-white/80">Mutasi Penduduk</p>
           </div>
         </Link>
 
@@ -143,7 +161,9 @@ export default function MutasiPage() {
         >
           <div className="relative flex h-[clamp(36px,5vh,48px)] w-[clamp(36px,5vh,48px)] items-center justify-center rounded-full bg-[#EFF6FF]">
             <RefreshCw className="h-5 w-5 text-[#3B82F6]" />
-            <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-500" />
+            {hasPendingRequests && (
+              <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-500" />
+            )}
           </div>
           <div className="text-left">
             <p className="text-[clamp(14px,1.5vw,20px)] font-bold">Permohonan</p>
@@ -153,65 +173,86 @@ export default function MutasiPage() {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-2xl bg-[#2563EB] p-4 text-white shadow-sm">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/[0.08]" />
+          <div className="pointer-events-none absolute right-12 top-2 h-16 w-16 rounded-full bg-white/[0.12]" />
+          <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ArrowRight className="h-4 w-4" />
               <span className="text-xs text-white/80">Mutasi Masuk</span>
             </div>
           </div>
-          <p className="mt-3">
+          <p className="relative z-10 mt-2">
             <span className="text-3xl font-bold">{stats.masuk}</span>
             <span className="ml-1 text-sm">Laporan</span>
           </p>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-[#EFF6FF] p-5">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-[#EFF6FF] p-4 shadow-sm">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#3B82F6]/[0.05]" />
+          <div className="pointer-events-none absolute right-12 top-2 h-16 w-16 rounded-full bg-[#3B82F6]/[0.08]" />
+          <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4 text-[#3B82F6]" />
-              <span className="text-xs text-[#3B82F6]">Mutasi Keluar</span>
+              <span className="text-xs font-semibold text-[#3B82F6]">Mutasi Keluar</span>
             </div>
           </div>
-          <p className="mt-3">
+          <p className="relative z-10 mt-2">
             <span className="text-3xl font-bold text-[#1E293B]">{stats.keluar}</span>
-            <span className="ml-1 text-sm text-[#64748B]">Laporan</span>
+            <span className="ml-1 text-sm font-medium text-[#64748B]">Laporan</span>
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
-          <div className="flex items-center gap-2">
+        <div className="relative overflow-hidden rounded-2xl bg-[#2563EB] p-4 text-white shadow-sm">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/[0.08]" />
+          <div className="pointer-events-none absolute right-12 top-2 h-16 w-16 rounded-full bg-white/[0.12]" />
+          <div className="relative z-10 flex items-center gap-2">
             <RefreshCw className="h-4 w-4" />
             <span className="text-xs text-white/80">Total Mutasi</span>
           </div>
-          <p className="mt-3">
-            <span className="text-3xl font-bold">{stats.total}</span>
-            <span className="ml-1 text-sm">Laporan</span>
-          </p>
-          <button
-            onClick={() => window.open('/api/platform/admin/mutations/export', '_blank')}
-            className="mt-3 flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-[#3B82F6] transition hover:bg-white/90"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Ekspor Laporan
-          </button>
+          <div className="relative z-10 mt-2 flex items-center justify-between">
+            <p>
+              <span className="text-3xl font-bold">{stats.total}</span>
+              <span className="ml-1 text-sm">Laporan</span>
+            </p>
+            <Button
+              onClick={() => window.open('/api/platform/admin/mutations/export', '_blank')}
+              className="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#3B82F6] shadow-sm transition hover:bg-white/90"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Ekspor
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#3B82F6]" />
-          <input
+          <Input
             type="text"
-            placeholder="Search"
+            placeholder="Cari warga, NIK, asal, atau alasan mutasi..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: any) => setSearchQuery(e.target.value)}
             className="h-10 w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-[#3B82F6]"
           />
         </div>
-        <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3B82F6] text-white transition hover:bg-[#2563EB]">
-          <SlidersHorizontal className="h-4 w-4" />
-        </button>
+        <div className="w-[180px] shrink-0">
+          <Select value={activeType} onValueChange={(val: any) => setActiveType(val)}>
+            <SelectTrigger className="h-10 rounded-full border border-gray-200 bg-white font-medium text-gray-700 shadow-sm focus:ring-[#3B82F6]">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-[#3B82F6]" />
+                <SelectValue placeholder="Semua Mutasi" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Mutasi</SelectItem>
+              <SelectItem value="IN">Mutasi Masuk</SelectItem>
+              <SelectItem value="OUT">Mutasi Keluar</SelectItem>
+              <SelectItem value="MOVE">Pindah Alamat</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="overflow-x-auto overflow-hidden rounded-2xl border border-gray-100">

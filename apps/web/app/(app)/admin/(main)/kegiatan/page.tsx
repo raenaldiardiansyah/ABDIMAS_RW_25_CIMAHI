@@ -1,4 +1,6 @@
 'use client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import { useEffect, useState } from 'react';
 import { CalendarDays, MapPin, Clock, Search, Plus } from 'lucide-react';
@@ -113,21 +115,21 @@ export default function KegiatanPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-[clamp(18px,2vw,24px)] font-bold text-[#1E293B]">Agenda Kegiatan RW</h2>
-          <p className="mt-1 text-sm text-[#64748B]">Kelola dan pantau seluruh jadwal kegiatan di lingkungan RW 025</p>
+          <p className="mt-1 text-sm text-[#64748B]">Kelola dan pantau seluruh jadwal kegiatan di lingkungan RW 25</p>
         </div>
-        <button
+        <Button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#2563EB]"
         >
           <Plus className="h-4 w-4" />
           Tambah Kegiatan
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
-            <button
+            <Button
               key={cat}
               onClick={() => setFilterKategori(cat)}
               className={cn(
@@ -138,17 +140,17 @@ export default function KegiatanPage() {
               )}
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
+          <Input
             type="text"
             placeholder="Cari kegiatan..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: any) => setSearchQuery(e.target.value)}
             className="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[#3B82F6] focus:bg-white"
           />
         </div>
@@ -217,11 +219,11 @@ export default function KegiatanPage() {
           <form onSubmit={handleAddEvent} className="mt-4 flex flex-col gap-4">
             <div>
               <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Judul Kegiatan</label>
-              <input
+              <Input
                 type="text"
                 required
                 value={newJudul}
-                onChange={(e) => setNewJudul(e.target.value)}
+                onChange={(e: any) => setNewJudul(e.target.value)}
                 placeholder="Misal: Kerja Bakti Massal"
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
@@ -232,7 +234,7 @@ export default function KegiatanPage() {
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Kategori</label>
                 <select
                   value={newKategori}
-                  onChange={(e) => setNewKategori(e.target.value as EventCategory)}
+                  onChange={(e: any) => setNewKategori(e.target.value as EventCategory)}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 >
                   {categories.filter((c) => c !== 'semua').map((cat) => (
@@ -244,11 +246,11 @@ export default function KegiatanPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Tanggal</label>
-                <input
+                <Input
                   type="date"
                   required
                   value={newTanggal}
-                  onChange={(e) => setNewTanggal(e.target.value)}
+                  onChange={(e: any) => setNewTanggal(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 />
               </div>
@@ -257,23 +259,23 @@ export default function KegiatanPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Waktu (Jam)</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={newWaktu}
-                  onChange={(e) => setNewWaktu(e.target.value)}
+                  onChange={(e: any) => setNewWaktu(e.target.value)}
                   placeholder="08:00 - 10:00 WIB"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Tempat / Lokasi</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={newLokasi}
-                  onChange={(e) => setNewLokasi(e.target.value)}
-                  placeholder="Balai RW 025"
+                  onChange={(e: any) => setNewLokasi(e.target.value)}
+                  placeholder="Balai RW 25"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 />
               </div>
@@ -285,18 +287,18 @@ export default function KegiatanPage() {
                 rows={3}
                 required
                 value={newDeskripsi}
-                onChange={(e) => setNewDeskripsi(e.target.value)}
+                onChange={(e: any) => setNewDeskripsi(e.target.value)}
                 placeholder="Jelaskan secara singkat mengenai kegiatan ini..."
                 className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
 
-            <button
+            <Button
               type="submit"
               className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]"
             >
               Simpan Kegiatan
-            </button>
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

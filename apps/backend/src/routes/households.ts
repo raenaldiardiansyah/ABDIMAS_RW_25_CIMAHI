@@ -138,24 +138,65 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     const body = await parseJson(c.req.raw, createHouseholdSchema);
     const db = getDb();
 
-    const [existingHousehold, existingHead] = await Promise.all([
-      db.select({ id: household.id }).from(household).where(eq(household.kkNumber, body.kkNumber)).limit(1),
-      db.select({ id: citizen.id }).from(citizen).where(eq(citizen.id, body.headCitizenId)).limit(1),
-    ]);
+    if (!body.headCitizenId && !body.headCitizenName) {
+      throw fail(c, "BAD_REQUEST", "Either headCitizenId or headCitizenName must be provided");
+    }
 
-    if (existingHousehold.length > 0) throw conflict("KK number already exists");
-    if (existingHead.length === 0) throw notFound("Head citizen not found");
+    const [existingHousehold] = await db
+      .select({ id: household.id })
+      .from(household)
+      .where(eq(household.kkNumber, body.kkNumber))
+      .limit(1);
 
-    const [inserted] = await db.insert(household).values(body).returning();
+    if (existingHousehold) throw conflict("KK number already exists");
+
+    let finalHeadCitizenId = body.headCitizenId;
+
+    if (finalHeadCitizenId) {
+      const [existingHead] = await db
+        .select({ id: citizen.id })
+        .from(citizen)
+        .where(eq(citizen.id, finalHeadCitizenId))
+        .limit(1);
+      if (!existingHead) throw notFound("Head citizen not found");
+    } else {
+      const dummyNik = Math.floor(Math.random() * 9000000000000000 + 1000000000000000).toString();
+      const [newCitizen] = await db
+        .insert(citizen)
+        .values({
+          nik: dummyNik,
+          name: body.headCitizenName!,
+          gender: "L",
+          birthPlace: "-",
+          birthDate: new Date().toISOString().split("T")[0],
+          religion: "-",
+          maritalStatus: "-",
+          occupation: "-",
+          education: "-",
+          address: body.address,
+          rt: body.rt,
+          rw: body.rw,
+          status: "PENDUDUK_TETAP",
+        })
+        .returning();
+      finalHeadCitizenId = newCitizen.id;
+    }
+
+    const { headCitizenName, ...householdData } = body;
+    const [inserted] = await db
+      .insert(household)
+      .values({ ...householdData, headCitizenId: finalHeadCitizenId! })
+      .returning();
+
     await db
       .insert(householdMember)
-      .values({ householdId: inserted.id, citizenId: body.headCitizenId, relationship: "Kepala Keluarga" })
+      .values({ householdId: inserted.id, citizenId: finalHeadCitizenId!, relationship: "Kepala Keluarga" })
       .onConflictDoNothing();
 
     const [headCitizenRow] = await db
       .select()
       .from(citizen)
-      .where(eq(citizen.id, inserted.headCitizenId))
+      .where(eq(citizen.id, finalHeadCitizenId!))
       .limit(1);
 
     const payload = {
@@ -166,7 +207,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
           {
             id: "",
             householdId: inserted.id,
-            citizenId: body.headCitizenId,
+            citizenId: finalHeadCitizenId!,
             relationship: "Kepala Keluarga",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -320,21 +361,32 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     const householdId = c.req.param("id");
     const memberId = c.req.param("memberId");
     const body = await parseJson(c.req.raw, updateHouseholdMemberSchema);
-    const [updated] = await getDb()
-      .update(householdMember)
-      .set({ relationship: body.relationship })
-      .where(and(eq(householdMember.id, memberId), eq(householdMember.householdId, householdId)))
-      .returning();
+    const db = getDb();
 
-    if (!updated) throw notFound("Household member not found");
-    return ok(c, {
-      id: updated.id,
-      householdId: updated.householdId,
-      citizenId: updated.citizenId,
-      relationship: updated.relationship,
-      createdAt: toIso(updated.createdAt) ?? new Date().toISOString(),
-      updatedAt: toIso(updated.updatedAt) ?? new Date().toISOString(),
-    });
+    // Find member to get citizenId
+    const [member] = await db
+      .select()
+      .from(householdMember)
+      .where(and(eq(householdMember.id, memberId), eq(householdMember.householdId, householdId)))
+      .limit(1);
+
+    if (!member) throw notFound("Household member not found");
+
+    if (body.relationship) {
+      await db
+        .update(householdMember)
+        .set({ relationship: body.relationship })
+        .where(eq(householdMember.id, memberId));
+    }
+
+    if (body.birthDate || body.occupation) {
+      const citizenUpdates: Record<string, any> = {};
+      if (body.birthDate) citizenUpdates.birthDate = new Date(body.birthDate);
+      if (body.occupation) citizenUpdates.occupation = body.occupation;
+      await db.update(citizen).set(citizenUpdates).where(eq(citizen.id, member.citizenId));
+    }
+
+    return ok(c, { id: member.id });
   })
   .delete("/:id/members/:memberId", async (c) => {
     const householdId = c.req.param("id");

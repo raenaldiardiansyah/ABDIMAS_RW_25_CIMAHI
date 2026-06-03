@@ -4,6 +4,7 @@
   "packageManager": "pnpm@10.11.1",
   "scripts": {
     "dev": "pnpm --filter @abdimas/web dev",
+    "dev:all": "concurrently -n backend,web -c blue,green \"pnpm dev:backend\" \"pnpm dev:web\"",
     "dev:web": "pnpm --filter @abdimas/web dev",
     "dev:backend": "pnpm --filter @abdimas/backend dev",
     "seed:admin-login": "pnpm --filter @abdimas/db seed:admin-login",
@@ -14,5 +15,8 @@
     "lint": "pnpm --filter @abdimas/web lint",
     "test": "pnpm --filter @abdimas/web test",
     "check-types": "pnpm -r exec tsc --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
   }
 }

@@ -8,12 +8,17 @@ export const dashboardSummarySchema = z.object({
     totalKK: z.number().int().min(0),
     totalMutasi: z.number().int().min(0),
     pendingRequests: z.number().int().min(0),
+    deltaWarga: z.number().int().optional(),
+    deltaKK: z.number().int().optional(),
+    deltaMutasi: z.number().int().optional(),
   }),
   latestActivities: z.array(
     z.object({
       title: z.string(),
       subtitle: z.string(),
       time: z.string(),
+      action: z.string().optional(),
+      entityType: z.string().optional(),
     }),
   ),
   notificationBadges: z.object({

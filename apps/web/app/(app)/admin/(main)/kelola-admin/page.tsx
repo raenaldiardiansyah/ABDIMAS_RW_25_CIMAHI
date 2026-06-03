@@ -1,4 +1,6 @@
 'use client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import { useEffect, useState } from 'react';
 import {
@@ -178,15 +180,15 @@ export default function KelolaAdminPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-[clamp(18px,2vw,24px)] font-bold text-[#1E293B]">Kelola Pengurus & Hak Akses</h2>
-          <p className="mt-1 text-sm text-[#64748B]">Atur siapa saja yang memiliki akses ke dalam sistem informasi RW 025</p>
+          <p className="mt-1 text-sm text-[#64748B]">Atur siapa saja yang memiliki akses ke dalam sistem informasi RW 25</p>
         </div>
-        <button
+        <Button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#2563EB]"
         >
           <Plus className="h-4 w-4" />
           Tambah Admin
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -227,28 +229,28 @@ export default function KelolaAdminPage() {
 
       <div className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-2 px-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1">
-          <button
+          <Button
             onClick={() => setActiveTab('daftar')}
             className={cn('rounded-xl px-5 py-2.5 text-sm font-bold transition-all', activeTab === 'daftar' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-[#64748B] hover:bg-gray-50')}
           >
             Daftar Admin
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setActiveTab('log')}
             className={cn('rounded-xl px-5 py-2.5 text-sm font-bold transition-all', activeTab === 'log' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-[#64748B] hover:bg-gray-50')}
           >
             Log Aktivitas
-          </button>
+          </Button>
         </div>
 
         {activeTab === 'daftar' ? (
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
+            <Input
               type="text"
               placeholder="Cari admin..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: any) => setSearchQuery(e.target.value)}
               className="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[#3B82F6] focus:bg-white"
             />
           </div>
@@ -304,14 +306,14 @@ export default function KelolaAdminPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button
+                        <Button
                           onClick={() => handleEditOpen(admin)}
                           className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-[#3B82F6]"
                           title="Edit Profil"
                         >
                           <Edit className="h-4 w-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => {
                             setSelectedAdminForAction(admin);
                             setIsResetModalOpen(true);
@@ -320,8 +322,8 @@ export default function KelolaAdminPage() {
                           title="Reset Password"
                         >
                           <KeyRound className="h-4 w-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => {
                             setSelectedAdminForAction(admin);
                             setIsDeleteModalOpen(true);
@@ -330,7 +332,7 @@ export default function KelolaAdminPage() {
                           title="Non-aktifkan"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -376,32 +378,32 @@ export default function KelolaAdminPage() {
           <form onSubmit={handleAddAdmin} className="mt-4 flex flex-col gap-4">
             <div>
               <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Nama Lengkap</label>
-              <input
+              <Input
                 type="text"
                 required
                 value={newNama}
-                onChange={(e) => setNewNama(e.target.value)}
+                onChange={(e: any) => setNewNama(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Email</label>
-              <input
+              <Input
                 type="email"
                 required
                 value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
+                onChange={(e: any) => setNewEmail(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Username</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
+                  onChange={(e: any) => setNewUsername(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 />
               </div>
@@ -409,7 +411,7 @@ export default function KelolaAdminPage() {
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Role</label>
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as 'ADMIN')}
+                  onChange={(e: any) => setNewRole(e.target.value as 'ADMIN')}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 >
                   <option value="ADMIN">ADMIN</option>
@@ -421,9 +423,9 @@ export default function KelolaAdminPage() {
                 Temporary password is generated by backend reset/create flow.
               </p>
             </div>
-            <button type="submit" className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]">
+            <Button type="submit" className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]">
               Simpan Admin
-            </button>
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -436,19 +438,19 @@ export default function KelolaAdminPage() {
           <div className="mt-4 flex flex-col gap-4">
             <div>
               <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Nama Lengkap</label>
-              <input
+              <Input
                 type="text"
                 value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                onChange={(e: any) => setEditName(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
-            <button
+            <Button
               onClick={() => void handleEditSave()}
               className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]"
             >
               Simpan Perubahan
-            </button>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -463,18 +465,18 @@ export default function KelolaAdminPage() {
               Reset password untuk <strong>{selectedAdminForAction?.name}</strong>.
             </p>
             <div className="mt-6 flex justify-end gap-3">
-              <button
+              <Button
                 onClick={() => setIsResetModalOpen(false)}
                 className="rounded-xl px-4 py-2 text-sm font-bold text-[#64748B] transition hover:bg-gray-100"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => void handleResetPassword()}
                 className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-600"
               >
                 Ya, Reset Password
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -490,18 +492,18 @@ export default function KelolaAdminPage() {
               Anda akan mencabut hak akses sistem dari <strong>{selectedAdminForAction?.name}</strong>.
             </p>
             <div className="mt-6 flex justify-end gap-3">
-              <button
+              <Button
                 onClick={() => setIsDeleteModalOpen(false)}
                 className="rounded-xl px-4 py-2 text-sm font-bold text-[#64748B] transition hover:bg-gray-100"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => void handleDeactivate()}
                 className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600"
               >
                 Non-aktifkan
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>

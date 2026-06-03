@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lte } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lt, lte } from "drizzle-orm";
 import { Hono } from "hono";
 
 import {
@@ -40,8 +40,20 @@ function buildActivityFilters(query: ReturnType<typeof activityListQuerySchema.p
   if (query.date) filters.push(eq(activity.date, query.date));
   if (query.month) {
     const start = `${query.month}-01`;
-    const end = `${query.month}-31`;
-    filters.push(and(gte(activity.date, start), lte(activity.date, end)));
+    const [yearStr, monthStr] = query.month.split('-');
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr);
+    
+    let nextMonth = month + 1;
+    let nextYear = year;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear += 1;
+    }
+    const nextMonthStr = String(nextMonth).padStart(2, '0');
+    const end = `${nextYear}-${nextMonthStr}-01`;
+
+    filters.push(and(gte(activity.date, start), lt(activity.date, end)));
   }
   return filters.length > 0 ? and(...filters) : undefined;
 }

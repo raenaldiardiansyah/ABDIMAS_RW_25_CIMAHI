@@ -45,7 +45,8 @@ export const householdListQuerySchema = paginationQuerySchema.extend({
 
 export const createHouseholdSchema = z.object({
   kkNumber: z.string().min(8).max(32),
-  headCitizenId: z.string(),
+  headCitizenId: z.string().optional(),
+  headCitizenName: z.string().min(2).max(120).optional(),
   address: z.string().min(5).max(255),
   rt: z.string().min(1).max(10),
   rw: z.string().min(1).max(10),
@@ -63,7 +64,9 @@ export const addHouseholdMemberSchema = z.object({
 });
 
 export const updateHouseholdMemberSchema = z.object({
-  relationship: z.string().min(2).max(80),
+  relationship: z.string().min(2).max(80).optional(),
+  birthDate: z.string().optional(),
+  occupation: z.string().optional(),
 });
 
 export const householdListResponseSchema = createApiSuccessSchema(z.array(householdSchema));
