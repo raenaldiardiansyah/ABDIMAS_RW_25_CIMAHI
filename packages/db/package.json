@@ -1,0 +1,32 @@
+{
+  "name": "@abdimas/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "node scripts/run-migrate.mjs",
+    "db:bootstrap": "node scripts/bootstrap-db.js",
+    "seed:admin-login": "node scripts/seed-admin-users.mjs",
+    "seed:user-page": "node scripts/seed-test-members.mjs",
+    "seed:test-members": "node scripts/seed-test-members.mjs",
+    "secrets:generate": "node scripts/generate-secrets.js",
+    "db:studio": "drizzle-kit studio --config drizzle.config.ts"
+  },
+  "dependencies": {
+    "better-auth": "^1.6.9",
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5"
+  }
+}

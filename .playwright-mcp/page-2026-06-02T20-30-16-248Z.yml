@@ -1,0 +1,170 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - main [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - generic [ref=e8]:
+              - generic [ref=e9]:
+                - img [ref=e10]
+                - generic [ref=e12]: Portal RW 25 Cimahi
+              - heading "Beranda Warga" [level=1] [ref=e13]
+            - generic [ref=e14]:
+              - link "Pengaturan" [ref=e15] [cursor=pointer]:
+                - /url: /warga/settings
+                - img [ref=e16]
+              - button "Ubah tema" [ref=e19]:
+                - img [ref=e20]
+          - generic [ref=e23]:
+            - generic [ref=e24]: M
+            - generic [ref=e25]:
+              - paragraph [ref=e26]: Muhammad Riyadhul Jinan Nasution
+              - paragraph [ref=e27]: 1271********0001
+              - generic [ref=e28]: Menunggu Verifikasi
+        - generic [ref=e29]:
+          - alert [ref=e30]:
+            - generic [ref=e31]:
+              - img [ref=e33]
+              - generic [ref=e35]:
+                - generic [ref=e36]:
+                  - heading "Akses terbatas" [level=5] [ref=e37]
+                  - generic [ref=e38]: Pending
+                - generic [ref=e39]: Akun Anda belum diverifikasi RW/RT. Sebagian fitur masih dikunci sampai proses verifikasi selesai.
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - generic [ref=e42]:
+                - img [ref=e44]
+                - generic [ref=e47]:
+                  - paragraph [ref=e48]: Aksi cepat
+                  - heading "Menu utama" [level=2] [ref=e49]
+              - generic [ref=e50]: Terbatas
+            - generic [ref=e53]:
+              - link "Jadwal RW Kegiatan & acara Buka" [ref=e54] [cursor=pointer]:
+                - /url: /warga/jadwal
+                - generic [ref=e56]:
+                  - generic [ref=e57]:
+                    - img [ref=e59]
+                    - paragraph [ref=e61]: Jadwal RW
+                    - paragraph [ref=e62]: Kegiatan & acara
+                  - generic [ref=e64]: Buka
+              - link "Riwayat Hasil pengecekan Buka" [ref=e65] [cursor=pointer]:
+                - /url: /warga/history
+                - generic [ref=e67]:
+                  - generic [ref=e68]:
+                    - img [ref=e70]
+                    - paragraph [ref=e73]: Riwayat
+                    - paragraph [ref=e74]: Hasil pengecekan
+                  - generic [ref=e76]: Buka
+              - button "Pengumuman Info terbaru RW Segera" [disabled] [ref=e77]:
+                - generic [ref=e79]:
+                  - generic [ref=e80]:
+                    - img [ref=e82]
+                    - paragraph [ref=e85]: Pengumuman
+                    - paragraph [ref=e86]: Info terbaru RW
+                  - generic [ref=e88]: Segera
+              - button "Layanan RT Surat & administrasi Segera" [disabled] [ref=e89]:
+                - generic [ref=e91]:
+                  - generic [ref=e92]:
+                    - img [ref=e94]
+                    - paragraph [ref=e97]: Layanan RT
+                    - paragraph [ref=e98]: Surat & administrasi
+                  - generic [ref=e100]: Segera
+          - generic [ref=e102]:
+            - img [ref=e104]
+            - generic [ref=e108]: Butuh Verifikasi
+            - heading "Verifikasi dibutuhkan" [level=3] [ref=e109]
+            - paragraph [ref=e110]: Setelah akun diverifikasi oleh RW/RT, Anda bisa cek bansos, DPT/TPS, dan mengirim aspirasi langsung dari aplikasi.
+            - generic [ref=e111]:
+              - generic [ref=e112]:
+                - img [ref=e114]
+                - paragraph [ref=e117]: Data warga sudah dikirim
+              - generic [ref=e118]:
+                - img [ref=e120]
+                - paragraph [ref=e124]: Menunggu validasi admin RW/RT
+              - generic [ref=e125]:
+                - img [ref=e127]
+                - paragraph [ref=e131]: Akses fitur akan dibuka otomatis
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - generic [ref=e134]:
+                - img [ref=e136]
+                - generic [ref=e138]:
+                  - paragraph [ref=e139]: Tanggapan
+                  - heading "Update laporan warga" [level=3] [ref=e140]
+              - link "Lihat semua" [ref=e141] [cursor=pointer]:
+                - /url: /warga/history
+                - text: Lihat semua
+                - img [ref=e142]
+            - generic [ref=e146]:
+              - article [ref=e147]:
+                - generic [ref=e148]:
+                  - generic [ref=e149]:
+                    - generic [ref=e150]: Infrastruktur
+                    - heading "Jalan berlubang di RT 03" [level=4] [ref=e151]
+                    - paragraph [ref=e152]: Oleh Budi Santoso
+                  - generic [ref=e153]: 2 jam yang lalu
+                - generic [ref=e154]:
+                  - paragraph [ref=e155]: “Sudah dikoordinasikan dengan dinas PU, akan diperbaiki minggu depan.”
+                  - generic [ref=e156]:
+                    - img [ref=e158]
+                    - generic [ref=e160]:
+                      - paragraph [ref=e161]: Admin RW 25
+                      - paragraph [ref=e162]: Pemerintah Desa
+              - article [ref=e163]:
+                - generic [ref=e164]:
+                  - generic [ref=e165]:
+                    - generic [ref=e166]: Fasilitas Umum
+                    - heading "Lampu jalan mati" [level=4] [ref=e167]
+                    - paragraph [ref=e168]: Oleh Siti Aminah
+                  - generic [ref=e169]: 5 jam yang lalu
+                - generic [ref=e170]:
+                  - paragraph [ref=e171]: “Petugas sudah ke lokasi untuk pengecekan dan penggantian lampu.”
+                  - generic [ref=e172]:
+                    - img [ref=e174]
+                    - generic [ref=e176]:
+                      - paragraph [ref=e177]: Admin RW 25
+                      - paragraph [ref=e178]: Pemerintah Desa
+              - article [ref=e179]:
+                - generic [ref=e180]:
+                  - generic [ref=e181]:
+                    - generic [ref=e182]: Kebersihan
+                    - heading "Tumpukan sampah di pinggir kali" [level=4] [ref=e183]
+                    - paragraph [ref=e184]: Oleh Ahmad Riyadi
+                  - generic [ref=e185]: 1 hari yang lalu
+                - generic [ref=e186]:
+                  - paragraph [ref=e187]: “Jadwal pengangkutan sampah tambahan sedang diatur.”
+                  - generic [ref=e188]:
+                    - img [ref=e190]
+                    - generic [ref=e192]:
+                      - paragraph [ref=e193]: Admin RW 25
+                      - paragraph [ref=e194]: Pemerintah Desa
+              - article [ref=e195]:
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - generic [ref=e198]: Keamanan
+                    - heading "Pos ronda butuh perbaikan atap" [level=4] [ref=e199]
+                    - paragraph [ref=e200]: Oleh Rina Kusuma
+                  - generic [ref=e201]: 2 hari yang lalu
+                - generic [ref=e202]:
+                  - paragraph [ref=e203]: “Dana swadaya sudah terkumpul, perbaikan dimulai akhir bulan ini.”
+                  - generic [ref=e204]:
+                    - img [ref=e206]
+                    - generic [ref=e208]:
+                      - paragraph [ref=e209]: Admin RW 25
+                      - paragraph [ref=e210]: Pemerintah Desa
+    - navigation [ref=e211]:
+      - link "Home" [ref=e212] [cursor=pointer]:
+        - /url: /warga
+        - img [ref=e213]
+        - generic [ref=e216]: Home
+      - link "Riwayat" [ref=e217] [cursor=pointer]:
+        - /url: /warga/history
+        - img [ref=e218]
+      - link "Jadwal" [ref=e222] [cursor=pointer]:
+        - /url: /warga/jadwal
+        - img [ref=e223]
+      - link "Profil" [ref=e225] [cursor=pointer]:
+        - /url: /warga/settings
+        - img [ref=e226]
+  - button "Open Next.js Dev Tools" [ref=e234] [cursor=pointer]:
+    - img [ref=e235]
