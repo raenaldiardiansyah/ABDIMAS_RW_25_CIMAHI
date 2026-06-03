@@ -70,18 +70,18 @@ export default function KartuKeluargaPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-stretch justify-between gap-4">
-        <button
-          onClick={() => console.log('Buka modal Tambah Kepala Keluarga')}
-          className="flex flex-1 items-center gap-4 rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#60A5FA] px-6 py-4 text-white transition hover:opacity-90 active:scale-[0.99]"
+        <Link
+          href="/admin/permohonan"
+          className="flex flex-1 items-center gap-4 rounded-2xl bg-[#2563EB] px-6 py-4 text-white transition hover:bg-[#1D4ED8] active:scale-[0.99]"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
             <ClipboardList className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xl font-bold">Tambah Kepala Keluarga</p>
-            <p className="text-sm text-white/70">Kartu Keluarga</p>
+            <p className="text-xl font-bold">Tinjau Permohonan KK</p>
+            <p className="text-sm text-white/80">Buat KK dari pengajuan warga</p>
           </div>
-        </button>
+        </Link>
 
         <Link
           href="/admin/permohonan"

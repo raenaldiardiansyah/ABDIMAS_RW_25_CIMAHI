@@ -124,18 +124,18 @@ export default function MutasiPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-stretch gap-4">
-        <button
-          onClick={() => console.log('Buka modal Tambah Mutasi')}
-          className="flex min-w-[200px] flex-1 items-center gap-4 rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#60A5FA] px-[clamp(16px,2vw,24px)] py-[clamp(12px,1.5vh,16px)] text-white transition hover:opacity-90 active:scale-[0.99]"
+        <Link
+          href="/admin/permohonan"
+          className="flex min-w-[200px] flex-1 items-center gap-4 rounded-2xl bg-[#2563EB] px-[clamp(16px,2vw,24px)] py-[clamp(12px,1.5vh,16px)] text-white transition hover:bg-[#1D4ED8] active:scale-[0.99]"
         >
           <div className="flex h-[clamp(36px,5vh,48px)] w-[clamp(36px,5vh,48px)] items-center justify-center rounded-full bg-white/20">
             <RefreshCw className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[clamp(14px,1.5vw,20px)] font-bold">Tambah Mutasi</p>
-            <p className="text-[clamp(11px,1vw,14px)] text-white/70">Mutasi Penduduk</p>
+            <p className="text-[clamp(14px,1.5vw,20px)] font-bold">Tinjau Permohonan Mutasi</p>
+            <p className="text-[clamp(11px,1vw,14px)] text-white/80">Verifikasi mutasi warga</p>
           </div>
-        </button>
+        </Link>
 
         <Link
           href="/admin/permohonan"
@@ -153,7 +153,7 @@ export default function MutasiPage() {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-        <div className="rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] p-5 text-white">
+        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ArrowRight className="h-4 w-4" />
@@ -179,7 +179,7 @@ export default function MutasiPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] p-5 text-white">
+        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
           <div className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4" />
             <span className="text-xs text-white/80">Total Mutasi</span>

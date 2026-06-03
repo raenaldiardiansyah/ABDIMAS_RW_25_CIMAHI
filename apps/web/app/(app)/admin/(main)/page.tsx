@@ -70,22 +70,22 @@ export default function AdminDashboardPage() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-        <Card className="border-none bg-primary text-primary-foreground shadow-lg">
+        <Card className="border-none bg-[#2563EB] text-white shadow-lg">
           <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="space-y-3">
-              <Badge className="w-fit rounded-full border border-white/15 bg-white/10 text-primary-foreground shadow-none">
+              <Badge className="w-fit rounded-full border border-white/15 bg-white/10 text-white shadow-none">
                 Request Queue
               </Badge>
               <div className="space-y-1">
                 <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   Periksa semua permohonan yang masuk
                 </h2>
-                <p className="max-w-xl text-sm text-primary-foreground/80">
+                <p className="max-w-xl text-sm text-white/80">
                   Prioritaskan verifikasi warga dan tindak lanjuti permohonan yang masih tertunda.
                 </p>
               </div>
             </div>
-            <Button asChild className="h-11 rounded-xl bg-white text-primary hover:bg-white/90">
+            <Button asChild className="h-11 rounded-xl bg-white text-[#1F2937] hover:bg-white/90">
               <Link href="/admin/permohonan" className="inline-flex items-center gap-2">
                 <FileCheck className="h-4 w-4" />
                 Cek Permohonan ({stats.pendingRequests})
@@ -100,10 +100,10 @@ export default function AdminDashboardPage() {
             { label: 'Total KK', value: stats.totalKK, sub: 'Kartu Keluarga', icon: FileText },
             { label: 'Total Mutasi', value: stats.totalMutasi, sub: 'Laporan', icon: RefreshCw },
           ].map((item) => (
-            <Card key={item.label} className="border-slate-200 shadow-sm">
+            <Card key={item.label} className="border-[#D8DEE8] bg-white shadow-sm">
               <CardContent className="p-5">
                 <div className="mb-4 flex items-start justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF2FF] text-[#2563EB]">
                     <item.icon className="h-5 w-5" />
                   </div>
                 </div>
@@ -118,7 +118,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="border-[#D8DEE8] bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-slate-950">Aktivitas terbaru</CardTitle>
             </CardHeader>
@@ -127,9 +127,9 @@ export default function AdminDashboardPage() {
                 dashboard?.latestActivities.map((item, i) => (
                   <div
                     key={`${item.time}-${i}`}
-                    className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="flex items-center gap-4 rounded-2xl border border-[#E4E7EC] bg-[#F8FAFC] px-4 py-3"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[#2C5F75] shadow-sm">
                       <RefreshCw className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="border-[#D8DEE8] bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-slate-950">Aksi cepat</CardTitle>
             </CardHeader>
@@ -156,9 +156,9 @@ export default function AdminDashboardPage() {
                 <Link
                   href={action.href}
                   key={action.label}
-                  className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 transition hover:border-primary/20 hover:bg-primary/5"
+                  className="flex items-center gap-4 rounded-2xl border border-[#E4E7EC] bg-white px-4 py-4 transition hover:border-[#2563EB]/20 hover:bg-[#F4F8FF]"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF2FF] text-[#2563EB]">
                     <UserPlus className="h-5 w-5" />
                   </div>
                   <div>

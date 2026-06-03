@@ -214,17 +214,17 @@ export default function LaporanPage() {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-        <div className="rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] p-5 text-white">
+        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
           <Users className="mb-2 h-5 w-5 text-white/60" />
           <p className="text-xs text-white/70">Total warga</p>
           <p className="mt-1 text-2xl font-bold">{stats.totalWarga} <span className="text-sm font-medium">Jiwa</span></p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] p-5 text-white">
+        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
           <FileText className="mb-2 h-5 w-5 text-white/60" />
           <p className="text-xs text-white/70">Total KK</p>
           <p className="mt-1 text-2xl font-bold">{stats.totalKK} <span className="text-sm font-medium">Kartu Keluarga</span></p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] p-5 text-white">
+        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
           <RefreshCw className="mb-2 h-5 w-5 text-white/60" />
           <p className="text-xs text-white/70">Total Mutasi</p>
           <p className="mt-1 text-2xl font-bold">{stats.totalMutasi} <span className="text-sm font-medium">Laporan</span></p>
@@ -239,7 +239,7 @@ export default function LaporanPage() {
               <div key={group.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
                 <span className="rounded-full bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-semibold text-[#3B82F6]">{group.value} Jiwa</span>
                 <div
-                  className="w-full rounded-t-lg bg-gradient-to-t from-[#3B82F6] to-[#60A5FA] transition-all duration-500 ease-out"
+                  className="w-full rounded-t-lg bg-[#60A5FA] transition-all duration-500 ease-out"
                   style={{ height: `${(group.value / maxAgeValue) * 100}%`, minHeight: '16px' }}
                 />
                 <span className="text-xs font-medium text-[#64748B]">{group.label}</span>
@@ -248,27 +248,27 @@ export default function LaporanPage() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] p-6 text-white">
+        <div className="flex flex-col items-center justify-center rounded-2xl bg-[#2563EB] p-6 text-white">
           <h3 className="mb-6 self-start text-base font-bold">Komposisi Gender</h3>
           <div className="relative">
             <div
               className="h-44 w-44 rounded-full"
               style={{
-                background: `conic-gradient(#84CC16 0% ${(lakiLaki / genderTotal) * 100}%, #ffffff ${(lakiLaki / genderTotal) * 100}% 100%)`,
+                background: `conic-gradient(#93C5FD 0% ${(lakiLaki / genderTotal) * 100}%, #DBEAFE ${(lakiLaki / genderTotal) * 100}% 100%)`,
               }}
             />
-            <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#3B82F6] to-[#60A5FA]">
+            <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-[#2563EB]">
               <span className="text-[11px] text-white/60">dari Total</span>
               <span className="text-lg font-bold">{filteredCitizens.length} Jiwa</span>
             </div>
           </div>
           <div className="mt-5 flex gap-6 text-sm">
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[#84CC16]" />
+              <span className="h-3 w-3 rounded-full bg-[#93C5FD]" />
               <span>Laki-Laki <span className="font-bold">{Math.round((lakiLaki / genderTotal) * 100)}%</span> ({lakiLaki} Jiwa)</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-white" />
+              <span className="h-3 w-3 rounded-full bg-[#DBEAFE]" />
               <span>Perempuan <span className="font-bold">{Math.round((perempuan / genderTotal) * 100)}%</span> ({perempuan} Jiwa)</span>
             </div>
           </div>

@@ -16,6 +16,7 @@ type ApiEnvelope<T> = {
 
 export async function platformFetch<T>(path: string, init?: RequestInit) {
   const res = await fetch(`/api/platform${path}`, {
+    credentials: "include",
     ...init,
     headers: {
       "content-type": "application/json",

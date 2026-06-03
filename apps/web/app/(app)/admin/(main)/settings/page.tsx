@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Moon,
@@ -25,7 +25,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CURRENT_ADMIN } from '@/lib/dummydataadmin';
+import { authClient } from '@/lib/auth-client';
+import { getAdminProfile, type AdminProfile } from '@/lib/admin-profile';
 
 const DICT: Record<string, Record<string, string>> = {
   Indonesia: {
@@ -53,6 +54,7 @@ const DICT: Record<string, Record<string, string>> = {
 export default function AdminSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [profile, setProfile] = useState<AdminProfile>(() => getAdminProfile());
   
   const [isDark, setIsDark] = useState(false);
   const [notifikasi, setNotifikasi] = useState(true);
@@ -62,22 +64,39 @@ export default function AdminSettingsPage() {
 
   const t = DICT['Indonesia'];
 
-  const handleLogout = () => {
+  useEffect(() => {
+    let active = true;
+
+    async function loadSession() {
+      const session = await authClient.getSession().catch(() => null);
+      if (!active) return;
+      setProfile(getAdminProfile(session?.data?.user));
+    }
+
+    void loadSession();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await authClient.signOut().catch(() => null);
     toast({ title: "Berhasil keluar", description: "Anda telah logout.", variant: "default" });
     router.push('/sign-in');
   };
 
   return (
     <div className="flex flex-col gap-8 max-w-3xl mx-auto py-6 w-full">
-      <div className="flex items-center gap-5 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${CURRENT_ADMIN.avatarColor} text-2xl font-bold text-white shadow-md`}>
-          {CURRENT_ADMIN.initials}
+      <div className="flex items-center gap-5 rounded-[28px] border border-[#D8DEE8] bg-white p-6 shadow-sm">
+        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${profile.avatarClassName} text-2xl font-bold text-white shadow-md`}>
+          {profile.initials}
         </div>
         <div>
-          <h2 className="text-xl font-bold text-[#1E293B]">{CURRENT_ADMIN.name}</h2>
-          <p className="text-sm font-medium text-[#64748B]">{CURRENT_ADMIN.email}</p>
-          <span className="inline-block mt-2 rounded-full bg-[#EFF6FF] px-3 py-1 text-xs font-semibold text-[#2563EB]">
-            {CURRENT_ADMIN.role}
+          <h2 className="text-xl font-bold text-[#18212F]">{profile.name}</h2>
+          <p className="text-sm font-medium text-[#667085]">{profile.email}</p>
+          <span className="mt-2 inline-block rounded-full bg-[#EAF2FF] px-3 py-1 text-xs font-semibold text-[#2563EB]">
+            {profile.roleLabel}
           </span>
         </div>
       </div>
@@ -85,25 +104,25 @@ export default function AdminSettingsPage() {
       <div className="flex flex-col gap-6">
         {/* Tampilan */}
         <div>
-          <h3 className="text-sm font-bold text-[#64748B] uppercase tracking-wider mb-3 ml-1">
+          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-3 ml-1">
             {t.appearance}
           </h3>
-          <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+          <div className="overflow-hidden rounded-[28px] border border-[#D8DEE8] bg-white shadow-sm">
             {/* Dark Mode */}
             <div className="flex items-center justify-between px-6 py-5">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] flex items-center justify-center">
-                  {isDark ? <Moon className="w-6 h-6 text-[#2563EB]" /> : <Sun className="w-6 h-6 text-[#3B82F6]" />}
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8F3F0]">
+                  {isDark ? <Moon className="h-6 w-6 text-[#1F7A6B]" /> : <Sun className="h-6 w-6 text-[#C26D52]" />}
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#1E293B]">{t.darkMode}</p>
-                  <p className="text-sm font-medium text-[#64748B]">{isDark ? t.active : t.inactive}</p>
+                  <p className="text-base font-bold text-[#18212F]">{t.darkMode}</p>
+                  <p className="text-sm font-medium text-[#667085]">{isDark ? t.active : t.inactive}</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsDark(!isDark)}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
-                  isDark ? 'bg-[#2563EB]' : 'bg-gray-200'
+                  isDark ? 'bg-[#1F7A6B]' : 'bg-[#D0D5DD]'
                 }`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${
@@ -112,7 +131,7 @@ export default function AdminSettingsPage() {
               </button>
             </div>
             
-            <div className="h-px bg-gray-100 mx-6" />
+            <div className="mx-6 h-px bg-[#EEF2F6]" />
 
             {/* Bahasa */}
             <div 
@@ -120,39 +139,39 @@ export default function AdminSettingsPage() {
               onClick={() => setActiveDialog('bahasa')}
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] flex items-center justify-center">
-                  <Globe className="w-6 h-6 text-[#3B82F6]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F6ECE6]">
+                  <Globe className="h-6 w-6 text-[#A44A3F]" />
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#1E293B]">{t.language}</p>
-                  <p className="text-sm font-medium text-[#64748B]">{bahasa}</p>
+                  <p className="text-base font-bold text-[#18212F]">{t.language}</p>
+                  <p className="text-sm font-medium text-[#667085]">{bahasa}</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="h-5 w-5 text-[#98A2B3]" />
             </div>
           </div>
         </div>
 
         {/* Notifikasi & Privasi */}
         <div>
-          <h3 className="text-sm font-bold text-[#64748B] uppercase tracking-wider mb-3 ml-1">
+          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-3 ml-1">
             {t.notifPrivacy}
           </h3>
-          <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+          <div className="overflow-hidden rounded-[28px] border border-[#D8DEE8] bg-white shadow-sm">
             <div className="flex items-center justify-between px-6 py-5">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] flex items-center justify-center">
-                  <Bell className="w-6 h-6 text-[#3B82F6]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF1F8]">
+                  <Bell className="h-6 w-6 text-[#2C5F75]" />
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#1E293B]">{t.notif}</p>
-                  <p className="text-sm font-medium text-[#64748B]">{notifikasi ? t.active : t.inactive}</p>
+                  <p className="text-base font-bold text-[#18212F]">{t.notif}</p>
+                  <p className="text-sm font-medium text-[#667085]">{notifikasi ? t.active : t.inactive}</p>
                 </div>
               </div>
               <button
                 onClick={() => setNotifikasi(!notifikasi)}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
-                  notifikasi ? 'bg-[#2563EB]' : 'bg-gray-200'
+                  notifikasi ? 'bg-[#2C5F75]' : 'bg-[#D0D5DD]'
                 }`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${
@@ -161,45 +180,45 @@ export default function AdminSettingsPage() {
               </button>
             </div>
             
-            <div className="h-px bg-gray-100 mx-6" />
+            <div className="mx-6 h-px bg-[#EEF2F6]" />
 
             <div 
               className="flex items-center justify-between px-6 py-5 cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => setActiveDialog('security')}
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6 text-[#3B82F6]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF3F1]">
+                  <ShieldCheck className="h-6 w-6 text-[#1F7A6B]" />
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#1E293B]">{t.security}</p>
-                  <p className="text-sm font-medium text-[#64748B]">{t.securityDesc}</p>
+                  <p className="text-base font-bold text-[#18212F]">{t.security}</p>
+                  <p className="text-sm font-medium text-[#667085]">{t.securityDesc}</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="h-5 w-5 text-[#98A2B3]" />
             </div>
           </div>
         </div>
 
         {/* Tentang */}
         <div>
-          <h3 className="text-sm font-bold text-[#64748B] uppercase tracking-wider mb-3 ml-1">
+          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-3 ml-1">
             {t.about}
           </h3>
-          <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+          <div className="overflow-hidden rounded-[28px] border border-[#D8DEE8] bg-white shadow-sm">
             <div className="flex items-center justify-between px-6 py-5">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] flex items-center justify-center">
-                  <Smartphone className="w-6 h-6 text-[#3B82F6]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F6ECE6]">
+                  <Smartphone className="h-6 w-6 text-[#A44A3F]" />
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#1E293B]">{t.appVersion}</p>
-                  <p className="text-sm font-medium text-[#64748B]">v1.0.0 (Build 2026.04)</p>
+                  <p className="text-base font-bold text-[#18212F]">{t.appVersion}</p>
+                  <p className="text-sm font-medium text-[#667085]">v1.0.0 (Build 2026.04)</p>
                 </div>
               </div>
             </div>
             
-            <div className="h-px bg-gray-100 mx-6" />
+            <div className="mx-6 h-px bg-[#EEF2F6]" />
 
             <div 
               className="flex items-center justify-between px-6 py-5 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -210,11 +229,11 @@ export default function AdminSettingsPage() {
                   <Info className="w-6 h-6 text-gray-500" />
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#1E293B]">{t.appAbout}</p>
-                  <p className="text-sm font-medium text-[#64748B]">{t.appAboutDesc}</p>
+                  <p className="text-base font-bold text-[#18212F]">{t.appAbout}</p>
+                  <p className="text-sm font-medium text-[#667085]">{t.appAboutDesc}</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="h-5 w-5 text-[#98A2B3]" />
             </div>
           </div>
         </div>
@@ -236,10 +255,10 @@ export default function AdminSettingsPage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
               <LogOut className="h-8 w-8 text-red-600" />
             </div>
-            <AlertDialogTitle className="text-xl font-bold text-[#1E293B]">
+            <AlertDialogTitle className="text-xl font-bold text-[#18212F]">
               {t.logoutConfirm}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-[#64748B]">
+            <AlertDialogDescription className="text-sm font-medium text-[#667085]">
               {t.logoutDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -261,12 +280,12 @@ export default function AdminSettingsPage() {
       <AlertDialog open={activeDialog !== null} onOpenChange={(open) => !open && setActiveDialog(null)}>
         <AlertDialogContent className="rounded-3xl p-6 max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold text-[#1E293B]">
+            <AlertDialogTitle className="text-lg font-bold text-[#18212F]">
               {activeDialog === 'bahasa' && 'Pilih Bahasa'}
               {activeDialog === 'tentang' && 'Tentang Aplikasi'}
               {activeDialog === 'security' && 'Fitur Segera Hadir'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-[#64748B]">
+            <AlertDialogDescription className="text-sm font-medium text-[#667085]">
               {activeDialog === 'bahasa' && 'Pilih bahasa antarmuka sistem.'}
               {activeDialog === 'tentang' && 'Sistem Informasi Admin RW 25 Kota Cimahi.'}
               {activeDialog === 'security' && 'Pengaturan keamanan sedang dalam tahap pengembangan akhir.'}
@@ -279,7 +298,7 @@ export default function AdminSettingsPage() {
                   key={l}
                   onClick={() => { setBahasa(l); setActiveDialog(null); }}
                   className={`flex items-center justify-between rounded-xl border p-4 text-left transition-colors ${
-                    bahasa === l ? 'border-[#2563EB] bg-[#EFF6FF] text-[#2563EB]' : 'border-gray-100 hover:bg-gray-50'
+                    bahasa === l ? 'border-[#1F7A6B] bg-[#E8F3F0] text-[#1F7A6B]' : 'border-gray-100 hover:bg-gray-50'
                   }`}
                 >
                   <span className="font-bold">{l}</span>

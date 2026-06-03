@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
   ChevronLeft,
@@ -14,11 +14,13 @@ import {
   Menu,
   RefreshCw,
   Settings,
+  ShieldCheck,
   TrendingUp,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -39,6 +41,7 @@ const MAIN_NAV: NavItem[] = [
 ];
 
 const ACTION_NAV: NavItem[] = [
+  { href: '/admin/verification', label: 'Verifikasi Warga', icon: ShieldCheck },
   { href: '/admin/permohonan', label: 'Permohonan', icon: FileInput, hasNotification: true },
   { href: '/admin/laporan', label: 'Laporan', icon: TrendingUp },
 ];
@@ -50,6 +53,7 @@ const SYSTEM_NAV: NavItem[] = [
 
 function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?: boolean; mobile?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
@@ -67,7 +71,9 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
         className={cn(
           'group relative flex items-center rounded-xl px-4 py-3 text-sm transition-colors',
           isCollapsed && !mobile ? 'justify-center' : 'gap-3',
-          active ? 'bg-primary/10 font-semibold text-primary' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+          active
+            ? 'bg-[#EAF2FF] font-semibold text-[#2563EB]'
+            : 'text-slate-600 hover:bg-[#F4F8FF] hover:text-slate-900',
         )}
       >
         <div className="relative flex items-center justify-center">
@@ -92,9 +98,12 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
         {SYSTEM_NAV.map(renderItem)}
         <button
           type="button"
-          onClick={() => console.log('Logout clicked')}
+          onClick={async () => {
+            await authClient.signOut().catch(() => null);
+            router.push('/sign-in');
+          }}
           className={cn(
-            'flex w-full items-center rounded-xl px-4 py-3 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900',
+            'flex w-full items-center rounded-xl px-4 py-3 text-sm text-slate-600 transition-colors hover:bg-[#F4F8FF] hover:text-slate-900',
             isCollapsed && !mobile ? 'justify-center' : 'gap-3',
           )}
         >
@@ -110,13 +119,13 @@ export function AdminMobileSidebar() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-slate-200 bg-white lg:hidden">
+        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-[#D8DEE8] bg-white lg:hidden">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[320px] border-r border-slate-200 bg-white p-0">
+      <SheetContent side="left" className="w-[320px] border-r border-[#D8DEE8] bg-[#F8FBFF] p-0">
         <div className="flex h-full flex-col p-5">
-          <SheetHeader className="border-b border-slate-200 pb-4 text-left">
+          <SheetHeader className="border-b border-[#D8DEE8] pb-4 text-left">
             <SheetTitle className="text-base font-semibold text-slate-900">Portal RW 25</SheetTitle>
           </SheetHeader>
           <div className="mt-5 flex-1">
@@ -134,7 +143,7 @@ export default function AdminSidebar() {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 border-r border-slate-200 bg-white/90 backdrop-blur lg:flex',
+        'sticky top-0 hidden h-screen shrink-0 border-r border-[#D8DEE8] bg-[#F8FBFF] backdrop-blur lg:flex',
         isCollapsed ? 'w-[88px]' : 'w-[272px]',
       )}
     >
@@ -143,7 +152,7 @@ export default function AdminSidebar() {
           {!isCollapsed ? (
             <div>
               <p className="text-sm font-semibold text-slate-900">Portal RW 25</p>
-              <p className="text-xs text-slate-500">Admin dashboard</p>
+              <p className="text-xs text-[#667085]">Admin dashboard</p>
             </div>
           ) : null}
           <Button

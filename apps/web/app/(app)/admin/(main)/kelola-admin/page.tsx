@@ -273,7 +273,7 @@ export default function KelolaAdminPage() {
                   <tr key={admin.id} className="transition-colors hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] text-sm font-bold text-white shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2563EB] text-sm font-bold text-white shadow-sm">
                           {admin.name.charAt(0)}
                         </div>
                         <div>

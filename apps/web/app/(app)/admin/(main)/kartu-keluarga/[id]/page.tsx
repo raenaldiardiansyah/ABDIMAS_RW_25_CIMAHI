@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserPlus, Pencil, Trash2, FileText, ArrowLeft } from 'lucide-react';
@@ -178,13 +179,13 @@ export default function DetailKartuKeluargaPage() {
             </h1>
           </div>
         </div>
-        <button
-          onClick={() => console.log('Buka modal Tambah Anggota')}
-          className="flex items-center gap-2 rounded-xl bg-[#1E293B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#334155] active:scale-[0.98]"
+        <Link
+          href="/admin/permohonan"
+          className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1D4ED8] active:scale-[0.98]"
         >
           <UserPlus className="h-4 w-4" />
-          Tambah Anggota
-        </button>
+          Tinjau Permohonan
+        </Link>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-100">

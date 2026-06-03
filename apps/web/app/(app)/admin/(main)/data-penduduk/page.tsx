@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { UserPlus, Search, SlidersHorizontal } from 'lucide-react';
 
@@ -70,22 +71,22 @@ export default function DataPendudukPage() {
       {/* ── Header Actions ── */}
       <div className="flex items-stretch justify-between gap-4">
         {/* Tambah Warga */}
-        <button
-          onClick={() => console.log('Buka modal Tambah Warga')}
-          className="flex flex-1 items-center gap-4 rounded-2xl bg-gradient-to-r from-[#3B82F6] to-[#60A5FA] px-6 py-4 text-white transition hover:opacity-90 active:scale-[0.99]"
+        <Link
+          href="/admin/verification"
+          className="flex flex-1 items-center gap-4 rounded-2xl bg-[#2563EB] px-6 py-4 text-white transition hover:bg-[#1D4ED8] active:scale-[0.99]"
         >
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
             <UserPlus className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xl font-bold">Tambah Warga</p>
-            <p className="text-sm text-white/70">Data Penduduk</p>
+            <p className="text-xl font-bold">Verifikasi Warga</p>
+            <p className="text-sm text-white/80">Cek warga yang baru masuk</p>
           </div>
-        </button>
+        </Link>
 
         {/* Permohonan */}
-        <button
-          onClick={() => console.log('Buka Permohonan')}
+        <Link
+          href="/admin/permohonan"
           className="relative flex items-center gap-4 rounded-2xl border border-gray-200 bg-white px-6 py-4 text-[#1E293B] transition hover:bg-gray-50 active:scale-[0.99]"
         >
           <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF6FF]">
@@ -97,13 +98,13 @@ export default function DataPendudukPage() {
             <p className="text-xl font-bold">Permohonan</p>
             <p className="text-sm text-[#64748B]">Penambahan warga</p>
           </div>
-        </button>
+        </Link>
       </div>
 
       {/* ── Action Bar ── */}
       <div className="flex items-center gap-3">
         {/* Badge count */}
-        <div className="shrink-0 rounded-full bg-gradient-to-r from-[#3B82F6] to-[#60A5FA] px-6 py-2.5">
+        <div className="shrink-0 rounded-full bg-[#2563EB] px-6 py-2.5">
           <span className="text-lg font-bold text-white">{rows.length}</span>
           <span className="ml-2 text-sm text-white/80">Total Penduduk</span>
         </div>
@@ -161,9 +162,12 @@ export default function DataPendudukPage() {
                   </span>
                 </td>
                 <td className="px-5 py-4">
-                  <button className="rounded-full bg-[#3B82F6] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#2563EB]">
+                  <Link
+                    href={`/admin/data-penduduk/${row.id}`}
+                    className="rounded-full bg-[#2563EB] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1D4ED8]"
+                  >
                     Cek Detail
-                  </button>
+                  </Link>
                 </td>
               </tr>
             ))}

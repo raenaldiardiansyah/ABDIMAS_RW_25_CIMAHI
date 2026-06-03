@@ -1,6 +1,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import { getDb, session, user, userIdentity } from "@abdimas/db";
 import { maskNikFromParts } from "@abdimas/contracts";
+import { webcrypto } from "node:crypto";
 
 function readCookie(cookieHeader: string | undefined, key: string) {
   if (!cookieHeader) return null;
@@ -12,15 +13,50 @@ function readCookie(cookieHeader: string | undefined, key: string) {
   return chunk ? decodeURIComponent(chunk.slice(key.length + 1)) : null;
 }
 
-function getSessionToken(cookieHeader: string | undefined) {
-  return (
+async function verifySignedCookie(value: string, secret: string) {
+  const dotIndex = value.lastIndexOf(".");
+  if (dotIndex === -1) return value;
+
+  const rawValue = value.slice(0, dotIndex);
+  const signature = value.slice(dotIndex + 1);
+
+  try {
+    const key = await webcrypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+
+    const signatureBytes = Uint8Array.from(Buffer.from(signature, "base64"));
+    const isValid = await webcrypto.subtle.verify(
+      "HMAC",
+      key,
+      signatureBytes,
+      new TextEncoder().encode(rawValue),
+    );
+
+    return isValid ? rawValue : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getSessionToken(cookieHeader: string | undefined) {
+  const token =
     readCookie(cookieHeader, "__Secure-better-auth.session_token") ||
-    readCookie(cookieHeader, "better-auth.session_token")
-  );
+    readCookie(cookieHeader, "better-auth.session_token");
+  if (!token) return null;
+
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret) return token.split(".")[0] || token;
+
+  return verifySignedCookie(token, secret);
 }
 
 export async function resolveSession(cookieHeader: string | undefined) {
-  const token = getSessionToken(cookieHeader);
+  const token = await getSessionToken(cookieHeader);
   if (!token) return null;
 
   const db = getDb();

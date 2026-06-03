@@ -82,7 +82,7 @@ export default function AdminCalendar() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-lg">
-      <div className="rounded-t-[32px] bg-gradient-to-br from-[#3B82F6] to-[#2563EB] p-6 text-center text-white">
+      <div className="rounded-t-[32px] bg-[#2563EB] p-6 text-center text-white">
         <CalendarDays className="mx-auto mb-2 h-8 w-8 opacity-90" />
         <h3 className="text-xl font-bold tracking-wide">{monthName}</h3>
         <p className="mt-1 text-sm font-medium opacity-80">Kegiatan RW 025</p>
