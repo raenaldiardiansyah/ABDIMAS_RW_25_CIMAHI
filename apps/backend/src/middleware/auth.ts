@@ -39,7 +39,7 @@ export const verifiedWargaMiddleware = createMiddleware<{
 }>(async (c, next) => {
   const sessionUser = c.get("sessionUser") ?? (await resolveSession(c.req.header("cookie")));
   if (!sessionUser) throw unauthorized();
-  if (sessionUser.role === "ADMIN") {
+  if (sessionUser.role === "ADMIN" || sessionUser.role === "SUPER_ADMIN") {
     c.set("sessionUser", sessionUser);
     await next();
     return;

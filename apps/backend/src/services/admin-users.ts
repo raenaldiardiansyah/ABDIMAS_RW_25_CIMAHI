@@ -1,10 +1,11 @@
 import { hashPassword } from "@better-auth/utils/password";
 import { and, eq, or } from "drizzle-orm";
 
-import { account, getDb, user } from "@abdimas/db";
+import { account, adminAccess, getDb, user } from "@abdimas/db";
 
+import { buildAdminDisplayUsername, buildAdminUsername, normalizeManagedRtCodes } from "../lib/admin-access.js";
 import { createAuditLogService } from "../lib/admin-logs.js";
-import { conflict, forbidden, notFound } from "../lib/errors.js";
+import { conflict, forbidden, notFound, validationError } from "../lib/errors.js";
 
 function randomPassword() {
   return `Adm${Math.random().toString(36).slice(2, 8)}9!`;
@@ -13,15 +14,25 @@ function randomPassword() {
 export async function createAdminUserService(input: {
   actorId: string;
   actorRole: string;
-  body: { name: string; email: string; username: string; role: "ADMIN" | "SUPER_ADMIN" };
+  body: { name: string; email: string; accessScope: "RW" | "RT"; managedRtCodes: string[] };
 }) {
   if (input.actorRole !== "SUPER_ADMIN") throw forbidden("Only SUPER_ADMIN can create admin users");
   const db = getDb();
+  const managedRtCodes = normalizeManagedRtCodes(input.body.managedRtCodes);
+  if (input.body.accessScope === "RW" && managedRtCodes.length > 0) {
+    throw validationError("Admin RW cannot be assigned RT access");
+  }
+  if (input.body.accessScope === "RT" && managedRtCodes.length === 0) {
+    throw validationError("Admin RT must be assigned at least one RT");
+  }
+
+  const username = buildAdminUsername({ accessScope: input.body.accessScope, managedRtCodes });
+  const displayUsername = buildAdminDisplayUsername({ accessScope: input.body.accessScope, managedRtCodes });
 
   const existing = await db
     .select({ id: user.id })
     .from(user)
-    .where(or(eq(user.email, input.body.email.toLowerCase()), eq(user.username, input.body.username.toLowerCase())))
+    .where(eq(user.email, input.body.email.toLowerCase()))
     .limit(1);
   if (existing.length > 0) throw conflict("Admin user already exists");
 
@@ -32,12 +43,18 @@ export async function createAdminUserService(input: {
     .values({
       name: input.body.name,
       email: input.body.email.toLowerCase(),
-      username: input.body.username.toLowerCase(),
-      displayUsername: input.body.username.toLowerCase(),
-      role: input.body.role,
+      username,
+      displayUsername,
+      role: input.body.accessScope === "RW" ? "SUPER_ADMIN" : "ADMIN",
       status: "ACTIVE",
     })
     .returning();
+
+  await db.insert(adminAccess).values({
+    userId: createdUser.id,
+    accessScope: input.body.accessScope,
+    managedRtCodes,
+  });
 
   await db.insert(account).values({
     userId: createdUser.id,
@@ -51,7 +68,12 @@ export async function createAdminUserService(input: {
     action: "ADMIN_USER_CREATED",
     entityType: "ADMIN_USER",
     entityId: createdUser.id,
-    metadata: { role: createdUser.role },
+    metadata: {
+      role: createdUser.role,
+      accessScope: input.body.accessScope,
+      managedRtCodes,
+      rtCode: managedRtCodes[0] ?? null,
+    },
   });
 
   return { createdUser, temporaryPassword };

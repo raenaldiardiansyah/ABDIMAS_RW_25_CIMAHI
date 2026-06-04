@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import AdminCalendar from '@/components/admin/AdminCalendar';
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Button } from '@/components/ui/button';
 import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 
@@ -65,7 +66,7 @@ function getCategoryMeta(item: ActivityItem): {
   if (item.entityType === 'HOUSEHOLD') return { label: 'Pembaruan Data KK', icon: FileText, href: '/admin/kartu-keluarga' };
   if (item.entityType === 'CITIZEN') return { label: 'Data Warga', icon: Users, href: '/admin/data-penduduk' };
   if (item.entityType === 'REQUEST') return { label: 'Permohonan Masuk', icon: FileCheck, href: '/admin/permohonan' };
-  if (item.entityType === 'ADMIN_USER') return { label: 'Aktivitas Admin', icon: UserCog, href: '/admin/kelola-admin' };
+  if (item.entityType === 'ADMIN_USER') return { label: 'Aktivitas Admin', icon: UserCog, href: '/admin/hak-akses' };
   if (item.entityType === 'ACTIVITY') return { label: 'Kegiatan RW', icon: Calendar, href: '/admin/kegiatan' };
   if (item.entityType === 'VERIFICATION') return { label: 'Verifikasi Warga', icon: ShieldCheck, href: '/admin/verification' };
   if (item.entityType === 'ASPIRATION') return { label: 'Aduan Warga', icon: FileInput, href: '/admin/laporan' };
@@ -220,17 +221,32 @@ export default function AdminDashboardPage() {
     return Object.values(groups);
   }, [activities, hiddenActivities]);
 
+  if (!dashboard && !dashboardError) {
+    return (
+      <AdminAsyncState
+        mode="loading"
+        page="Dashboard Admin"
+        action="memuat dashboard admin"
+      />
+    );
+  }
+
+  if (dashboardError) {
+    return (
+      <AdminAsyncState
+        mode="error"
+        page="Dashboard Admin"
+        action="memuat dashboard admin"
+        description={dashboardError}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       {/* ── Left Column ── */}
       <div className="flex flex-col gap-5">
-        {dashboardError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <p className="font-bold">Dashboard gagal dimuat</p>
-            <p className="mt-1 text-xs leading-relaxed">{dashboardError}</p>
-          </div>
-        ) : null}
-
         {/* Request Queue Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#3B82F6] px-5 py-5 text-white shadow-lg sm:px-6 sm:py-5">
           {/* Decorative circles */}

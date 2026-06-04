@@ -24,7 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { platformFetch } from '@/lib/api/platform';
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 
 const PAGE_SIZE = 20;
 
@@ -63,10 +64,12 @@ export default function MutasiPage() {
   const [activeType, setActiveType] = useState<string>('ALL');
   const [viewedMutasi, setViewedMutasi] = useState<MutationRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -93,12 +96,14 @@ export default function MutasiPage() {
         setRows(mutationResponse.data);
         setTotalItems(mutationResponse.meta?.total ?? mutationResponse.data.length);
         setTotalPages(mutationResponse.meta?.totalPages ?? 1);
+        setLoadError(null);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setRows([]);
         setTotalItems(0);
         setTotalPages(1);
+        setLoadError(getPlatformErrorMessage(error, 'Gagal memuat data mutasi.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -119,7 +124,7 @@ export default function MutasiPage() {
     return () => {
       active = false;
     };
-  }, [currentPage, debouncedSearchQuery, activeType]);
+  }, [currentPage, debouncedSearchQuery, activeType, reloadKey]);
 
   const filteredRows = rows;
 
@@ -261,6 +266,15 @@ export default function MutasiPage() {
         </div>
       </div>
 
+      {loadError ? (
+        <AdminAsyncState
+          mode="error"
+          page="Mutasi"
+          action="memuat data mutasi"
+          description={loadError}
+          onRetry={() => setReloadKey((value) => value + 1)}
+        />
+      ) : (
       <div className="overflow-x-auto overflow-hidden rounded-2xl border border-gray-100">
         <table className="w-full text-sm">
           <thead>
@@ -334,7 +348,17 @@ export default function MutasiPage() {
             ) : (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-[#64748B]">
-                  {loading ? 'Memuat data mutasi...' : 'Tidak ada data mutasi.'}
+                  {loading ? (
+                    <AdminAsyncState
+                      mode="loading"
+                      page="Mutasi"
+                      action="memuat data mutasi"
+                      compact
+                      className="border-0 bg-transparent p-0 shadow-none"
+                    />
+                  ) : (
+                    'Tidak ada data mutasi.'
+                  )}
                 </td>
               </tr>
             )}
@@ -354,6 +378,7 @@ export default function MutasiPage() {
           </div>
         </div>
       </div>
+      )}
 
       <Dialog open={!!viewedMutasi} onOpenChange={(open) => !open && setViewedMutasi(null)}>
         <DialogContent className="max-w-lg rounded-3xl p-6">

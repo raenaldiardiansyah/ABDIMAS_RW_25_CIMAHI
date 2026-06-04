@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Save, CheckCircle2, Search, X } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Search, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,9 +42,15 @@ type CitizenOption = {
   noKK: string | null;
 };
 
+function normalizeAreaCode(value: string) {
+  const digits = value.trim().replace(/\D/g, '').slice(0, 3);
+  if (!digits) return '';
+  return digits.length === 1 ? digits.padStart(2, '0') : digits;
+}
+
 export default function TambahKartuKeluargaPage() {
   const router = useRouter();
-  const { runWithToast, toast } = useActionToast();
+  const { runWithToast } = useActionToast();
 
   const INITIAL_FORM: FormState = {
     kkNumber: '',
@@ -52,7 +58,7 @@ export default function TambahKartuKeluargaPage() {
     headCitizenName: '',
     address: '',
     rt: '',
-    rw: '04', // default RW 04 based on instructions
+    rw: '',
     kelurahan: '',
     kecamatan: '',
     issueDate: '',
@@ -64,58 +70,37 @@ export default function TambahKartuKeluargaPage() {
   const [debouncedCitizenQuery, setDebouncedCitizenQuery] = useState('');
   const [citizenOptions, setCitizenOptions] = useState<CitizenOption[]>([]);
   const [loadingCitizens, setLoadingCitizens] = useState(false);
+  const [selectedCitizen, setSelectedCitizen] = useState<CitizenOption | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [hasDraft, setHasDraft] = useState(false);
-  const [showDraftModal, setShowDraftModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('draft_tambah_kk');
-    if (saved) {
-      setHasDraft(true);
-    }
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedCitizenQuery(citizenQuery.trim()), 400);
     return () => clearTimeout(timer);
   }, [citizenQuery]);
 
-  const handleSaveDraft = () => {
-    localStorage.setItem('draft_tambah_kk', JSON.stringify({ form }));
-    setHasDraft(true);
-    toast({
-      title: 'Draft tersimpan',
-      description: 'Draft kartu keluarga berhasil disimpan di browser ini.',
-      variant: 'success',
-    });
-  };
-
-  const handleLoadDraft = () => {
-    try {
-      const saved = localStorage.getItem('draft_tambah_kk');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.form) setForm(parsed.form);
-      }
-      setShowDraftModal(false);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteDraft = () => {
-    localStorage.removeItem('draft_tambah_kk');
-    setHasDraft(false);
-    setShowDraftModal(false);
-    setForm(INITIAL_FORM);
-  };
-
   const handleFieldChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const syncHeadCitizen = (citizen: CitizenOption) => {
+    const normalizedRt = normalizeAreaCode(citizen.rt);
+    const normalizedRw = normalizeAreaCode(citizen.rw);
+
+    setSelectedCitizen(citizen);
+    setCitizenQuery(`${citizen.name} - ${citizen.nik}`);
+    setCitizenOptions([]);
+    setForm((prev) => ({
+      ...prev,
+      headCitizenId: citizen.id,
+      headCitizenName: citizen.name,
+      address: citizen.address?.trim() || prev.address,
+      rt: normalizedRt || prev.rt,
+      rw: normalizedRw || prev.rw,
+    }));
   };
 
   useEffect(() => {
@@ -151,26 +136,47 @@ export default function TambahKartuKeluargaPage() {
     };
   }, [debouncedCitizenQuery]);
 
-  const handleCitizenSelect = (citizen: CitizenOption) => {
-    setCitizenQuery(`${citizen.name} - ${citizen.nik}`);
-    setCitizenOptions([]);
-    setForm((prev) => ({
-      ...prev,
-      headCitizenId: citizen.id,
-      headCitizenName: citizen.name,
-      address: citizen.address || prev.address,
-      rt: citizen.rt || prev.rt,
-      rw: citizen.rw || prev.rw,
-    }));
+  useEffect(() => {
+    if (!form.headCitizenId || selectedCitizen?.id === form.headCitizenId) return;
+
+    let active = true;
+
+    async function loadSelectedCitizen() {
+      try {
+        const response = await platformFetch<CitizenOption>(`/admin/citizens/${form.headCitizenId}`);
+        if (!active || !response.data) return;
+        syncHeadCitizen(response.data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    void loadSelectedCitizen();
+    return () => {
+      active = false;
+    };
+  }, [form.headCitizenId, selectedCitizen?.id]);
+
+  const handleCitizenSelect = async (citizen: CitizenOption) => {
+    try {
+      const response = await platformFetch<CitizenOption>(`/admin/citizens/${citizen.id}`);
+      syncHeadCitizen(response.data ?? citizen);
+    } catch (err) {
+      console.error(err);
+      syncHeadCitizen(citizen);
+    }
   };
 
   const clearSelectedCitizen = () => {
+    setSelectedCitizen(null);
     setCitizenQuery('');
     setCitizenOptions([]);
     setForm((prev) => ({
       ...prev,
       headCitizenId: '',
       headCitizenName: '',
+      rt: '',
+      rw: '',
     }));
   };
 
@@ -179,15 +185,44 @@ export default function TambahKartuKeluargaPage() {
     setError('');
 
     // Basic Validation
-    if (!form.kkNumber || form.kkNumber.length < 16) {
+    const kkNumber = form.kkNumber.trim();
+    const headCitizenName = form.headCitizenName.trim();
+    const address = form.address.trim();
+    const kelurahan = form.kelurahan.trim();
+    const kecamatan = form.kecamatan.trim();
+
+    let resolvedRt = normalizeAreaCode(form.rt);
+    let resolvedRw = normalizeAreaCode(form.rw);
+
+    if (form.headCitizenId) {
+      try {
+        const response = await platformFetch<CitizenOption>(`/admin/citizens/${form.headCitizenId}`);
+        const citizen = response.data;
+        if (citizen) {
+          resolvedRt = normalizeAreaCode(citizen.rt);
+          resolvedRw = normalizeAreaCode(citizen.rw);
+          setSelectedCitizen(citizen);
+          setForm((prev) => ({
+            ...prev,
+            headCitizenName: citizen.name,
+            rt: resolvedRt,
+            rw: resolvedRw,
+          }));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (kkNumber.length !== 16) {
       setError('Nomor Kartu Keluarga harus minimal 16 digit');
       return;
     }
-    if (!form.headCitizenName) {
+    if (!form.headCitizenId && !headCitizenName) {
       setError('Nama Kepala Keluarga wajib diisi');
       return;
     }
-    if (!form.address || !form.rt || !form.rw || !form.kelurahan || !form.kecamatan) {
+    if (!address || !resolvedRt || !resolvedRw || !kelurahan || !kecamatan) {
       setError('Semua field alamat dan wilayah wajib diisi');
       return;
     }
@@ -200,18 +235,18 @@ export default function TambahKartuKeluargaPage() {
       // The extra fields (kelurahan, kecamatan, issueDate, reason) might not be in schema,
       // but we send them if we want, they will be ignored or we can append to address if needed.
       // For now, we'll construct the address to include them.
-      const fullAddress = `${form.address}, Kelurahan ${form.kelurahan}, Kecamatan ${form.kecamatan}`;
+      const fullAddress = `${address}, Kelurahan ${kelurahan}, Kecamatan ${kecamatan}`;
 
       await runWithToast(
         () =>
           platformFetch('/admin/households', {
             method: 'POST',
             body: JSON.stringify({
-              kkNumber: form.kkNumber,
-              ...(form.headCitizenId ? { headCitizenId: form.headCitizenId } : { headCitizenName: form.headCitizenName }),
+              kkNumber,
+              ...(form.headCitizenId ? { headCitizenId: form.headCitizenId } : { headCitizenName }),
               address: fullAddress,
-              rt: form.rt,
-              rw: form.rw,
+              rt: resolvedRt,
+              rw: resolvedRw,
               status: 'ACTIVE',
             }),
           }),
@@ -234,7 +269,7 @@ export default function TambahKartuKeluargaPage() {
   return (
     <div className="flex w-full flex-col gap-6 pb-24">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <button
           type="button"
           onClick={() => setShowExitModal(true)}
@@ -243,25 +278,6 @@ export default function TambahKartuKeluargaPage() {
           <ChevronLeft className="h-5 w-5" />
           Keluar Halaman
         </button>
-        <Button
-          onClick={() => {
-            if (hasDraft) {
-              setShowDraftModal(true);
-              return;
-            }
-            toast({
-              title: 'Belum ada draft',
-              description: 'Simpan draft terlebih dahulu untuk membukanya kembali.',
-              variant: 'destructive',
-            });
-          }}
-          variant="outline"
-          className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
-        >
-          <Save className="h-4 w-4 text-[#3B82F6]" />
-          Draft
-          {hasDraft && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-red-500" />}
-        </Button>
       </div>
 
       {/* ── Title Card ── */}
@@ -311,7 +327,8 @@ export default function TambahKartuKeluargaPage() {
                 value={citizenQuery}
                 onChange={(e: any) => {
                   setCitizenQuery(e.target.value);
-                  if (form.headCitizenId) {
+                  if (form.headCitizenId || selectedCitizen) {
+                    setSelectedCitizen(null);
                     setForm((prev) => ({ ...prev, headCitizenId: '' }));
                   }
                 }}
@@ -329,7 +346,7 @@ export default function TambahKartuKeluargaPage() {
               ) : null}
             </div>
 
-            {form.headCitizenId ? (
+            {selectedCitizen ? (
               <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
                 <p className="font-bold text-[#1E293B]">{form.headCitizenName}</p>
                 <p className="mt-2 text-sm text-[#64748B]">Data warga dipakai sebagai kepala keluarga untuk KK baru ini.</p>
@@ -416,30 +433,34 @@ export default function TambahKartuKeluargaPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">RT</Label>
-              <Select value={form.rt} onValueChange={(val: any) => handleFieldChange('rt', val)}>
-                <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100">
-                  <SelectValue placeholder="Pilih RT" />
-                </SelectTrigger>
-                <SelectContent>
-                  {['01', '02', '03', '04', '05'].map((rt) => (
-                    <SelectItem key={rt} value={rt}>
-                      RT {rt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {selectedCitizen ? (
+                <Input
+                  value={form.rt ? `RT ${form.rt}` : ''}
+                  readOnly
+                  className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-4 text-[#1E293B]"
+                />
+              ) : (
+                <Select value={form.rt} onValueChange={(val: any) => handleFieldChange('rt', val)}>
+                  <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100">
+                    <SelectValue placeholder="Pilih RT" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['01', '02', '03', '04', '05'].map((rt) => (
+                      <SelectItem key={rt} value={rt}>
+                        RT {rt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">RW</Label>
-              <Select value={form.rw} onValueChange={(val: any) => handleFieldChange('rw', val)} disabled>
-                <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm text-[#1E293B] outline-none opacity-100">
-                  <SelectValue placeholder="RW 04" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="04">RW 04</SelectItem>
-                  <SelectItem value="25">RW 25</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                value={form.rw ? `RW ${form.rw}` : ''}
+                readOnly
+                className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-4 text-[#1E293B]"
+              />
             </div>
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">
@@ -495,15 +516,6 @@ export default function TambahKartuKeluargaPage() {
         {/* ── Action Buttons ── */}
         <div className="mt-4 flex justify-end gap-3 pb-8">
           <Button
-            type="button"
-            onClick={handleSaveDraft}
-            variant="outline"
-            className="flex items-center gap-2 rounded-xl border border-[#2563EB] bg-white px-8 py-6 text-base font-semibold text-[#2563EB] transition hover:bg-blue-50 shadow-sm"
-          >
-            <Save className="h-5 w-5" />
-            Simpan Draft
-          </Button>
-          <Button
             type="submit"
             disabled={loading}
             className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-8 py-6 text-base font-bold text-white shadow-sm transition hover:bg-[#1D4ED8]"
@@ -513,58 +525,16 @@ export default function TambahKartuKeluargaPage() {
         </div>
       </form>
 
-      {/* ── Draft Modal ── */}
-      <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
-        <DialogContent className="max-w-sm rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[#1E293B]">Draft Tersimpan</DialogTitle>
-            <DialogDescription className="text-sm text-[#64748B]">
-              Anda memiliki draft formulir yang belum selesai. Ingin memuat ulang atau menghapusnya?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 flex flex-col gap-3">
-            <Button
-              onClick={handleLoadDraft}
-              className="w-full rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white transition hover:bg-[#1D4ED8]"
-            >
-              Muat Draft
-            </Button>
-            <Button
-              onClick={handleDeleteDraft}
-              className="w-full rounded-xl border border-red-100 bg-red-50 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100"
-            >
-              Hapus Draft
-            </Button>
-            <Button
-              onClick={() => setShowDraftModal(false)}
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
-            >
-              Tutup
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* ── Exit Modal ── */}
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
         <DialogContent className="max-w-sm rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-[#1E293B]">Keluar Halaman?</DialogTitle>
             <DialogDescription className="text-sm text-[#64748B]">
-              Anda memiliki data yang belum disimpan. Apakah Anda ingin menyimpannya sebagai draft sebelum keluar?
+              Anda memiliki data yang belum disimpan. Yakin ingin keluar dari halaman ini?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            <Button
-              onClick={() => {
-                handleSaveDraft();
-                setShowExitModal(false);
-                router.back();
-              }}
-              className="w-full rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white transition hover:bg-[#1D4ED8]"
-            >
-              Simpan Draft & Keluar
-            </Button>
             <Button
               onClick={() => {
                 setShowExitModal(false);

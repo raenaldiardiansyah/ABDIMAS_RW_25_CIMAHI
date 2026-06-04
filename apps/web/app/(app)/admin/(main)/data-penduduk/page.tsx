@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { UserPlus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 
-import { platformFetch } from '@/lib/api/platform';
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +53,7 @@ export default function DataPendudukPage() {
   const { runWithToast } = useActionToast();
   const [rows, setRows] = useState<CitizenRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -94,10 +96,13 @@ export default function DataPendudukPage() {
       setTotalItems(res.meta?.total ?? mapped.length);
       setTotalPages(res.meta?.totalPages ?? 1);
       setCurrentPage(res.meta?.page ?? page);
+      setLoadError(null);
     } catch (e) {
       console.error('Failed to load citizens', e);
+      setRows([]);
       setTotalItems(0);
       setTotalPages(1);
+      setLoadError(getPlatformErrorMessage(e, 'Gagal memuat data penduduk.'));
     } finally {
       setLoading(false);
     }
@@ -225,6 +230,15 @@ export default function DataPendudukPage() {
       </div>
 
       {/* ── Table ── */}
+      {loadError ? (
+        <AdminAsyncState
+          mode="error"
+          page="Data Penduduk"
+          action="memuat data penduduk"
+          description={loadError}
+          onRetry={() => void fetchCitizens(currentPage, debouncedQuery, statusFilter)}
+        />
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
         <Table className="w-full text-sm">
           <TableHeader>
@@ -286,7 +300,17 @@ export default function DataPendudukPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="px-5 py-10 text-center text-[#64748B]">
-                  {loading ? 'Memuat data penduduk...' : 'Tidak ada data yang masuk.'}
+                  {loading ? (
+                    <AdminAsyncState
+                      mode="loading"
+                      page="Data Penduduk"
+                      action="memuat data penduduk"
+                      compact
+                      className="border-0 bg-transparent p-0 shadow-none"
+                    />
+                  ) : (
+                    'Tidak ada data yang masuk.'
+                  )}
                 </TableCell>
               </TableRow>
             )}
@@ -309,6 +333,7 @@ export default function DataPendudukPage() {
           </div>
         </div>
       </div>
+      )}
 
       <AlertDialog open={!!citizenToDelete} onOpenChange={(open) => !open && setCitizenToDelete(null)}>
         <AlertDialogContent className="max-w-sm rounded-3xl p-6 text-center">

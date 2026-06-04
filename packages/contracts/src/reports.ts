@@ -54,10 +54,12 @@ export const reportDemographicsSchema = z.object({
 });
 
 export const reportFilterSchema = z.object({
+  tahun: z.coerce.number().int().min(2000).max(3000).optional(),
+  bulan: z.coerce.number().int().min(1).max(12).optional(),
   rt: z.string().trim().regex(/^\d{1,3}$/).optional(),
 });
 
-export const reportCitizenDrilldownQuerySchema = paginationQuerySchema.extend({
+export const reportCitizenDrilldownQuerySchema = paginationQuerySchema.merge(reportFilterSchema).extend({
   q: z.string().trim().optional(),
 });
 

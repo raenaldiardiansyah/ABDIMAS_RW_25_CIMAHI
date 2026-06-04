@@ -10,6 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { platformFetch } from '@/lib/api/platform';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 const PAGE_SIZE = 20;
@@ -79,6 +80,8 @@ export default function AdminLaporanPage() {
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [replyStatus, setReplyStatus] = useState<AspirationStatus>('REVIEWED');
   const [saving, setSaving] = useState(false);
@@ -92,29 +95,40 @@ export default function AdminLaporanPage() {
   }, [search]);
 
   async function loadRows(targetPage = page, preserveSelectedId?: string | null) {
-    const params = new URLSearchParams({
-      page: String(targetPage),
-      limit: String(PAGE_SIZE),
-    });
-    if (status !== 'ALL') params.set('status', status);
-    if (debouncedSearch) params.set('q', debouncedSearch);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        limit: String(PAGE_SIZE),
+      });
+      if (status !== 'ALL') params.set('status', status);
+      if (debouncedSearch) params.set('q', debouncedSearch);
 
-    const response = await platformFetch<AspirationItem[]>(`/admin/aspirations?${params.toString()}`);
-    setRows(response.data);
-    setTotalItems(response.meta?.total ?? response.data.length);
-    setTotalPages(response.meta?.totalPages ?? 1);
+      const response = await platformFetch<AspirationItem[]>(`/admin/aspirations?${params.toString()}`);
+      setRows(response.data);
+      setTotalItems(response.meta?.total ?? response.data.length);
+      setTotalPages(response.meta?.totalPages ?? 1);
+      setLoadError(null);
 
-    if (preserveSelectedId) {
-      const candidate = response.data.find((item) => item.id === preserveSelectedId) ?? null;
-      if (candidate) {
-        const detail = await platformFetch<AspirationItem>(`/admin/aspirations/${preserveSelectedId}`);
-        setSelected(detail.data);
-        setReplyMessage(detail.data.adminReply?.message ?? '');
-        setReplyStatus(detail.data.status === 'SUBMITTED' ? 'REVIEWED' : detail.data.status);
-      } else {
-        setSelected(null);
-        setReplyMessage('');
+      if (preserveSelectedId) {
+        const candidate = response.data.find((item) => item.id === preserveSelectedId) ?? null;
+        if (candidate) {
+          const detail = await platformFetch<AspirationItem>(`/admin/aspirations/${preserveSelectedId}`);
+          setSelected(detail.data);
+          setReplyMessage(detail.data.adminReply?.message ?? '');
+          setReplyStatus(detail.data.status === 'SUBMITTED' ? 'REVIEWED' : detail.data.status);
+        } else {
+          setSelected(null);
+          setReplyMessage('');
+        }
       }
+    } catch (error) {
+      setRows([]);
+      setTotalItems(0);
+      setTotalPages(1);
+      setLoadError(getPlatformErrorMessage(error, 'Gagal memuat aduan warga.'));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -226,6 +240,15 @@ export default function AdminLaporanPage() {
         </select>
       </div>
 
+      {loadError ? (
+        <AdminAsyncState
+          mode="error"
+          page="Aduan Warga"
+          action="memuat aduan warga"
+          description={loadError}
+          onRetry={() => void loadRows(page, selected?.id ?? null)}
+        />
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
         <table className="w-full text-sm">
           <thead>
@@ -242,7 +265,17 @@ export default function AdminLaporanPage() {
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-[#64748B]">
-                  Tidak ada aduan pada filter ini.
+                  {loading ? (
+                    <AdminAsyncState
+                      mode="loading"
+                      page="Aduan Warga"
+                      action="memuat aduan warga"
+                      compact
+                      className="border-0 bg-transparent p-0 shadow-none"
+                    />
+                  ) : (
+                    'Tidak ada aduan pada filter ini.'
+                  )}
                 </td>
               </tr>
             ) : (
@@ -283,6 +316,7 @@ export default function AdminLaporanPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="flex items-center justify-between">
         <span className="text-sm text-[#64748B]">

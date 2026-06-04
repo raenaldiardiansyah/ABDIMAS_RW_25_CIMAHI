@@ -121,7 +121,9 @@ export default function SignInClient({ nextPath }: { nextPath?: string }) {
 
       const role = session?.data?.user?.role;
 
-      if (mode === "admin" && role !== "ADMIN") {
+      const hasAdminAccess = role === "ADMIN" || role === "SUPER_ADMIN";
+
+      if (mode === "admin" && !hasAdminAccess) {
         await authClient.signOut();
         throw new Error("Akun ini tidak memiliki akses admin.");
       }
@@ -135,7 +137,7 @@ export default function SignInClient({ nextPath }: { nextPath?: string }) {
       const destination =
         mode === "admin"
           ? nextPath || activeMode.nextPath
-          : role === "ADMIN"
+          : hasAdminAccess
             ? "/admin"
             : nextPath || activeMode.nextPath;
       window.location.assign(destination);

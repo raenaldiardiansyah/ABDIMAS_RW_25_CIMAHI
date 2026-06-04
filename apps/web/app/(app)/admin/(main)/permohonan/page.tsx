@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { FileInput, CheckCircle2, XCircle, Eye, RefreshCw } from 'lucide-react';
 
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { platformFetch } from '@/lib/api/platform';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { useActionToast } from '@/lib/use-action-toast';
 
@@ -38,11 +39,13 @@ export default function PermohonanPage() {
   const { runWithToast } = useActionToast();
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [viewedAnggota, setViewedAnggota] = useState<RequestItem | null>(null);
   const [viewedMutasi, setViewedMutasi] = useState<RequestItem | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -54,12 +57,14 @@ export default function PermohonanPage() {
         setRequests(response.data);
         setTotalItems(response.meta?.total ?? response.data.length);
         setTotalPages(response.meta?.totalPages ?? 1);
+        setLoadError(null);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setRequests([]);
         setTotalItems(0);
         setTotalPages(1);
+        setLoadError(getPlatformErrorMessage(error, 'Gagal memuat permohonan.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -70,7 +75,7 @@ export default function PermohonanPage() {
     return () => {
       active = false;
     };
-  }, [currentPage]);
+  }, [currentPage, reloadKey]);
 
   useAutoRefresh(async () => {
     const response = await platformFetch<RequestItem[]>(`/admin/requests?page=${currentPage}&limit=${PAGE_SIZE}&status=PENDING`);
@@ -131,20 +136,36 @@ export default function PermohonanPage() {
         </div>
       </div>
 
+      {loadError ? (
+        <AdminAsyncState
+          mode="error"
+          page="Permohonan"
+          action="memuat permohonan"
+          description={loadError}
+          onRetry={() => setReloadKey((value) => value + 1)}
+        />
+      ) : (
+      <>
       <div className="flex flex-col gap-4">
         <h2 className="border-b border-gray-100 pb-2 text-lg font-bold text-[#1E293B]">
           Permohonan Kartu Keluarga Baru
         </h2>
         {permohonan.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
-              <CheckCircle2 className="h-6 w-6 text-gray-400" />
+          loading ? (
+            <AdminAsyncState
+              mode="loading"
+              page="Permohonan"
+              action="memuat permohonan"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
+                <CheckCircle2 className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-bold text-[#1E293B]">Tidak ada permohonan baru</h3>
+              <p className="text-xs text-[#64748B]">Semua permohonan KK telah diverifikasi.</p>
             </div>
-            <h3 className="text-base font-bold text-[#1E293B]">
-              {loading ? 'Memuat permohonan...' : 'Tidak ada permohonan baru'}
-            </h3>
-            <p className="text-xs text-[#64748B]">Semua permohonan KK telah diverifikasi.</p>
-          </div>
+          )
         ) : (
           permohonan.map((item) => {
             const payload = item.payload as {
@@ -219,15 +240,21 @@ export default function PermohonanPage() {
           Permohonan Mutasi Penduduk
         </h2>
         {permohonanMutasi.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
-              <CheckCircle2 className="h-6 w-6 text-gray-400" />
+          loading ? (
+            <AdminAsyncState
+              mode="loading"
+              page="Permohonan"
+              action="memuat permohonan"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
+                <CheckCircle2 className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-bold text-[#1E293B]">Tidak ada permohonan baru</h3>
+              <p className="text-xs text-[#64748B]">Semua permohonan Mutasi telah diverifikasi.</p>
             </div>
-            <h3 className="text-base font-bold text-[#1E293B]">
-              {loading ? 'Memuat permohonan...' : 'Tidak ada permohonan baru'}
-            </h3>
-            <p className="text-xs text-[#64748B]">Semua permohonan Mutasi telah diverifikasi.</p>
-          </div>
+          )
         ) : (
           permohonanMutasi.map((item) => {
             const payload = item.payload as {
@@ -320,6 +347,8 @@ export default function PermohonanPage() {
           </Button>
         </div>
       </div>
+      </>
+      )}
 
       <Dialog open={!!viewedAnggota} onOpenChange={(open) => !open && setViewedAnggota(null)}>
         <DialogContent className="max-w-xl rounded-3xl p-6">

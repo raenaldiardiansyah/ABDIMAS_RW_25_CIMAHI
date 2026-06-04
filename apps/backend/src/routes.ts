@@ -131,6 +131,7 @@ export function createApp() {
       const rows = await getDb()
         .select({
           userId: user.id,
+          fullName: user.name,
           username: user.username,
           email: user.email,
           createdAt: userIdentity.createdAt,
@@ -149,6 +150,7 @@ export function createApp() {
       const payload = adminVerificationListSchema.parse({
         data: rows.map((row) => ({
           userId: row.userId,
+          fullName: row.fullName,
           username: row.username,
           email: row.email,
           createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
@@ -166,6 +168,7 @@ export function createApp() {
     const rows = await getDb()
       .select({
         userId: user.id,
+        fullName: user.name,
         username: user.username,
         email: user.email,
         createdAt: userIdentity.createdAt,
@@ -183,6 +186,7 @@ export function createApp() {
 
     const items = rows.map((row) => ({
       userId: row.userId,
+      fullName: row.fullName,
       username: row.username,
       email: row.email,
       createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),

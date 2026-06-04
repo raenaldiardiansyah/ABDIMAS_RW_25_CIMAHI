@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,6 @@ import {
   Calendar,
   CheckCircle2,
   ChevronLeft,
-  Save,
   FileText,
   MapPin,
   Settings,
@@ -102,7 +101,6 @@ export default function TambahMutasiPage() {
   
   // Modals
   const [showExitModal, setShowExitModal] = useState(false);
-  const [showDraftModal, setShowDraftModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const dateRef = useRef<HTMLInputElement>(null);
@@ -112,14 +110,6 @@ export default function TambahMutasiPage() {
     window.open(url, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
-
-  // 1. Check for draft on mount
-  useEffect(() => {
-    const draft = localStorage.getItem('mutasi_draft');
-    if (draft) {
-      setShowDraftModal(true);
-    }
-  }, []);
 
   const handleFieldChange = (field: keyof FormData, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -175,49 +165,8 @@ export default function TambahMutasiPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  /* ── Draft Logic ── */
-  const handleSaveDraft = () => {
-    const draft = {
-      ...form,
-      suratKeterangan: null,
-      ktp: null,
-      kk: null,
-    };
-    localStorage.setItem('mutasi_draft', JSON.stringify(draft));
-    toast({
-      title: 'Draft tersimpan',
-      description: 'Draft mutasi berhasil disimpan di browser ini.',
-      variant: 'success',
-    });
-  };
-
-  const handleLoadDraft = () => {
-    try {
-      const draft = localStorage.getItem('mutasi_draft');
-      if (draft) {
-        setForm(JSON.parse(draft));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setShowDraftModal(false);
-  };
-
-  const handleDeleteDraft = () => {
-    localStorage.removeItem('mutasi_draft');
-    setShowDraftModal(false);
-  };
-
   /* ── Submit ── */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Cegah submit jika user menekan enter di step 1-3
-    if (currentStep < 4) {
-      handleNext();
-      return;
-    }
-
+  const submitMutation = async () => {
     if (!validateStep(4)) return;
 
     setLoading(true);
@@ -253,7 +202,6 @@ export default function TambahMutasiPage() {
           successDescription: 'Data mutasi dan dokumen pendukung berhasil tersimpan.',
         },
       );
-      localStorage.removeItem('mutasi_draft');
       router.push('/admin/mutasi');
       router.refresh();
     } catch (error) {
@@ -336,7 +284,12 @@ export default function TambahMutasiPage() {
       </div>
 
       {/* ── Form Content ── */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+        }}
+        className="space-y-6"
+      >
         
         {/* STEP 1: Jenis Mutasi & Detail Penduduk */}
         {currentStep === 1 && (
@@ -656,18 +609,6 @@ export default function TambahMutasiPage() {
             Kembali
           </Button>
           
-          {currentStep < STEPS.length && (
-            <Button
-              type="button"
-              onClick={handleSaveDraft}
-              variant="outline"
-              className="flex h-12 items-center gap-2 rounded-xl border border-[color:var(--admin-primary-soft-border)] bg-white px-8 font-bold text-[color:var(--admin-primary)] hover:bg-[color:var(--admin-primary-soft)]"
-            >
-              <Save className="h-5 w-5" />
-              Simpan Draft
-            </Button>
-          )}
-
           {currentStep < STEPS.length ? (
             <Button
               type="button"
@@ -679,7 +620,8 @@ export default function TambahMutasiPage() {
             </Button>
           ) : (
             <Button
-              type="submit"
+              type="button"
+              onClick={() => void submitMutation()}
               disabled={loading}
               className="flex h-12 items-center gap-2 rounded-xl bg-[color:var(--admin-primary)] px-8 font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]"
             >
@@ -689,42 +631,16 @@ export default function TambahMutasiPage() {
         </div>
       </form>
 
-      {/* ── Draft Modal ── */}
-      <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
-        <DialogContent className="max-w-sm rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[color:var(--admin-heading)]">Draft Tersimpan</DialogTitle>
-            <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
-              Anda memiliki draft formulir yang belum selesai. Ingin memuat ulang atau menghapusnya?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 flex flex-col gap-3">
-            <Button onClick={handleLoadDraft} className="w-full rounded-xl bg-[color:var(--admin-primary)] py-3 text-sm font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]">
-              Muat Draft
-            </Button>
-            <Button onClick={handleDeleteDraft} variant="outline" className="w-full rounded-xl border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] py-3 text-sm font-bold text-[color:var(--admin-danger-foreground)] hover:bg-[color:var(--admin-danger-soft)]/80">
-              Hapus Draft
-            </Button>
-            <Button onClick={() => setShowDraftModal(false)} variant="ghost" className="w-full rounded-xl py-3 text-sm font-bold hover:bg-[color:var(--admin-surface-soft)]">
-              Tutup
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* ── Exit Modal ── */}
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
         <DialogContent className="max-w-sm rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-[color:var(--admin-heading)]">Keluar Halaman?</DialogTitle>
             <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
-              Anda memiliki data yang belum disimpan. Apakah Anda ingin menyimpannya sebagai draft sebelum keluar?
+              Anda memiliki data yang belum disimpan. Yakin ingin keluar dari halaman ini?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            <Button onClick={() => { handleSaveDraft(); router.push('/admin/mutasi'); }} className="w-full rounded-xl bg-[color:var(--admin-primary)] py-3 font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]">
-              Simpan & Keluar
-            </Button>
             <Button onClick={() => router.push('/admin/mutasi')} variant="outline" className="w-full rounded-xl border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] py-3 font-bold text-[color:var(--admin-danger-foreground)] hover:bg-[color:var(--admin-danger-soft)]/80">
               Keluar Tanpa Menyimpan
             </Button>

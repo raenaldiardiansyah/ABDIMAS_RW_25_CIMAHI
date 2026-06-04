@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   TrendingUp,
   UserPlus,
+  Book,
   Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -46,6 +47,7 @@ const ACTION_NAV: NavItem[] = [
   { href: '/admin/verification', label: 'Verifikasi Warga', icon: ShieldCheck, hasNotification: true },
   { href: '/admin/permohonan', label: 'Permohonan', icon: FileInput, hasNotification: true },
   { href: '/admin/laporan', label: 'Laporan', icon: TrendingUp },
+  { href: '/admin/rapot-rw', label: 'Rapot RW', icon: Book },
 ];
 
 const SYSTEM_NAV: NavItem[] = [

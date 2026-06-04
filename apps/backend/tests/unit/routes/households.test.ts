@@ -190,6 +190,63 @@ describe("householdsRoutes", () => {
     expect(json.data.members[0].relationship).toBe("HEAD_OF_FAMILY");
   });
 
+  it("[OK] uses RT/RW from selected head citizen when headCitizenId is provided", async () => {
+    const selectedCitizen = {
+      id: "citizen-22",
+      userId: null,
+      nik: "3201010101010102",
+      name: "Kepala Sinkron",
+      gender: "L",
+      birthPlace: "Bandung",
+      birthDate: "1990-01-01",
+      religion: "Islam",
+      maritalStatus: "Kawin",
+      occupation: "Wiraswasta",
+      education: "SMA",
+      bloodType: null,
+      address: "Jl Sinkron No 2",
+      rt: "03",
+      rw: "11",
+      status: "PENDUDUK_TETAP",
+      createdAt: new Date("2024-05-01T00:00:00Z"),
+      updatedAt: new Date("2024-05-01T00:00:00Z"),
+    };
+    const createdHousehold = {
+      id: "household-2",
+      kkNumber: "3201010101010103",
+      headCitizenId: selectedCitizen.id,
+      address: "Jl Sinkron No 2",
+      rt: "03",
+      rw: "11",
+      status: "ACTIVE",
+      createdAt: new Date("2024-05-01T00:00:00Z"),
+      updatedAt: new Date("2024-05-01T00:00:00Z"),
+    };
+
+    dbState.selectQueue.push([], [{ id: selectedCitizen.id, rt: "03", rw: "11" }], [{ total: 0 }], [selectedCitizen]);
+    dbState.insertQueue.push([createdHousehold]);
+
+    const app = createApp();
+    const response = await app.request("/admin/households", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kkNumber: "3201010101010103",
+        headCitizenId: selectedCitizen.id,
+        address: "Jl Sinkron No 2",
+        rt: "01",
+        rw: "99",
+        status: "ACTIVE",
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    const json = await response.json();
+    expect(json.success).toBe(true);
+    expect(json.data.rt).toBe("03");
+    expect(json.data.rw).toBe("11");
+  });
+
   it("[OK] deletes household and related citizens that only belong to that household", async () => {
     dbState.selectQueue.push(
       [

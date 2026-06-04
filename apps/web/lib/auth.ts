@@ -59,7 +59,7 @@ export function getAuth() {
           input: false,
           defaultValue: "USER",
           returned: true,
-          validator: { input: z.enum(["USER", "ADMIN"]) },
+          validator: { input: z.enum(["USER", "ADMIN", "SUPER_ADMIN"]) },
         },
       },
     },

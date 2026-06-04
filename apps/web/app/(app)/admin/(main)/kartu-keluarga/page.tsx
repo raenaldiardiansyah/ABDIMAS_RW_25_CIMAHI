@@ -17,7 +17,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ClipboardList, Search, SlidersHorizontal, Eye, Trash2, UserPlus } from 'lucide-react';
 
-import { platformFetch } from '@/lib/api/platform';
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 import { useActionToast } from '@/lib/use-action-toast';
 
 const PAGE_SIZE = 20;
@@ -41,6 +42,7 @@ export default function KartuKeluargaPage() {
   const { runWithToast } = useActionToast();
   const [rows, setRows] = useState<HouseholdRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [householdToDelete, setHouseholdToDelete] = useState<HouseholdRow | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,12 +74,14 @@ export default function KartuKeluargaPage() {
         setRows(response.data);
         setTotalItems(response.meta?.total ?? response.data.length);
         setTotalPages(response.meta?.totalPages ?? 1);
+        setLoadError(null);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setRows([]);
         setTotalItems(0);
         setTotalPages(1);
+        setLoadError(getPlatformErrorMessage(error, 'Gagal memuat data kartu keluarga.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -217,6 +221,15 @@ export default function KartuKeluargaPage() {
         </div>
       </div>
 
+      {loadError ? (
+        <AdminAsyncState
+          mode="error"
+          page="Kartu Keluarga"
+          action="memuat data kartu keluarga"
+          description={loadError}
+          onRetry={() => void fetchHouseholds(currentPage, activeRt, debouncedSearchQuery)}
+        />
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-gray-100">
         <table className="w-full text-sm">
           <thead>
@@ -268,7 +281,17 @@ export default function KartuKeluargaPage() {
             ) : (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-[#64748B]">
-                  {loading ? 'Memuat data kartu keluarga...' : 'Tidak ada data yang cocok dengan pencarian atau filter.'}
+                  {loading ? (
+                    <AdminAsyncState
+                      mode="loading"
+                      page="Kartu Keluarga"
+                      action="memuat data kartu keluarga"
+                      compact
+                      className="border-0 bg-transparent p-0 shadow-none"
+                    />
+                  ) : (
+                    'Tidak ada data yang cocok dengan pencarian atau filter.'
+                  )}
                 </td>
               </tr>
             )}
@@ -302,6 +325,7 @@ export default function KartuKeluargaPage() {
           </div>
         </div>
       </div>
+      )}
 
       <AlertDialog open={!!householdToDelete} onOpenChange={(open) => !open && setHouseholdToDelete(null)}>
         <AlertDialogContent className="max-w-md rounded-3xl border-0 p-0 overflow-hidden">

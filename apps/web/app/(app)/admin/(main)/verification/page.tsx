@@ -5,6 +5,7 @@ import { CheckCircle2, Eye, Search, ShieldCheck, XCircle } from 'lucide-react';
 
 import type { AdminVerificationBuckets, AdminVerificationItem, VerificationStatus } from '@abdimas/contracts';
 
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { platformFetch } from '@/lib/api/platform';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 import { useActionToast } from '@/lib/use-action-toast';
 import { cn } from '@/lib/utils';
 
@@ -67,6 +68,8 @@ export default function AdminVerificationPage() {
     },
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedItem, setSelectedItem] = useState<AdminVerificationItem | null>(null);
   const [rejectingItem, setRejectingItem] = useState<AdminVerificationItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -89,6 +92,7 @@ export default function AdminVerificationPage() {
         const response = await platformFetch<AdminVerificationBuckets>(`/admin/verifications${suffix ? `?${suffix}` : ''}`);
         if (!active) return;
         setBuckets(response.data);
+        setLoadError(null);
       } catch (error) {
         console.error(error);
         if (!active) return;
@@ -102,6 +106,7 @@ export default function AdminVerificationPage() {
             rejected: 0,
           },
         });
+        setLoadError(getPlatformErrorMessage(error, 'Gagal memuat data verifikasi.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -111,7 +116,7 @@ export default function AdminVerificationPage() {
     return () => {
       active = false;
     };
-  }, [query]);
+  }, [query, reloadKey]);
 
   const items = buckets[STATUS_KEYS[status]] as AdminVerificationItem[];
   const counts = buckets.counts;
@@ -284,12 +289,21 @@ export default function AdminVerificationPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari username atau email"
+              placeholder="Cari nama, username, atau email"
               className="h-11 rounded-2xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] pl-10"
             />
           </div>
         </div>
 
+        {loadError ? (
+          <AdminAsyncState
+            mode="error"
+            page="Verifikasi Warga"
+            action="memuat data verifikasi"
+            description={loadError}
+            onRetry={() => setReloadKey((value) => value + 1)}
+          />
+        ) : (
         <div className="mt-5 overflow-hidden rounded-2xl border border-[color:var(--admin-border)]">
           <div className="overflow-x-auto">
             <Table className="min-w-full">
@@ -314,7 +328,8 @@ export default function AdminVerificationPage() {
                 {items.map((item, index) => (
                   <TableRow key={item.userId} className={cn("border-b-[color:var(--admin-border)] hover:bg-[#F1F5F9] transition-colors", index % 2 === 0 ? "bg-white" : "bg-[#F8FAFC]")}>
                     <TableCell className="px-5 py-4">
-                      <p className="font-bold text-[color:var(--admin-heading)]">{item.username}</p>
+                      <p className="font-bold text-[color:var(--admin-heading)]">{item.fullName}</p>
+                      <p className="text-xs text-[color:var(--admin-subtle)]">@{item.username}</p>
                       <p className="text-xs text-[color:var(--admin-subtle)]">{item.email}</p>
                     </TableCell>
                     <TableCell className="px-5 py-4 text-sm font-medium text-[color:var(--admin-body)]">{item.maskedNik}</TableCell>
@@ -376,7 +391,13 @@ export default function AdminVerificationPage() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={7} className="px-6 py-12 text-center text-sm text-[color:var(--admin-subtle)]">
-                      Memuat data verifikasi...
+                      <AdminAsyncState
+                        mode="loading"
+                        page="Verifikasi Warga"
+                        action="memuat data verifikasi"
+                        compact
+                        className="border-0 bg-transparent p-0 shadow-none"
+                      />
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -384,6 +405,7 @@ export default function AdminVerificationPage() {
             </Table>
           </div>
         </div>
+        )}
       </div>
 
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
@@ -397,7 +419,8 @@ export default function AdminVerificationPage() {
           {selectedItem ? (
             <div className="mt-4 grid gap-3">
               <div className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-4">
-                <p className="text-lg font-bold text-[color:var(--admin-heading)]">{selectedItem.username}</p>
+                <p className="text-lg font-bold text-[color:var(--admin-heading)]">{selectedItem.fullName}</p>
+                <p className="mt-1 text-sm text-[color:var(--admin-subtle)]">@{selectedItem.username}</p>
                 <p className="mt-1 text-sm text-[color:var(--admin-subtle)]">{selectedItem.email}</p>
               </div>
               <div className="rounded-2xl border border-[color:var(--admin-border)] p-4">
@@ -434,7 +457,8 @@ export default function AdminVerificationPage() {
           </DialogHeader>
           <div className="mt-4 space-y-3">
             <div className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-4">
-              <p className="font-bold text-[color:var(--admin-heading)]">{rejectingItem?.username}</p>
+              <p className="font-bold text-[color:var(--admin-heading)]">{rejectingItem?.fullName}</p>
+              <p className="mt-1 text-xs text-[color:var(--admin-subtle)]">@{rejectingItem?.username}</p>
               <p className="mt-1 text-xs text-[color:var(--admin-subtle)]">{rejectingItem?.email}</p>
             </div>
             <Textarea

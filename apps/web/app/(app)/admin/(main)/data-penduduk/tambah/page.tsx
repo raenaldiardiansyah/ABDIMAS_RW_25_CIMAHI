@@ -1,27 +1,25 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
   ArrowRight,
-  Calendar,
   CheckCircle2,
   ChevronLeft,
   Info,
   MapPin,
+  Plus,
   Save,
+  Trash2,
   User,
   Users,
 } from 'lucide-react';
 
-import { platformFetch } from '@/lib/api/platform';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { platformFetch } from '@/lib/api/platform';
 import { useActionToast } from '@/lib/use-action-toast';
-
-/* ── Constants ── */
 
 const STEPS = [
   { id: 1, label: 'Data Diri' },
@@ -64,7 +62,6 @@ const PEKERJAAN_OPTIONS = [
 
 const AGAMA_OPTIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
 const GOLONGAN_DARAH_OPTIONS = ['A', 'B', 'AB', 'O', 'Tidak Tahu'];
-
 const HUBUNGAN_OPTIONS = [
   'Kepala Keluarga',
   'Istri',
@@ -77,18 +74,10 @@ const HUBUNGAN_OPTIONS = [
   'Pembantu',
   'Lainnya',
 ];
+const MEMBER_RELATION_OPTIONS = HUBUNGAN_OPTIONS.filter((item) => item !== 'Kepala Keluarga');
+const RT_OPTIONS = Array.from({ length: 5 }, (_, index) => String(index + 1).padStart(2, '0'));
 
-const RT_OPTIONS = Array.from({ length: 5 }, (_, i) => String(i + 1).padStart(2, '0'));
-
-const STATUS_KEPENDUDUKAN_OPTIONS = [
-  { label: 'Penduduk Tetap', value: 'PENDUDUK_TETAP' },
-  { label: 'Ngekost', value: 'NGEKOST' },
-];
-
-/* ── Types ── */
-
-type FormData = {
-  // Step 1: Data Diri
+type PersonForm = {
   nik: string;
   birthDate: string;
   name: string;
@@ -100,7 +89,14 @@ type FormData = {
   gender: '' | 'L' | 'P';
   maritalStatus: string;
   phone: string;
-  // Step 2: Alamat
+};
+
+type HouseholdMemberForm = PersonForm & {
+  relationship: string;
+};
+
+type FormData = PersonForm & {
+  isHeadOfFamily: boolean | null;
   address: string;
   rt: string;
   rw: string;
@@ -108,14 +104,16 @@ type FormData = {
   kecamatan: string;
   kota: string;
   status: 'PENDUDUK_TETAP' | 'NGEKOST';
-  // Step 3: Status Keluarga
   noKK: string;
   hubungan: string;
   namaAyah: string;
   namaIbu: string;
+  householdMembers: HouseholdMemberForm[];
 };
 
-const INITIAL_FORM: FormData = {
+type FormErrors = Record<string, string>;
+
+const createEmptyPerson = (): PersonForm => ({
   nik: '',
   birthDate: '',
   name: '',
@@ -127,6 +125,16 @@ const INITIAL_FORM: FormData = {
   gender: '',
   maritalStatus: '',
   phone: '',
+});
+
+const createEmptyHouseholdMember = (): HouseholdMemberForm => ({
+  ...createEmptyPerson(),
+  relationship: '',
+});
+
+const INITIAL_FORM: FormData = {
+  ...createEmptyPerson(),
+  isHeadOfFamily: null,
   address: '',
   rt: '',
   rw: '25',
@@ -138,9 +146,33 @@ const INITIAL_FORM: FormData = {
   hubungan: '',
   namaAyah: '',
   namaIbu: '',
+  householdMembers: [],
 };
 
-/* ── Component ── */
+function formatDate(value: string) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function mapStatusLabel(value: FormData['status']) {
+  return value === 'PENDUDUK_TETAP' ? 'Penduduk Tetap' : 'Ngekost';
+}
+
+function validatePerson(person: PersonForm, prefix: string, errors: FormErrors) {
+  if (!person.nik || person.nik.length !== 16) errors[`${prefix}.nik`] = 'NIK harus 16 digit';
+  if (!person.name.trim()) errors[`${prefix}.name`] = 'Nama wajib diisi';
+  if (!person.birthDate) errors[`${prefix}.birthDate`] = 'Tanggal lahir wajib diisi';
+  if (!person.birthPlace.trim()) errors[`${prefix}.birthPlace`] = 'Tempat lahir wajib diisi';
+  if (!person.education) errors[`${prefix}.education`] = 'Pendidikan wajib dipilih';
+  if (!person.occupation) errors[`${prefix}.occupation`] = 'Pekerjaan wajib dipilih';
+  if (!person.religion) errors[`${prefix}.religion`] = 'Agama wajib dipilih';
+  if (!person.gender) errors[`${prefix}.gender`] = 'Jenis kelamin wajib dipilih';
+  if (!person.maritalStatus) errors[`${prefix}.maritalStatus`] = 'Status perkawinan wajib dipilih';
+}
 
 export default function TambahDataPendudukPage() {
   const router = useRouter();
@@ -148,120 +180,120 @@ export default function TambahDataPendudukPage() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>({ ...INITIAL_FORM });
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
-  const [hasDraft, setHasDraft] = useState(false);
-  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [showExitModal, setShowExitModal] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('draft_tambah_penduduk');
-    if (saved) {
-      setHasDraft(true);
-    }
+  const setField = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === 'isHeadOfFamily') {
+        if (value === true) {
+          next.hubungan = 'Kepala Keluarga';
+          next.namaAyah = '';
+          next.namaIbu = '';
+        } else if (value === false && prev.hubungan === 'Kepala Keluarga') {
+          next.hubungan = '';
+          next.householdMembers = [];
+        }
+      }
+      return next;
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[String(key)];
+      return next;
+    });
   }, []);
 
-  const set = useCallback(
-    <K extends keyof FormData>(key: K, value: FormData[K]) => {
-      setForm((prev) => ({ ...prev, [key]: value }));
-      setErrors((prev) => ({ ...prev, [key]: undefined }));
+  const setPersonField = useCallback(<K extends keyof PersonForm>(key: K, value: PersonForm[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`citizen.${String(key)}`];
+      return next;
+    });
+  }, []);
+
+  const setHouseholdMemberField = useCallback(
+    <K extends keyof HouseholdMemberForm>(index: number, key: K, value: HouseholdMemberForm[K]) => {
+      setForm((prev) => ({
+        ...prev,
+        householdMembers: prev.householdMembers.map((member, memberIndex) =>
+          memberIndex === index ? { ...member, [key]: value } : member,
+        ),
+      }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[`members.${index}.${String(key)}`];
+        return next;
+      });
     },
     [],
   );
 
-  /* ── Validation per step ── */
-  const validateStep = (s: number): boolean => {
-    const errs: Partial<Record<keyof FormData, string>> = {};
-    if (s === 1) {
-      if (!form.nik || form.nik.length !== 16) errs.nik = 'NIK harus 16 digit';
-      if (!form.name.trim()) errs.name = 'Nama wajib diisi';
-      if (!form.birthDate) errs.birthDate = 'Tanggal lahir wajib diisi';
-      if (!form.birthPlace.trim()) errs.birthPlace = 'Tempat lahir wajib diisi';
-      if (!form.education) errs.education = 'Pendidikan wajib dipilih';
-      if (!form.occupation) errs.occupation = 'Pekerjaan wajib dipilih';
-      if (!form.religion) errs.religion = 'Agama wajib dipilih';
-      if (!form.gender) errs.gender = 'Jenis kelamin wajib dipilih';
-      if (!form.maritalStatus) errs.maritalStatus = 'Status perkawinan wajib dipilih';
+  const addHouseholdMember = () => {
+    setForm((prev) => ({
+      ...prev,
+      householdMembers: [...prev.householdMembers, createEmptyHouseholdMember()],
+    }));
+  };
+
+  const removeHouseholdMember = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      householdMembers: prev.householdMembers.filter((_, memberIndex) => memberIndex !== index),
+    }));
+    setErrors((prev) => {
+      const next: FormErrors = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        if (!key.startsWith(`members.${index}.`)) next[key] = value;
+      });
+      return next;
+    });
+  };
+
+  const validateStep = (targetStep: number) => {
+    const nextErrors: FormErrors = {};
+
+    if (targetStep >= 1) {
+      if (form.isHeadOfFamily === null) nextErrors.isHeadOfFamily = 'Pilih peran keluarga';
+      validatePerson(form, 'citizen', nextErrors);
     }
-    if (s === 2) {
-      if (!form.address.trim()) errs.address = 'Alamat wajib diisi';
-      if (!form.rt) errs.rt = 'RT wajib dipilih';
+
+    if (targetStep >= 2) {
+      if (!form.address.trim()) nextErrors.address = 'Alamat wajib diisi';
+      if (!form.rt) nextErrors.rt = 'RT wajib dipilih';
     }
-    if (s === 3) {
-      if (!form.namaAyah.trim()) errs.namaAyah = 'Nama ayah wajib diisi';
-      if (!form.namaIbu.trim()) errs.namaIbu = 'Nama ibu wajib diisi';
+
+    if (targetStep >= 3) {
+      if (!form.noKK || form.noKK.length !== 16) nextErrors.noKK = 'Nomor KK harus 16 digit';
+
+      if (form.isHeadOfFamily) {
+        form.householdMembers.forEach((member, index) => {
+          if (!member.relationship) nextErrors[`members.${index}.relationship`] = 'Hubungan keluarga wajib dipilih';
+          validatePerson(member, `members.${index}`, nextErrors);
+        });
+      } else {
+        if (!form.hubungan) nextErrors.hubungan = 'Hubungan keluarga wajib dipilih';
+        if (!form.namaAyah.trim()) nextErrors.namaAyah = 'Nama ayah wajib diisi';
+        if (!form.namaIbu.trim()) nextErrors.namaIbu = 'Nama ibu wajib diisi';
+      }
     }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleNext = () => {
     if (!validateStep(step)) return;
-    setStep((s) => Math.min(s + 1, 4));
+    setStep((currentStep) => Math.min(currentStep + 1, 4));
   };
 
-  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
-
-  const handleSaveDraft = () => {
-    localStorage.setItem('draft_tambah_penduduk', JSON.stringify({ step, form }));
-    setHasDraft(true);
-    toast({
-      title: 'Draft tersimpan',
-      description: 'Draft data penduduk berhasil disimpan di browser ini.',
-      variant: 'success',
-    });
-  };
-
-  const handleLoadDraft = () => {
-    try {
-      const saved = localStorage.getItem('draft_tambah_penduduk');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.form) setForm(parsed.form);
-        if (parsed.step) setStep(parsed.step);
-      }
-      setShowDraftModal(false);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteDraft = () => {
-    localStorage.removeItem('draft_tambah_penduduk');
-    setHasDraft(false);
-    setShowDraftModal(false);
-    setForm({ ...INITIAL_FORM });
-    setStep(1);
-  };
-
-  const validate = () => {
-    const errs: Partial<Record<keyof FormData, string>> = {};
-    if (!form.nik || form.nik.length !== 16) errs.nik = 'NIK harus 16 digit';
-    if (!form.name || form.name.length < 2) errs.name = 'Nama terlalu pendek (min. 2 karakter)';
-    if (!form.gender) errs.gender = 'Pilih Jenis Kelamin';
-    if (!form.birthPlace) errs.birthPlace = 'Tempat Lahir wajib diisi';
-    if (!form.birthDate) errs.birthDate = 'Tanggal Lahir wajib diisi';
-    if (!form.religion) errs.religion = 'Pilih Agama';
-    if (!form.maritalStatus) errs.maritalStatus = 'Pilih Status Perkawinan';
-    if (!form.occupation) errs.occupation = 'Pilih Pekerjaan';
-    if (!form.education) errs.education = 'Pilih Pendidikan';
-    if (!form.address || form.address.length < 5) errs.address = 'Alamat terlalu pendek (min. 5 karakter)';
-    if (!form.rt) errs.rt = 'Pilih RT';
-
-    setErrors(errs);
-    
-    // Auto jump to the first step with an error
-    if (errs.nik || errs.name || errs.gender || errs.birthPlace || errs.birthDate || errs.religion || errs.maritalStatus || errs.occupation || errs.education) {
-      setStep(1);
-    } else if (errs.address || errs.rt) {
-      setStep(2);
-    }
-
-    return Object.keys(errs).length === 0;
-  };
+  const handleBack = () => setStep((currentStep) => Math.max(currentStep - 1, 1));
 
   const handleSubmit = async () => {
     if (submitting) return;
-    if (!validate()) {
+    if (!validateStep(3)) {
       toast({
         title: 'Validasi gagal',
         description: 'Periksa kembali isian yang belum lengkap atau tidak valid.',
@@ -269,37 +301,70 @@ export default function TambahDataPendudukPage() {
       });
       return;
     }
+
     setSubmitting(true);
     try {
       await runWithToast(
         () =>
-          platformFetch('/admin/citizens', {
+          platformFetch('/admin/citizens/registration', {
             method: 'POST',
             body: JSON.stringify({
-              nik: form.nik,
-              name: form.name,
-              gender: form.gender,
-              birthPlace: form.birthPlace,
-              birthDate: form.birthDate,
-              religion: form.religion,
-              bloodType: form.bloodType || null,
-              maritalStatus: form.maritalStatus,
-              occupation: form.occupation,
-              education: form.education,
-              address: form.address,
-              rt: form.rt,
-              rw: form.rw,
-              status: form.status,
+              citizen: {
+                nik: form.nik,
+                name: form.name,
+                gender: form.gender,
+                birthPlace: form.birthPlace,
+                birthDate: form.birthDate,
+                religion: form.religion,
+                bloodType: form.bloodType || undefined,
+                maritalStatus: form.maritalStatus,
+                occupation: form.occupation,
+                education: form.education,
+                address: form.address,
+                rt: form.rt,
+                rw: form.rw,
+                status: form.status,
+              },
+              household: {
+                isHeadOfFamily: !!form.isHeadOfFamily,
+                kkNumber: form.noKK,
+                relationship: form.isHeadOfFamily ? undefined : form.hubungan,
+                members: form.isHeadOfFamily
+                  ? form.householdMembers.map((member) => ({
+                      nik: member.nik,
+                      name: member.name,
+                      gender: member.gender,
+                      birthPlace: member.birthPlace,
+                      birthDate: member.birthDate,
+                      religion: member.religion,
+                      bloodType: member.bloodType || undefined,
+                      maritalStatus: member.maritalStatus,
+                      occupation: member.occupation,
+                      education: member.education,
+                      address: form.address,
+                      rt: form.rt,
+                      rw: form.rw,
+                      status: form.status,
+                      relationship: member.relationship,
+                    }))
+                  : [],
+              },
             }),
           }),
         {
-          loading: 'Menyimpan data penduduk...',
-          success: 'Data penduduk berhasil disimpan',
-          error: 'Gagal menyimpan data penduduk',
+          loading: form.isHeadOfFamily
+            ? 'Menyimpan data penduduk dan kartu keluarga...'
+            : 'Menyimpan data penduduk...',
+          success: form.isHeadOfFamily
+            ? 'Data penduduk dan kartu keluarga berhasil disimpan'
+            : 'Data penduduk berhasil disimpan',
+          error: form.isHeadOfFamily
+            ? 'Gagal menyimpan data penduduk dan kartu keluarga'
+            : 'Gagal menyimpan data penduduk',
         },
       );
-      localStorage.removeItem('draft_tambah_penduduk');
-      router.push('/admin/data-penduduk');
+
+      router.push(form.isHeadOfFamily ? '/admin/kartu-keluarga' : '/admin/data-penduduk');
     } catch (error) {
       console.error(error);
     } finally {
@@ -307,13 +372,12 @@ export default function TambahDataPendudukPage() {
     }
   };
 
-  /* ── Input helpers ── */
-  const inputClass = (key?: keyof FormData) =>
+  const inputClass = (key?: string) =>
     `h-11 w-full rounded-xl border bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 ${
       key && errors[key] ? 'border-red-400' : 'border-gray-200'
     }`;
 
-  const selectClass = (key?: keyof FormData) =>
+  const selectClass = (key?: string) =>
     `h-11 w-full appearance-none rounded-xl border bg-white px-4 pr-10 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 bg-no-repeat bg-[position:right_1rem_center] bg-[length:1.25rem_1.25rem] bg-[url("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20fill='none'%20viewBox='0%200%2024%2024'%20stroke='%232563EB'%3e%3cpath%20stroke-linecap='round'%20stroke-linejoin='round'%20stroke-width='2'%20d='M6%209l6%206%206-6'/%3e%3c/svg%3e")] ${
       key && errors[key] ? 'border-red-400' : 'border-gray-200'
     }`;
@@ -321,90 +385,211 @@ export default function TambahDataPendudukPage() {
   const labelClass = 'mb-1.5 block text-sm font-semibold text-[#1E293B]';
   const errorClass = 'mt-1 text-xs text-red-500';
 
+  const renderPersonFields = (
+    person: PersonForm,
+    prefix: string,
+    onChange: <K extends keyof PersonForm>(key: K, value: PersonForm[K]) => void,
+  ) => (
+    <>
+      <div>
+        <label className={labelClass}>NIK*</label>
+        <Input
+          type="text"
+          maxLength={16}
+          value={person.nik}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('nik', e.target.value.replace(/\D/g, ''))}
+          placeholder="16 Digit nomor NIK"
+          className={inputClass(`${prefix}.nik`)}
+        />
+        {errors[`${prefix}.nik`] && <p className={errorClass}>{errors[`${prefix}.nik`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Tanggal Lahir*</label>
+        <Input
+          type="date"
+          value={person.birthDate}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('birthDate', e.target.value)}
+          className={inputClass(`${prefix}.birthDate`)}
+        />
+        {errors[`${prefix}.birthDate`] && <p className={errorClass}>{errors[`${prefix}.birthDate`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Nama Lengkap*</label>
+        <Input
+          type="text"
+          value={person.name}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('name', e.target.value)}
+          placeholder="Sesuai KTP/Akta Kelahiran"
+          className={inputClass(`${prefix}.name`)}
+        />
+        {errors[`${prefix}.name`] && <p className={errorClass}>{errors[`${prefix}.name`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Tempat Lahir*</label>
+        <Input
+          type="text"
+          value={person.birthPlace}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('birthPlace', e.target.value)}
+          placeholder="Kota Tempat Lahir"
+          className={inputClass(`${prefix}.birthPlace`)}
+        />
+        {errors[`${prefix}.birthPlace`] && <p className={errorClass}>{errors[`${prefix}.birthPlace`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Pendidikan Terakhir*</label>
+        <select
+          value={person.education}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange('education', e.target.value)}
+          className={selectClass(`${prefix}.education`)}
+        >
+          <option value="">Pilih Pendidikan</option>
+          {PENDIDIKAN_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        {errors[`${prefix}.education`] && <p className={errorClass}>{errors[`${prefix}.education`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Pekerjaan*</label>
+        <select
+          value={person.occupation}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange('occupation', e.target.value)}
+          className={selectClass(`${prefix}.occupation`)}
+        >
+          <option value="">Pilih Pekerjaan</option>
+          {PEKERJAAN_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        {errors[`${prefix}.occupation`] && <p className={errorClass}>{errors[`${prefix}.occupation`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Agama*</label>
+        <select
+          value={person.religion}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange('religion', e.target.value)}
+          className={selectClass(`${prefix}.religion`)}
+        >
+          <option value="">Pilih Agama</option>
+          {AGAMA_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        {errors[`${prefix}.religion`] && <p className={errorClass}>{errors[`${prefix}.religion`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Jenis Kelamin*</label>
+        <select
+          value={person.gender}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange('gender', e.target.value as '' | 'L' | 'P')}
+          className={selectClass(`${prefix}.gender`)}
+        >
+          <option value="">Pilih Jenis Kelamin</option>
+          <option value="L">Laki-laki</option>
+          <option value="P">Perempuan</option>
+        </select>
+        {errors[`${prefix}.gender`] && <p className={errorClass}>{errors[`${prefix}.gender`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Status Perkawinan*</label>
+        <select
+          value={person.maritalStatus}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange('maritalStatus', e.target.value)}
+          className={selectClass(`${prefix}.maritalStatus`)}
+        >
+          <option value="">Pilih Status Perkawinan</option>
+          <option value="Belum Kawin">Belum Kawin</option>
+          <option value="Kawin">Kawin</option>
+          <option value="Cerai Hidup">Cerai Hidup</option>
+          <option value="Cerai Mati">Cerai Mati</option>
+        </select>
+        {errors[`${prefix}.maritalStatus`] && <p className={errorClass}>{errors[`${prefix}.maritalStatus`]}</p>}
+      </div>
+      <div>
+        <label className={labelClass}>Golongan Darah</label>
+        <select
+          value={person.bloodType}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange('bloodType', e.target.value)}
+          className={selectClass()}
+        >
+          <option value="">Pilih Gol. Darah</option>
+          {GOLONGAN_DARAH_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className={labelClass}>Nomor Telepon</label>
+        <Input
+          type="text"
+          value={person.phone}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('phone', e.target.value)}
+          placeholder="Opsional"
+          className={inputClass()}
+        />
+      </div>
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Back + Draft ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <button
           type="button"
           onClick={() => setShowExitModal(true)}
-          className="flex items-center gap-2 text-[16px] font-[600] text-[#2563EB] transition hover:opacity-80 bg-transparent border-none outline-none"
+          className="flex items-center gap-2 border-none bg-transparent text-[16px] font-[600] text-[#2563EB] outline-none transition hover:opacity-80"
         >
           <ChevronLeft className="h-5 w-5" />
           Keluar Halaman
         </button>
-        <Button 
-          onClick={() => {
-            if (hasDraft) {
-              setShowDraftModal(true);
-              return;
-            }
-            toast({
-              title: 'Belum ada draft',
-              description: 'Simpan draft terlebih dahulu untuk membukanya kembali.',
-              variant: 'destructive',
-            });
-          }}
-          className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
-        >
-          <Save className="h-4 w-4 text-[#3B82F6]" />
-          Draft
-          {hasDraft && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-red-500" />}
-        </Button>
       </div>
 
-      {/* ── Title & Stepper Card ── */}
       <div className="relative overflow-hidden rounded-[12px] bg-[#EEF2FF] p-6">
         <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#3B82F6]/[0.05]" />
         <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-[#3B82F6]/[0.08]" />
-        
+
         <div className="relative z-10">
           <h1 className="text-2xl font-bold text-[#3B82F6]">Tambah Data Penduduk Baru</h1>
           <p className="mt-1 text-sm text-[#3B82F6]/80">
-            Isi semua field wajib bertanda bintang merah. Data akan tersimpan ke modul data penduduk.
+            Satu submit akan langsung menyimpan data penduduk dan, jika dipilih, data kartu keluarga baru beserta anggotanya.
           </p>
         </div>
 
         <div className="relative z-10 mt-8 flex w-full items-center justify-between">
-          {STEPS.map((s, i) => {
-            const isActive = step === s.id;
-            const isCompleted = step > s.id;
-            const isCurrentOrCompleted = isActive || isCompleted;
-
-            const circleStyle = isCurrentOrCompleted
+          {STEPS.map((item, index) => {
+            const isActive = step === item.id;
+            const isCompleted = step > item.id;
+            const circleStyle = isActive || isCompleted
               ? 'bg-transparent text-[#2563EB] border-[1.5px] border-[#2563EB]'
               : 'bg-[#EEF0FD] text-[#7C8FE8] border-[1.5px] border-[#C5CFFB]';
-
-            const labelStyle = isCurrentOrCompleted
-              ? 'text-[#2563EB] font-[600]'
-              : 'text-[#7C8FE8] font-[400]';
+            const labelStyle = isActive || isCompleted ? 'text-[#2563EB] font-[600]' : 'text-[#7C8FE8] font-[400]';
 
             return (
-              <div key={s.id} className={`flex items-center ${i < STEPS.length - 1 ? 'flex-1' : ''}`}>
+              <div key={item.id} className={`flex items-center ${index < STEPS.length - 1 ? 'flex-1' : ''}`}>
                 <button
                   type="button"
                   onClick={() => {
-                    if (s.id < step) setStep(s.id);
+                    if (item.id < step) setStep(item.id);
                   }}
                   className="flex items-center gap-3 outline-none"
                 >
                   <div
                     className={`flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors ${circleStyle}`}
                   >
-                    {s.id}
+                    {item.id}
                   </div>
-                  <span
-                    className={`text-sm whitespace-nowrap transition-colors ${labelStyle}`}
-                  >
-                    {s.label}
-                  </span>
+                  <span className={`whitespace-nowrap text-sm transition-colors ${labelStyle}`}>{item.label}</span>
                 </button>
-                {i < STEPS.length - 1 && (
-                  <div
-                    className={`mx-4 h-[1px] flex-1 rounded-full transition-colors ${
-                      isCompleted ? 'bg-[#2563EB]' : 'bg-[#C5CFFB]'
-                    }`}
-                  />
+                {index < STEPS.length - 1 && (
+                  <div className={`mx-4 h-[1px] flex-1 rounded-full transition-colors ${isCompleted ? 'bg-[#2563EB]' : 'bg-[#C5CFFB]'}`} />
                 )}
               </div>
             );
@@ -412,174 +597,60 @@ export default function TambahDataPendudukPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 rounded-[12px] bg-[#EEF2FF] px-6 py-4 border border-blue-100 mt-6">
+      <div className="mt-6 flex items-center gap-3 rounded-[12px] border border-blue-100 bg-[#EEF2FF] px-6 py-4">
         <CheckCircle2 className="h-5 w-5 text-[#3B82F6]" />
         <div>
           <p className="text-sm font-bold text-[#3B82F6]">Periksa kembali sebelum menyimpan.</p>
-          <p className="text-sm text-[#3B82F6]/80">Pastikan semua data sudah benar. Kamu masih bisa kembali ke langkah sebelumnya untuk koreksi data</p>
+          <p className="text-sm text-[#3B82F6]/80">
+            Jika memilih Kepala Keluarga, nomor KK dan anggota keluarga akan tersimpan sekaligus pada submit akhir.
+          </p>
         </div>
       </div>
 
-      {/* ── Form Card ── */}
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        {/* STEP 1: Data Diri */}
         {step === 1 && (
-          <div>
-            <h2 className="mb-5 text-xl font-bold text-[#1E293B]">Form data Diri</h2>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <div>
-                <label className={labelClass}>NIK*</label>
-                <Input
-                  type="text"
-                  maxLength={16}
-                  value={form.nik}
-                  onChange={(e: any) => set('nik', e.target.value.replace(/\D/g, ''))}
-                  placeholder="16 Digit nomor NIK"
-                  className={inputClass('nik')}
-                />
-                <p className="mt-1 text-xs text-gray-400">Contoh: 3374010101240001</p>
-                {errors.nik && <p className={errorClass}>{errors.nik}</p>}
+          <div className="flex flex-col gap-6">
+            <div className="rounded-2xl border border-blue-100 bg-[#F8FBFF] p-5">
+              <h2 className="text-lg font-bold text-[#1E293B]">Peran Keluarga</h2>
+              <p className="mt-1 text-sm text-[#64748B]">Tentukan dulu apakah warga ini akan menjadi kepala keluarga untuk KK baru.</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setField('isHeadOfFamily', true)}
+                  className={`rounded-2xl border px-4 py-4 text-left transition ${
+                    form.isHeadOfFamily
+                      ? 'border-[#2563EB] bg-[#EFF6FF]'
+                      : 'border-gray-200 bg-white hover:border-[#93C5FD]'
+                  }`}
+                >
+                  <p className="font-semibold text-[#1E293B]">Ya, Kepala Keluarga</p>
+                  <p className="mt-1 text-sm text-[#64748B]">Form akan membuat KK baru dan bisa menambah anggota keluarga.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setField('isHeadOfFamily', false)}
+                  className={`rounded-2xl border px-4 py-4 text-left transition ${
+                    form.isHeadOfFamily === false
+                      ? 'border-[#2563EB] bg-[#EFF6FF]'
+                      : 'border-gray-200 bg-white hover:border-[#93C5FD]'
+                  }`}
+                >
+                  <p className="font-semibold text-[#1E293B]">Bukan Kepala Keluarga</p>
+                  <p className="mt-1 text-sm text-[#64748B]">Form hanya menambah satu data penduduk atau menghubungkannya ke KK yang sudah ada.</p>
+                </button>
               </div>
-              <div>
-                <label className={labelClass}>Tanggal Lahir</label>
-                <Input
-                  type="date"
-                  value={form.birthDate}
-                  onChange={(e: any) => set('birthDate', e.target.value)}
-                  className={inputClass('birthDate')}
-                />
-                {errors.birthDate && <p className={errorClass}>{errors.birthDate}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Nama Lengkap*</label>
-                <Input
-                  type="text"
-                  value={form.name}
-                  onChange={(e: any) => set('name', e.target.value)}
-                  placeholder="Sesuai KTP/Akta Kelahiran"
-                  className={inputClass('name')}
-                />
-                {errors.name && <p className={errorClass}>{errors.name}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Tempat Lahir</label>
-                <Input
-                  type="text"
-                  value={form.birthPlace}
-                  onChange={(e: any) => set('birthPlace', e.target.value)}
-                  placeholder="Kota Tempat Lahir"
-                  className={inputClass('birthPlace')}
-                />
-                {errors.birthPlace && <p className={errorClass}>{errors.birthPlace}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Pendidikan Terakhir*</label>
-                <div className="relative">
-                  <select
-                    value={form.education}
-                    onChange={(e: any) => set('education', e.target.value)}
-                    className={selectClass('education')}
-                  >
-                    <option value="">Pilih Pendidikan</option>
-                    {PENDIDIKAN_OPTIONS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {errors.education && <p className={errorClass}>{errors.education}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Pekerjaan*</label>
-                <div className="relative">
-                  <select
-                    value={form.occupation}
-                    onChange={(e: any) => set('occupation', e.target.value)}
-                    className={selectClass('occupation')}
-                  >
-                    <option value="">Pilih Pekerjaan</option>
-                    {PEKERJAAN_OPTIONS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {errors.occupation && <p className={errorClass}>{errors.occupation}</p>}
-              </div>
+              {errors.isHeadOfFamily && <p className={errorClass}>{errors.isHeadOfFamily}</p>}
             </div>
 
-            {/* Agama + JK + Status Perkawinan + Gol. Darah */}
-            <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <label className={labelClass}>Agama*</label>
-                <select
-                  value={form.religion}
-                  onChange={(e: any) => set('religion', e.target.value)}
-                  className={selectClass('religion')}
-                >
-                  <option value="">Pilih Agama</option>
-                  {AGAMA_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-                {errors.religion && <p className={errorClass}>{errors.religion}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Jenis Kelamin</label>
-                <select
-                  value={form.gender}
-                  onChange={(e: any) => set('gender', e.target.value as '' | 'L' | 'P')}
-                  className={selectClass('gender')}
-                >
-                  <option value="">Pilih Jenis Kelamin</option>
-                  <option value="L">Laki-laki</option>
-                  <option value="P">Perempuan</option>
-                </select>
-                {errors.gender && <p className={errorClass}>{errors.gender}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Status Perkawinan*</label>
-                <div className="flex h-11 items-center gap-4 rounded-xl border border-gray-200 bg-white px-4">
-                  {['Belum Kawin', 'Kawin', 'Cerai Hidup', 'Cerai Mati'].map((opt) => (
-                    <label key={opt} className="flex items-center gap-1.5 text-sm text-[#1E293B]">
-                      <input
-                        type="radio"
-                        name="maritalStatus"
-                        value={opt}
-                        checked={form.maritalStatus === opt}
-                        onChange={(e: any) => set('maritalStatus', e.target.value)}
-                        className="accent-[#2563EB]"
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-                {errors.maritalStatus && <p className={errorClass}>{errors.maritalStatus}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Golongan Darah</label>
-                <select
-                  value={form.bloodType}
-                  onChange={(e: any) => set('bloodType', e.target.value)}
-                  className={selectClass('bloodType')}
-                >
-                  <option value="">Pilih Gol. Darah</option>
-                  {GOLONGAN_DARAH_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+            <div>
+              <h2 className="mb-5 text-xl font-bold text-[#1E293B]">Form Data Diri</h2>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {renderPersonFields(form, 'citizen', setPersonField)}
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Alamat */}
         {step === 2 && (
           <div>
             <h2 className="mb-5 text-xl font-bold text-[#1E293B]">Form Alamat</h2>
@@ -589,7 +660,7 @@ export default function TambahDataPendudukPage() {
                 <Input
                   type="text"
                   value={form.address}
-                  onChange={(e: any) => set('address', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('address', e.target.value)}
                   placeholder="Nama jalan, Nomor rumah, Gang, dll"
                   className={inputClass('address')}
                 />
@@ -597,16 +668,16 @@ export default function TambahDataPendudukPage() {
               </div>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <div>
-                  <label className={labelClass}>RT</label>
+                  <label className={labelClass}>RT*</label>
                   <select
                     value={form.rt}
-                    onChange={(e: any) => set('rt', e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('rt', e.target.value)}
                     className={selectClass('rt')}
                   >
                     <option value="">Pilih RT</option>
-                    {RT_OPTIONS.map((o) => (
-                      <option key={o} value={o}>
-                        RT {o}
+                    {RT_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        RT {option}
                       </option>
                     ))}
                   </select>
@@ -626,7 +697,7 @@ export default function TambahDataPendudukPage() {
                   <Input
                     type="text"
                     value={form.kelurahan}
-                    onChange={(e: any) => set('kelurahan', e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('kelurahan', e.target.value)}
                     placeholder="Nama Kelurahan"
                     className={inputClass()}
                   />
@@ -638,7 +709,7 @@ export default function TambahDataPendudukPage() {
                   <Input
                     type="text"
                     value={form.kota}
-                    onChange={(e: any) => set('kota', e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('kota', e.target.value)}
                     placeholder="Nama Kota"
                     className={inputClass()}
                   />
@@ -648,7 +719,7 @@ export default function TambahDataPendudukPage() {
                   <Input
                     type="text"
                     value={form.kecamatan}
-                    onChange={(e: any) => set('kecamatan', e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('kecamatan', e.target.value)}
                     placeholder="Nama Kecamatan"
                     className={inputClass()}
                   />
@@ -658,94 +729,181 @@ export default function TambahDataPendudukPage() {
                 <label className={labelClass}>Status Kependudukan</label>
                 <select
                   value={form.status}
-                  onChange={(e: any) => set('status', e.target.value as FormData['status'])}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('status', e.target.value as FormData['status'])}
                   className={selectClass()}
                 >
-                  {STATUS_KEPENDUDUKAN_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
+                  <option value="PENDUDUK_TETAP">Penduduk Tetap</option>
+                  <option value="NGEKOST">Ngekost</option>
                 </select>
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 3: Status Keluarga */}
         {step === 3 && (
-          <div>
-            <h2 className="mb-5 text-xl font-bold text-[#1E293B]">Form Status Keluarga</h2>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <div>
-                <label className={labelClass}>Nomor Kartu Keluarga*</label>
-                <Input
-                  type="text"
-                  maxLength={16}
-                  value={form.noKK}
-                  onChange={(e: any) => set('noKK', e.target.value.replace(/\D/g, ''))}
-                  placeholder="Masukan 16 Digit Nomor KK"
-                  className={inputClass()}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Hubungan Dalam Keluarga</label>
-                <select
-                  value={form.hubungan}
-                  onChange={(e: any) => set('hubungan', e.target.value)}
-                  className={selectClass()}
-                >
-                  <option value="">Pilih Hubungan</option>
-                  {HUBUNGAN_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Nama Ayah Kandung*</label>
-                <Input
-                  type="text"
-                  value={form.namaAyah}
-                  onChange={(e: any) => set('namaAyah', e.target.value)}
-                  placeholder="Masukan Nama Ayah"
-                  className={inputClass('namaAyah')}
-                />
-                {errors.namaAyah && <p className={errorClass}>{errors.namaAyah}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Nama Ibu Kandung*</label>
-                <Input
-                  type="text"
-                  value={form.namaIbu}
-                  onChange={(e: any) => set('namaIbu', e.target.value)}
-                  placeholder="Masukan Nama Ibu"
-                  className={inputClass('namaIbu')}
-                />
-                {errors.namaIbu && <p className={errorClass}>{errors.namaIbu}</p>}
+          <div className="flex flex-col gap-6">
+            <div>
+              <h2 className="mb-5 text-xl font-bold text-[#1E293B]">Form Status Keluarga</h2>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Nomor Kartu Keluarga*</label>
+                  <Input
+                    type="text"
+                    maxLength={16}
+                    value={form.noKK}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('noKK', e.target.value.replace(/\D/g, ''))}
+                    placeholder="Masukan 16 Digit Nomor KK"
+                    className={inputClass('noKK')}
+                  />
+                  {errors.noKK && <p className={errorClass}>{errors.noKK}</p>}
+                </div>
+
+                <div>
+                  <label className={labelClass}>Hubungan Dalam Keluarga</label>
+                  <select
+                    value={form.isHeadOfFamily ? 'Kepala Keluarga' : form.hubungan}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('hubungan', e.target.value)}
+                    disabled={!!form.isHeadOfFamily}
+                    className={selectClass('hubungan')}
+                  >
+                    <option value="">Pilih Hubungan</option>
+                    {HUBUNGAN_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.hubungan && <p className={errorClass}>{errors.hubungan}</p>}
+                </div>
+
+                {!form.isHeadOfFamily && (
+                  <>
+                    <div>
+                      <label className={labelClass}>Nama Ayah Kandung*</label>
+                      <Input
+                        type="text"
+                        value={form.namaAyah}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('namaAyah', e.target.value)}
+                        placeholder="Masukan Nama Ayah"
+                        className={inputClass('namaAyah')}
+                      />
+                      {errors.namaAyah && <p className={errorClass}>{errors.namaAyah}</p>}
+                    </div>
+                    <div>
+                      <label className={labelClass}>Nama Ibu Kandung*</label>
+                      <Input
+                        type="text"
+                        value={form.namaIbu}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('namaIbu', e.target.value)}
+                        placeholder="Masukan Nama Ibu"
+                        className={inputClass('namaIbu')}
+                      />
+                      {errors.namaIbu && <p className={errorClass}>{errors.namaIbu}</p>}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+
+            {form.isHeadOfFamily && (
+              <div className="rounded-2xl border border-gray-100 bg-[#FAFCFF] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#1E293B]">Anggota Kartu Keluarga</h3>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      Data anggota akan otomatis masuk ke KK baru dan ke daftar data penduduk saat konfirmasi akhir.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={addHouseholdMember}
+                    className="rounded-xl bg-[#2563EB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1D4ED8]"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Tambah Anggota
+                  </Button>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-5">
+                  {form.householdMembers.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#BFDBFE] bg-white px-4 py-6 text-sm text-[#64748B]">
+                      Belum ada anggota tambahan. Jika hanya kepala keluarga, langsung lanjut ke konfirmasi.
+                    </div>
+                  ) : (
+                    form.householdMembers.map((member, index) => (
+                      <div key={index} className="rounded-2xl border border-gray-200 bg-white p-5">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-[#1E293B]">Anggota #{index + 1}</p>
+                            <p className="text-sm text-[#64748B]">Alamat, RT/RW, status penduduk, dan nomor KK akan mengikuti kepala keluarga.</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeHouseholdMember(index)}
+                            className="rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="mb-5">
+                          <label className={labelClass}>Hubungan dalam Keluarga*</label>
+                          <select
+                            value={member.relationship}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                              setHouseholdMemberField(index, 'relationship', e.target.value)
+                            }
+                            className={selectClass(`members.${index}.relationship`)}
+                          >
+                            <option value="">Pilih Hubungan</option>
+                            {MEMBER_RELATION_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                          {errors[`members.${index}.relationship`] && (
+                            <p className={errorClass}>{errors[`members.${index}.relationship`]}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                          {renderPersonFields(
+                            member,
+                            `members.${index}`,
+                            ((key, value) =>
+                              setHouseholdMemberField(
+                                index,
+                                key as keyof HouseholdMemberForm,
+                                value as HouseholdMemberForm[keyof HouseholdMemberForm],
+                              )) as <K extends keyof PersonForm>(key: K, value: PersonForm[K]) => void,
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* STEP 4: Konfirmasi */}
         {step === 4 && (
           <div>
             <h2 className="mb-4 text-xl font-bold text-[#1E293B]">Konfirmasi Data</h2>
 
-            {/* Info Alert */}
             <div className="mb-6 flex items-start gap-3 rounded-xl bg-[#F0F5FF] p-4">
               <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#2563EB]" />
               <div>
                 <p className="text-sm font-semibold text-[#1E293B]">Periksa kembali sebelum menyimpan.</p>
                 <p className="text-sm text-[#6B7280]">
-                  Pastikan semua data sudah benar. Kamu masih bisa kembali ke langkah sebelumnya untuk koreksi data.
+                  Submit akhir akan menyimpan seluruh data yang tampil di bawah ini ke database.
                 </p>
               </div>
             </div>
 
-            {/* Data Diri Section */}
             <div className="mb-6">
               <div className="mb-3 flex items-center gap-2">
                 <User className="h-5 w-5 text-[#2563EB]" />
@@ -753,31 +911,29 @@ export default function TambahDataPendudukPage() {
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-100">
                 {[
+                  ['Peran', form.isHeadOfFamily ? 'Kepala Keluarga' : 'Anggota Keluarga'],
                   ['NIK', form.nik],
                   ['Nama Lengkap', form.name],
-                  ['Tanggal Lahir', form.birthDate ? new Date(form.birthDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'],
+                  ['Tanggal Lahir', formatDate(form.birthDate)],
                   ['Tempat Lahir', form.birthPlace || '-'],
                   ['Pendidikan Terakhir', form.education || '-'],
                   ['Pekerjaan', form.occupation || '-'],
                   ['Agama', form.religion || '-'],
                   ['Jenis Kelamin', form.gender === 'L' ? 'Laki-laki' : form.gender === 'P' ? 'Perempuan' : '-'],
                   ['Status Perkawinan', form.maritalStatus || '-'],
-                  ['Nomor Telepon*', form.phone || 'Opsional'],
-                ].map(([label, value], i) => (
+                  ['Nomor Telepon', form.phone || 'Opsional'],
+                ].map(([label, value], index) => (
                   <div
                     key={label}
-                    className={`flex items-center justify-between px-4 py-3 text-sm ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                    }`}
+                    className={`flex items-center justify-between px-4 py-3 text-sm ${index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}
                   >
                     <span className="font-semibold text-[#1E293B]">{label}</span>
-                    <span className="text-[#64748B]">{value}</span>
+                    <span className="text-right text-[#64748B]">{value}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Alamat Section */}
             <div className="mb-6">
               <div className="mb-3 flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-[#2563EB]" />
@@ -791,23 +947,20 @@ export default function TambahDataPendudukPage() {
                   ['Kelurahan', form.kelurahan || '-'],
                   ['Kecamatan', form.kecamatan || '-'],
                   ['Kota/Kabupaten', form.kota || '-'],
-                  ['Status Kependudukan', form.status === 'PENDUDUK_TETAP' ? 'Penduduk Tetap' : 'Ngekost'],
-                ].map(([label, value], i) => (
+                  ['Status Kependudukan', mapStatusLabel(form.status)],
+                ].map(([label, value], index) => (
                   <div
                     key={label}
-                    className={`flex items-center justify-between px-4 py-3 text-sm ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                    }`}
+                    className={`flex items-center justify-between px-4 py-3 text-sm ${index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}
                   >
                     <span className="font-semibold text-[#1E293B]">{label}</span>
-                    <span className="text-[#64748B]">{value}</span>
+                    <span className="text-right text-[#64748B]">{value}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Status Keluarga Section */}
-            <div>
+            <div className="mb-6">
               <div className="mb-3 flex items-center gap-2">
                 <Users className="h-5 w-5 text-[#2563EB]" />
                 <h3 className="font-bold text-[#1E293B]">Status Keluarga</h3>
@@ -815,43 +968,60 @@ export default function TambahDataPendudukPage() {
               <div className="overflow-hidden rounded-xl border border-gray-100">
                 {[
                   ['Nomor KK', form.noKK || '-'],
-                  ['Status dalam Keluarga', form.hubungan || '-'],
-                  ['Nama Ayah', form.namaAyah || '-'],
-                  ['Nama Ibu', form.namaIbu || '-'],
-                ].map(([label, value], i) => (
+                  ['Status dalam Keluarga', form.isHeadOfFamily ? 'Kepala Keluarga' : form.hubungan || '-'],
+                  ['Nama Ayah', form.isHeadOfFamily ? 'Tidak ditampilkan untuk Kepala Keluarga' : form.namaAyah || '-'],
+                  ['Nama Ibu', form.isHeadOfFamily ? 'Tidak ditampilkan untuk Kepala Keluarga' : form.namaIbu || '-'],
+                ].map(([label, value], index) => (
                   <div
                     key={label}
-                    className={`flex items-center justify-between px-4 py-3 text-sm ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                    }`}
+                    className={`flex items-center justify-between px-4 py-3 text-sm ${index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}
                   >
                     <span className="font-semibold text-[#1E293B]">{label}</span>
-                    <span className="text-[#64748B]">{value}</span>
+                    <span className="text-right text-[#64748B]">{value}</span>
                   </div>
                 ))}
               </div>
             </div>
+
+            {form.isHeadOfFamily && form.householdMembers.length > 0 && (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-[#2563EB]" />
+                  <h3 className="font-bold text-[#1E293B]">Anggota KK Baru</h3>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {form.householdMembers.map((member, index) => (
+                    <div key={index} className="rounded-xl border border-gray-100 bg-[#FAFBFC] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-[#1E293B]">{member.name || `Anggota #${index + 1}`}</p>
+                          <p className="text-sm text-[#64748B]">
+                            {member.relationship || '-'} • {member.nik || '-'}
+                          </p>
+                        </div>
+                        <div className="text-right text-sm text-[#64748B]">
+                          <p>{member.gender === 'L' ? 'Laki-laki' : member.gender === 'P' ? 'Perempuan' : '-'}</p>
+                          <p>{formatDate(member.birthDate)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ── Action Buttons ── */}
       <div className="flex items-center justify-center gap-4">
         {step > 1 && (
           <Button
             onClick={handleBack}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-[#2563EB] transition hover:bg-gray-50"
+            className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-[#2563EB] transition hover:bg-gray-50"
           >
             Kembali
           </Button>
         )}
-        <Button 
-          onClick={handleSaveDraft}
-          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
-        >
-          <Save className="h-4 w-4 text-[#3B82F6]" />
-          Simpan Draft
-        </Button>
         {step < 4 ? (
           <Button
             onClick={handleNext}
@@ -867,63 +1037,20 @@ export default function TambahDataPendudukPage() {
             className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-8 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#1D4ED8] disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
-            {submitting ? 'Menyimpan...' : 'Simpan data Penduduk'}
+            {submitting ? 'Menyimpan...' : 'Simpan Data'}
           </Button>
         )}
       </div>
 
-      {/* ── Draft Modal ── */}
-      <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
-        <DialogContent className="max-w-sm rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[#1E293B]">Draft Tersimpan</DialogTitle>
-            <DialogDescription className="text-sm text-[#64748B]">
-              Anda memiliki draft formulir yang belum selesai. Apakah Anda ingin melanjutkannya atau menghapusnya?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-2 flex flex-col gap-3">
-            <Button
-              onClick={handleLoadDraft}
-              className="w-full rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white transition hover:bg-[#1D4ED8]"
-            >
-              Lanjutkan Draft
-            </Button>
-            <Button
-              onClick={handleDeleteDraft}
-              className="w-full rounded-xl border border-red-100 bg-red-50 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100"
-            >
-              Hapus Draft
-            </Button>
-            <Button
-              onClick={() => setShowDraftModal(false)}
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
-            >
-              Tutup
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Exit Modal ── */}
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
         <DialogContent className="max-w-sm rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-[#1E293B]">Keluar Halaman?</DialogTitle>
             <DialogDescription className="text-sm text-[#64748B]">
-              Anda memiliki data yang belum disimpan. Apakah Anda ingin menyimpannya sebagai draft sebelum keluar?
+              Anda memiliki data yang belum disimpan. Yakin ingin keluar dari halaman ini?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            <Button
-              onClick={() => {
-                handleSaveDraft();
-                setShowExitModal(false);
-                router.back();
-              }}
-              className="w-full rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white transition hover:bg-[#1D4ED8]"
-            >
-              Simpan Draft & Keluar
-            </Button>
             <Button
               onClick={() => {
                 setShowExitModal(false);

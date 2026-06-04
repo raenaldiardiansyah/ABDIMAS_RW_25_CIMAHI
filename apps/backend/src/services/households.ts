@@ -48,16 +48,20 @@ export async function createHouseholdService(input: { adminId: string; body: Cre
   if (existingHousehold[0]) throw conflict("KK number already exists");
 
   let headCitizenId = input.body.headCitizenId;
+  let resolvedRt = input.body.rt;
+  let resolvedRw = input.body.rw;
   if (headCitizenId) {
     const [headCitizen] = await db
-      .select({ id: citizen.id })
+      .select({ id: citizen.id, rt: citizen.rt, rw: citizen.rw })
       .from(citizen)
       .where(and(eq(citizen.id, headCitizenId), eq(citizen.isArchived, false)))
       .limit(1);
     if (!headCitizen) throw notFound("Head citizen not found");
+    resolvedRt = headCitizen.rt;
+    resolvedRw = headCitizen.rw;
   } else {
     const matches = await db
-      .select({ id: citizen.id })
+      .select({ id: citizen.id, rt: citizen.rt, rw: citizen.rw })
       .from(citizen)
       .where(and(eq(citizen.name, input.body.headCitizenName!), eq(citizen.rt, input.body.rt), eq(citizen.rw, input.body.rw), eq(citizen.isArchived, false)))
       .limit(2);
@@ -65,6 +69,8 @@ export async function createHouseholdService(input: { adminId: string; body: Cre
 
     if (matches.length === 1) {
       headCitizenId = matches[0].id;
+      resolvedRt = matches[0].rt;
+      resolvedRw = matches[0].rw;
     } else {
       const [duplicateNik] = await db
         .select({ id: citizen.id })
@@ -110,14 +116,14 @@ export async function createHouseholdService(input: { adminId: string; body: Cre
 
   const [created] = await db
     .insert(household)
-    .values({
-      kkNumber: input.body.kkNumber,
-      headCitizenId: headCitizenId!,
-      address: input.body.address,
-      rt: input.body.rt,
-      rw: input.body.rw,
-      status: input.body.status,
-    })
+      .values({
+        kkNumber: input.body.kkNumber,
+        headCitizenId: headCitizenId!,
+        address: input.body.address,
+        rt: resolvedRt,
+        rw: resolvedRw,
+        status: input.body.status,
+      })
     .returning();
   await db.insert(householdMember).values({
     householdId: created.id,

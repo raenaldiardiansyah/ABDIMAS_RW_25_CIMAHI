@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import * as XLSX from "xlsx";
+import { z } from "zod";
 
 import { aspiration, citizen, getDb, household, mutation, serviceRequest } from "@abdimas/db";
 import {
@@ -21,10 +22,62 @@ import { toIso } from "../lib/serialize.js";
 import { parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
 import { adminMiddleware } from "../middleware/auth.js";
 
-async function getSummaryData(rt?: string) {
+type ReportFilter = z.infer<typeof reportFilterSchema>;
+
+function buildTimestampFilter(column: { name: string }, filter: ReportFilter) {
+  const conditions: ReturnType<typeof sql>[] = [];
+  if (filter.tahun) conditions.push(sql`extract(year from ${column}) = ${filter.tahun}`);
+  if (filter.bulan) conditions.push(sql`extract(month from ${column}) = ${filter.bulan}`);
+  return conditions.length ? and(...conditions) : undefined;
+}
+
+function buildDateFilter(column: { name: string }, filter: ReportFilter) {
+  const conditions: ReturnType<typeof sql>[] = [];
+  if (filter.tahun) conditions.push(sql`extract(year from ${column}) = ${filter.tahun}`);
+  if (filter.bulan) conditions.push(sql`extract(month from ${column}) = ${filter.bulan}`);
+  return conditions.length ? and(...conditions) : undefined;
+}
+
+function buildCitizenWhere(filter: ReportFilter) {
+  return and(
+    eq(citizen.isArchived, false),
+    filter.rt ? eq(citizen.rt, filter.rt) : undefined,
+    buildTimestampFilter(citizen.createdAt, filter),
+  );
+}
+
+function buildHouseholdWhere(filter: ReportFilter) {
+  return and(
+    filter.rt ? eq(household.rt, filter.rt) : undefined,
+    buildTimestampFilter(household.createdAt, filter),
+  );
+}
+
+function buildMutationWhere(filter: ReportFilter) {
+  return filter.tahun || filter.bulan
+    ? and(
+        buildDateFilter(mutation.mutationDate, filter),
+        sql`${mutation.mutationDate} is not null`,
+      )
+    : undefined;
+}
+
+function parseReportFilter(c: { req: { query: (key: string) => string | undefined } }) {
+  return parseQuery(
+    {
+      tahun: c.req.query("tahun") || undefined,
+      bulan: c.req.query("bulan") || undefined,
+      rt: c.req.query("rt") || undefined,
+    },
+    reportFilterSchema,
+  );
+}
+
+async function getSummaryData(filter: ReportFilter = {}) {
   const db = getDb();
-  const citizenWhere = rt ? and(eq(citizen.isArchived, false), eq(citizen.rt, rt)) : eq(citizen.isArchived, false);
-  const householdWhere = rt ? eq(household.rt, rt) : undefined;
+  const citizenWhere = buildCitizenWhere(filter);
+  const householdWhere = buildHouseholdWhere(filter);
+  const mutationWhere = buildMutationWhere(filter);
 
   const [
     [{ totalWarga }],
@@ -35,8 +88,11 @@ async function getSummaryData(rt?: string) {
   ] = await Promise.all([
     db.select({ totalWarga: sql<number>`count(*)::int` }).from(citizen).where(citizenWhere),
     db.select({ totalKK: sql<number>`count(*)::int` }).from(household).where(householdWhere),
-    db.select({ totalMutasi: sql<number>`count(*)::int` }).from(mutation),
-    db.select({ pendingRequests: sql<number>`count(*)::int` }).from(serviceRequest).where(eq(serviceRequest.status, "PENDING")),
+    db.select({ totalMutasi: sql<number>`count(*)::int` }).from(mutation).where(mutationWhere),
+    db
+      .select({ pendingRequests: sql<number>`count(*)::int` })
+      .from(serviceRequest)
+      .where(and(eq(serviceRequest.status, "PENDING"), buildTimestampFilter(serviceRequest.createdAt, filter))),
     db
       .select({
         rt: citizen.rt,
@@ -44,7 +100,7 @@ async function getSummaryData(rt?: string) {
         warga: sql<number>`count(*)::int`,
       })
       .from(citizen)
-      .where(eq(citizen.isArchived, false))
+      .where(citizenWhere)
       .groupBy(citizen.rt, citizen.rw)
       .orderBy(citizen.rt),
   ]);
@@ -63,8 +119,8 @@ async function getSummaryData(rt?: string) {
 export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", adminMiddleware)
   .get("/summary", async (c) => {
-    const filter = parseQuery({ rt: c.req.query("rt") || undefined }, reportFilterSchema);
-    const summary = await getSummaryData(filter.rt);
+    const filter = parseReportFilter(c);
+    const summary = await getSummaryData(filter);
     const payload = {
       success: true as const,
       data: {
@@ -86,6 +142,7 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     return ok(c, payload.data);
   })
   .get("/rt-breakdown", async (c) => {
+    const filter = parseReportFilter(c);
     const db = getDb();
     const rows = await db
       .select({
@@ -93,17 +150,24 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
         rw: citizen.rw,
         warga: sql<number>`count(*)::int`,
         kk: sql<number>`(
-          select count(*)::int from households h where h.rt = ${citizen.rt} and h.rw = ${citizen.rw}
+          select count(*)::int from households h
+          where h.rt = ${citizen.rt}
+            and h.rw = ${citizen.rw}
+            ${filter.tahun ? sql`and extract(year from h.created_at) = ${filter.tahun}` : sql``}
+            ${filter.bulan ? sql`and extract(month from h.created_at) = ${filter.bulan}` : sql``}
         )`,
         mutasi: sql<number>`(
           select count(*)::int from mutations m
           inner join citizens c2 on c2.id = m.citizen_id
-          where c2.rt = ${citizen.rt} and c2.rw = ${citizen.rw}
+          where c2.rt = ${citizen.rt}
+            and c2.rw = ${citizen.rw}
+            ${filter.tahun ? sql`and extract(year from m.mutation_date) = ${filter.tahun}` : sql``}
+            ${filter.bulan ? sql`and extract(month from m.mutation_date) = ${filter.bulan}` : sql``}
         )`,
         produktif: sql<number>`count(*) filter (where extract(year from age(current_date, ${citizen.birthDate})) between 16 and 60)::int`,
       })
       .from(citizen)
-      .where(eq(citizen.isArchived, false))
+      .where(buildCitizenWhere(filter))
       .groupBy(citizen.rt, citizen.rw)
       .orderBy(citizen.rt);
 
@@ -122,9 +186,8 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     return ok(c, payload.data);
   })
   .get("/demographics", async (c) => {
-    const filter = parseQuery({ rt: c.req.query("rt") || undefined }, reportFilterSchema);
-    const rt = filter.rt;
-    const where = rt ? and(eq(citizen.isArchived, false), eq(citizen.rt, rt)) : eq(citizen.isArchived, false);
+    const filter = parseReportFilter(c);
+    const where = buildCitizenWhere(filter);
     const rows = await getDb()
       .select({
         gender: citizen.gender,
@@ -174,6 +237,8 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     const parsed = reportCitizenDrilldownQuerySchema.parse({
       page: c.req.query("page"),
       limit: c.req.query("limit"),
+      tahun: c.req.query("tahun"),
+      bulan: c.req.query("bulan"),
       q: sanitizeSearchTerm(c.req.query("q") || undefined),
     });
     const rtId = c.req.param("rtId").replace(/^RT\s*/i, "").padStart(2, "0");
@@ -181,9 +246,10 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
       ? and(
           eq(citizen.isArchived, false),
           eq(citizen.rt, rtId),
+          buildTimestampFilter(citizen.createdAt, parsed),
           sql`(${citizen.name} ilike ${`%${parsed.q}%`} or ${citizen.nik} ilike ${`%${parsed.q}%`})`,
         )
-      : and(eq(citizen.isArchived, false), eq(citizen.rt, rtId));
+      : and(eq(citizen.isArchived, false), eq(citizen.rt, rtId), buildTimestampFilter(citizen.createdAt, parsed));
     const db = getDb();
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
@@ -227,7 +293,12 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     return ok(c, payload.data, meta);
   })
   .get("/export/xlsx", createRateLimitMiddleware({ key: "reports-export", limit: 5, windowMs: 60_000 }), async (c) => {
-    const rows = await getDb().select().from(citizen).where(eq(citizen.isArchived, false)).orderBy(citizen.rt, citizen.name);
+    const filter = parseReportFilter(c);
+    const rows = await getDb()
+      .select()
+      .from(citizen)
+      .where(buildCitizenWhere(filter))
+      .orderBy(citizen.rt, citizen.name);
     const workbook = XLSX.utils.book_new();
     const sheet = XLSX.utils.json_to_sheet(
       rows.map((row) => ({
@@ -247,7 +318,8 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     return c.body(buffer);
   })
   .get("/export/pdf", createRateLimitMiddleware({ key: "reports-export", limit: 5, windowMs: 60_000 }), async (c) => {
-    const summary = await getSummaryData();
+    const filter = parseReportFilter(c);
+    const summary = await getSummaryData(filter);
     const doc = new PDFDocument({ margin: 48 });
     const chunks: Uint8Array[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));

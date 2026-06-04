@@ -1,8 +1,8 @@
-import { hashPassword } from "@better-auth/utils/password";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import {
+  adminActivityLogListResponseSchema,
   adminUserListQuerySchema,
   adminUserListResponseSchema,
   adminUserResponseSchema,
@@ -11,8 +11,9 @@ import {
   updateAdminUserSchema,
   paginationQuerySchema,
 } from "@abdimas/contracts";
-import { account, adminActivityLog, getDb, user } from "@abdimas/db";
+import { adminAccess, adminActivityLog, getDb, user } from "@abdimas/db";
 
+import { getAdminScope, getDisplayName, getManagedRtCodesFromAdmin, getRoleLabel, getRtCodeFromAdmin } from "../lib/admin-access.js";
 import { logAdminActivity } from "../lib/admin-logs.js";
 import { forbidden, notFound } from "../lib/errors.js";
 import { buildPageMeta, getOffset } from "../lib/pagination.js";
@@ -23,17 +24,26 @@ import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/v
 import { adminMiddleware } from "../middleware/auth.js";
 import { createAdminUserService, deactivateAdminUserService, resetAdminPasswordService } from "../services/admin-users.js";
 
-function randomPassword() {
-  return `Adm${Math.random().toString(36).slice(2, 8)}9!`;
-}
-
-function mapAdminUser(row: typeof user.$inferSelect) {
+function mapAdminUser(row: typeof user.$inferSelect, access?: typeof adminAccess.$inferSelect | null) {
+  const adminIdentity = {
+    ...row,
+    accessScope: access?.accessScope as "RW" | "RT" | undefined,
+    managedRtCodes: access?.managedRtCodes ?? undefined,
+  };
+  const managedRtCodes = getManagedRtCodesFromAdmin(adminIdentity);
+  const rtCode = getRtCodeFromAdmin(adminIdentity);
+  const adminScope = getAdminScope(adminIdentity);
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     username: row.username,
     role: row.role as "ADMIN" | "USER" | "SUPER_ADMIN",
+    roleLabel: getRoleLabel(adminIdentity),
+    adminScope,
+    rtCode,
+    managedRtCodes,
+    displayName: getDisplayName(adminIdentity),
     status: (row.status || "ACTIVE") as "ACTIVE" | "INACTIVE",
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
@@ -53,7 +63,7 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       adminUserListQuerySchema,
     );
 
-    const filters = [eq(user.role, "ADMIN")];
+    const filters = [or(eq(user.role, "ADMIN"), eq(user.role, "SUPER_ADMIN"))];
     if (query.status) filters.push(eq(user.status, query.status));
     if (query.q) {
       const searchFilter = or(
@@ -70,15 +80,16 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       .from(user)
       .where(where);
     const rows = await db
-      .select()
+      .select({ user, access: adminAccess })
       .from(user)
+      .leftJoin(adminAccess, eq(adminAccess.userId, user.id))
       .where(where)
       .orderBy(desc(user.createdAt))
       .limit(query.limit)
       .offset(getOffset(query.page, query.limit));
 
     const meta = buildPageMeta({ page: query.page, limit: query.limit, total: Number(total || 0) });
-    const payload = { success: true as const, data: rows.map(mapAdminUser), meta };
+    const payload = { success: true as const, data: rows.map((row) => mapAdminUser(row.user, row.access)), meta };
     adminUserListResponseSchema.parse(payload);
     return ok(c, payload.data, meta);
   })
@@ -91,12 +102,14 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       body,
     });
 
-    const payload = { success: true as const, data: mapAdminUser(createdUser) };
+    const [access] = await getDb().select().from(adminAccess).where(eq(adminAccess.userId, createdUser.id)).limit(1);
+    const payload = { success: true as const, data: mapAdminUser(createdUser, access) };
     adminUserResponseSchema.parse(payload);
     return created(c, payload.data);
   })
   .patch("/:id", async (c) => {
     const sessionUser = c.get("sessionUser");
+    if (sessionUser.role !== "SUPER_ADMIN") throw forbidden("Only SUPER_ADMIN can update admin users");
     const { id } = parseParams(c.req.param(), idParamSchema);
     const body = await parseJson(c.req.raw, updateAdminUserSchema);
     if (sessionUser.id === id && body.status === "INACTIVE") {
@@ -123,7 +136,8 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       metadata: body,
     });
 
-    const payload = { success: true as const, data: mapAdminUser(updated) };
+    const [access] = await getDb().select().from(adminAccess).where(eq(adminAccess.userId, updated.id)).limit(1);
+    const payload = { success: true as const, data: mapAdminUser(updated, access) };
     adminUserResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
@@ -146,7 +160,8 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       targetUserId: id,
     });
 
-    const payload = { success: true as const, data: mapAdminUser(updated) };
+    const [access] = await getDb().select().from(adminAccess).where(eq(adminAccess.userId, updated.id)).limit(1);
+    const payload = { success: true as const, data: mapAdminUser(updated, access) };
     adminUserResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
@@ -163,23 +178,42 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       .select({ total: sql<number>`count(*)::int` })
       .from(adminActivityLog);
     const rows = await db
-      .select()
+      .select({
+        id: adminActivityLog.id,
+        adminId: adminActivityLog.adminId,
+        action: adminActivityLog.action,
+        entityType: adminActivityLog.entityType,
+        entityId: adminActivityLog.entityId,
+        metadata: adminActivityLog.metadata,
+        createdAt: adminActivityLog.createdAt,
+        actorName: user.name,
+        actorEmail: user.email,
+        actorRole: user.role,
+        actorUsername: user.username,
+        actorDisplayUsername: user.displayUsername,
+      })
       .from(adminActivityLog)
+      .innerJoin(user, eq(user.id, adminActivityLog.adminId))
       .orderBy(desc(adminActivityLog.createdAt))
       .limit(query.limit)
       .offset(getOffset(query.page, query.limit));
     const meta = buildPageMeta({ page: query.page, limit: query.limit, total: Number(total || 0) });
-    return ok(
-      c,
-      rows.map((row) => ({
-        id: row.id,
-        adminId: row.adminId,
-        action: row.action,
-        entityType: row.entityType,
-        entityId: row.entityId ?? null,
-        metadata: row.metadata ?? {},
-        createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
-      })),
-      meta,
-    );
+    const data = rows.map((row) => ({
+      id: row.id,
+      adminId: row.adminId,
+      action: row.action,
+      entityType: row.entityType,
+      entityId: row.entityId ?? null,
+      metadata: row.metadata ?? {},
+      actorName: row.actorName,
+      actorEmail: row.actorEmail,
+      actorRoleLabel: getRoleLabel({
+        role: row.actorRole,
+        username: row.actorUsername,
+        displayUsername: row.actorDisplayUsername,
+      }),
+      createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
+    }));
+    adminActivityLogListResponseSchema.parse({ success: true as const, data, meta });
+    return ok(c, data, meta);
   });

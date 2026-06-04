@@ -1,10 +1,12 @@
 import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
 
 import {
   citizenListQuerySchema,
   citizenListResponseSchema,
   citizenResponseSchema,
+  citizenSchema,
   createCitizenSchema,
   idParamSchema,
   updateCitizenSchema,
@@ -17,9 +19,77 @@ import { created, ok } from "../lib/response.js";
 import { toIso } from "../lib/serialize.js";
 import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
 import { adminMiddleware } from "../middleware/auth.js";
-import { createCitizenService, deleteCitizenService, updateCitizenService } from "../services/citizens.js";
+import { createCitizenRegistrationService, createCitizenService, deleteCitizenService, updateCitizenService } from "../services/citizens.js";
 
 const citizenColumns = getTableColumns(citizen);
+const householdSummarySchema = z.object({
+  id: z.string(),
+  kkNumber: z.string(),
+  headCitizenId: z.string(),
+  address: z.string(),
+  rt: z.string(),
+  rw: z.string(),
+  status: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const citizenRegistrationMemberSchema = createCitizenSchema.extend({
+  relationship: z.string().trim().min(1).max(60),
+});
+
+const createCitizenRegistrationSchema = z
+  .object({
+    citizen: createCitizenSchema,
+    household: z
+      .object({
+        isHeadOfFamily: z.boolean().default(false),
+        kkNumber: z.string().regex(/^\d{16}$/, "KK number must be exactly 16 numeric digits").optional(),
+        relationship: z.string().trim().min(1).max(60).optional(),
+        members: z.array(citizenRegistrationMemberSchema).default([]),
+      })
+      .optional(),
+  })
+  .superRefine((value, ctx) => {
+    const householdPayload = value.household;
+    if (!householdPayload) return;
+
+    if (householdPayload.isHeadOfFamily && !householdPayload.kkNumber) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["household", "kkNumber"],
+        message: "KK number is required when creating a new household",
+      });
+    }
+
+    if (!householdPayload.isHeadOfFamily && householdPayload.members.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["household", "members"],
+        message: "Additional members can only be submitted for a new household",
+      });
+    }
+
+    if (!householdPayload.isHeadOfFamily && householdPayload.kkNumber && !householdPayload.relationship) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["household", "relationship"],
+        message: "Relationship is required when KK number is provided",
+      });
+    }
+  });
+
+const citizenRegistrationResponseSchema = z.object({
+  citizen: citizenSchema,
+  household: householdSummarySchema.nullable(),
+  members: z.array(
+    z.object({
+      id: z.string(),
+      citizenId: z.string(),
+      relationship: z.string(),
+    }),
+  ),
+});
 
 function mapCitizen(
   row: typeof citizen.$inferSelect & {
@@ -104,6 +174,42 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
 
     const payload = { success: true as const, data: mapCitizen(inserted) };
     citizenResponseSchema.parse(payload);
+    return created(c, payload.data);
+  })
+  .post("/registration", async (c) => {
+    const body = await parseJson(c.req.raw, createCitizenRegistrationSchema);
+    const inserted = await createCitizenRegistrationService({
+      adminId: c.get("sessionUser").id,
+      citizen: body.citizen,
+      household: body.household,
+    });
+
+    const payload = {
+      success: true as const,
+      data: {
+        citizen: mapCitizen(inserted.citizen),
+        household: inserted.household
+          ? {
+              id: inserted.household.id,
+              kkNumber: inserted.household.kkNumber,
+              headCitizenId: inserted.household.headCitizenId,
+              address: inserted.household.address,
+              rt: inserted.household.rt,
+              rw: inserted.household.rw,
+              status: inserted.household.status,
+              createdAt: toIso(inserted.household.createdAt) ?? new Date().toISOString(),
+              updatedAt: toIso(inserted.household.updatedAt) ?? new Date().toISOString(),
+            }
+          : null,
+        members: inserted.members.map((member) => ({
+          id: member.membershipId,
+          citizenId: member.citizen.id,
+          relationship: member.relationship,
+        })),
+      },
+    };
+
+    citizenRegistrationResponseSchema.parse(payload.data);
     return created(c, payload.data);
   })
   .get("/:id", async (c) => {

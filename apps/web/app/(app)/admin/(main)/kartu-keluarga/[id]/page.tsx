@@ -26,7 +26,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { platformFetch } from '@/lib/api/platform';
+import AdminAsyncState from '@/components/admin/AdminAsyncState';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 import { useActionToast } from '@/lib/use-action-toast';
 
 type Citizen = {
@@ -86,6 +87,7 @@ export default function DetailKartuKeluargaPage() {
   const [detail, setDetail] = useState<HouseholdDetail | null>(null);
   const [auditLogs, setAuditLogs] = useState<HouseholdAuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<HouseholdMember | null>(null);
   const [memberToEdit, setMemberToEdit] = useState<HouseholdMember | null>(null);
   const [editForm, setEditForm] = useState({ relationship: '', birthDate: '', occupation: '' });
@@ -103,11 +105,13 @@ export default function DetailKartuKeluargaPage() {
         if (!active) return;
         setDetail(householdResponse.data);
         setAuditLogs(logsResponse.data);
+        setLoadError(null);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setDetail(null);
         setAuditLogs([]);
+        setLoadError(getPlatformErrorMessage(error, 'Gagal memuat detail kartu keluarga.'));
       } finally {
         if (active) setLoading(false);
       }
@@ -208,8 +212,27 @@ export default function DetailKartuKeluargaPage() {
 
   const members = detail?.members ?? [];
 
+  if (loading && !detail && !loadError) {
+    return (
+      <AdminAsyncState
+        mode="loading"
+        page="Detail Kartu Keluarga"
+        action="memuat detail kartu keluarga"
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      {loadError ? (
+        <AdminAsyncState
+          mode="error"
+          page="Detail Kartu Keluarga"
+          action="memuat detail kartu keluarga"
+          description={loadError}
+          onRetry={() => router.refresh()}
+        />
+      ) : null}
       <div className="mb-2 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex flex-col">
           <p className="text-sm font-medium text-[#64748B]">Detail Kartu Keluarga</p>
@@ -234,6 +257,7 @@ export default function DetailKartuKeluargaPage() {
         </div>
       </div>
 
+      {!loadError ? (
       <div className="overflow-hidden rounded-t-xl rounded-b-2xl border border-gray-100 shadow-sm">
         <table className="w-full text-sm">
           <thead>
@@ -255,7 +279,9 @@ export default function DetailKartuKeluargaPage() {
           </tbody>
         </table>
       </div>
+      ) : null}
 
+      {!loadError ? (
       <div>
         <div className="mb-4 flex items-center gap-3">
           <h2 className="text-2xl font-bold text-[#4B5563]">Daftar Anggota Keluarga</h2>
@@ -329,7 +355,9 @@ export default function DetailKartuKeluargaPage() {
           </table>
         </div>
       </div>
+      ) : null}
 
+      {!loadError ? (
       <div>
         <h2 className="mb-4 text-2xl font-bold text-[#4B5563]">Riwayat Perubahan Data</h2>
         <div className="flex flex-col gap-4">
@@ -361,6 +389,7 @@ export default function DetailKartuKeluargaPage() {
           )}
         </div>
       </div>
+      ) : null}
 
       <AlertDialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}>
         <AlertDialogContent className="max-w-sm rounded-3xl p-6 text-center">

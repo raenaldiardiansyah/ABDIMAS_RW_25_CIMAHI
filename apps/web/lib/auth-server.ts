@@ -41,7 +41,12 @@ export async function getSessionOrNull(): Promise<SessionResponse | null> {
       name: session.user.name,
       email: session.user.email,
       username: session.user.username ?? undefined,
-      role: session.user.role === "ADMIN" ? "ADMIN" : "USER",
+      role:
+        session.user.role === "SUPER_ADMIN"
+          ? "SUPER_ADMIN"
+          : session.user.role === "ADMIN"
+            ? "ADMIN"
+            : "USER",
     },
   };
 }
@@ -70,6 +75,6 @@ export async function requireSession() {
 
 export async function requireAdmin() {
   const session = await requireSession();
-  if (session.user.role !== "ADMIN") redirect("/warga");
+  if (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") redirect("/warga");
   return session;
 }

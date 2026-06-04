@@ -4,6 +4,7 @@ import { verificationStatusSchema } from "./auth";
 
 export const adminVerificationItemSchema = z.object({
   userId: z.string(),
+  fullName: z.string(),
   username: z.string(),
   email: z.string().email(),
   createdAt: z.string(),

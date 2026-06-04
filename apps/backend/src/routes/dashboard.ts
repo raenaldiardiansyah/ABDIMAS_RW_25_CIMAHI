@@ -10,9 +10,11 @@ import {
   household,
   mutation,
   serviceRequest,
+  user,
   userIdentity,
 } from "@abdimas/db";
 
+import { getRoleLabel } from "../lib/admin-access.js";
 import { ok } from "../lib/response.js";
 import { adminMiddleware } from "../middleware/auth.js";
 
@@ -65,7 +67,22 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
         .select({ deltaMutasi: sql<number>`count(*)::int` })
         .from(mutation)
         .where(sql`${mutation.createdAt} >= now() - interval '7 days'`),
-      db.select().from(adminActivityLog).orderBy(sql`${adminActivityLog.createdAt} desc`).limit(50),
+      db
+        .select({
+          id: adminActivityLog.id,
+          action: adminActivityLog.action,
+          entityType: adminActivityLog.entityType,
+          entityId: adminActivityLog.entityId,
+          createdAt: adminActivityLog.createdAt,
+          actorName: user.name,
+          actorRole: user.role,
+          actorUsername: user.username,
+          actorDisplayUsername: user.displayUsername,
+        })
+        .from(adminActivityLog)
+        .innerJoin(user, eq(user.id, adminActivityLog.adminId))
+        .orderBy(sql`${adminActivityLog.createdAt} desc`)
+        .limit(50),
       db.select().from(aspiration).orderBy(sql`${aspiration.createdAt} desc`).limit(20),
     ]);
 
@@ -77,7 +94,11 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
       ...latestLogRows.map((row) => ({
         id: row.id,
         title: row.action,
-        subtitle: `${row.entityType}${row.entityId ? ` • ${row.entityId}` : ""}`,
+        subtitle: `${row.actorName} [${getRoleLabel({
+          role: row.actorRole,
+          username: row.actorUsername,
+          displayUsername: row.actorDisplayUsername,
+        })}]${row.entityId ? ` - ${row.entityId}` : ""}`,
         time: row.createdAt.toISOString(),
         action: row.action,
         entityType: row.entityType,
@@ -85,7 +106,7 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
       ...latestAspirationRows.map((row) => ({
         id: `aspiration-${row.id}`,
         title: row.title,
-        subtitle: `Aduan warga${row.category ? ` • ${row.category}` : ""}`,
+        subtitle: `Aduan warga${row.category ? ` - ${row.category}` : ""}`,
         time: row.createdAt.toISOString(),
         action: "Aduan warga masuk",
         entityType: "ASPIRATION",

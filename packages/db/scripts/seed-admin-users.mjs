@@ -19,18 +19,9 @@ const adminUsers = [
     name: "Admin RW 25",
     email: "admin@rw25.test",
     username: "adminrw25",
-    displayUsername: "adminrw25",
+    displayUsername: "admin-rw",
     password: "Admin12345!",
-    role: "ADMIN",
-    status: "ACTIVE",
-  },
-  {
-    name: "Admin RT 01",
-    email: "rt01@rw25.test",
-    username: "adminrt01",
-    displayUsername: "adminrt01",
-    password: "Admin12345!",
-    role: "ADMIN",
+    role: "SUPER_ADMIN",
     status: "ACTIVE",
   },
 ];
@@ -203,6 +194,19 @@ async function upsertAdmin(client, admin) {
       [randomUUID(), userId, userId, hashedPassword],
     );
   }
+
+  await client.query(
+    `
+      insert into admin_access (id, user_id, access_scope, managed_rt_codes)
+      values ($1, $2, $3, $4::text[])
+      on conflict (user_id) do update
+      set
+        access_scope = excluded.access_scope,
+        managed_rt_codes = excluded.managed_rt_codes,
+        updated_at = now()
+    `,
+    [randomUUID(), userId, admin.role === "SUPER_ADMIN" ? "RW" : "RT", []],
+  );
 
   return { status, userId };
 }

@@ -1,4 +1,5 @@
 export * from "./auth";
+export * from "./admin-access";
 export * from "./identity";
 export * from "./citizens";
 export * from "./households";
