@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { platformFetch } from '@/lib/api/platform';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { useActionToast } from '@/lib/use-action-toast';
 
 const PAGE_SIZE = 20;
@@ -70,6 +71,15 @@ export default function PermohonanPage() {
       active = false;
     };
   }, [currentPage]);
+
+  useAutoRefresh(async () => {
+    const response = await platformFetch<RequestItem[]>(`/admin/requests?page=${currentPage}&limit=${PAGE_SIZE}&status=PENDING`);
+    setRequests(response.data);
+    setTotalItems(response.meta?.total ?? response.data.length);
+    setTotalPages(response.meta?.totalPages ?? 1);
+  }, {
+    intervalMs: 8000,
+  });
 
   const permohonan = requests.filter((item) => item.type === 'HOUSEHOLD_CREATE');
   const permohonanMutasi = requests.filter((item) => item.type !== 'HOUSEHOLD_CREATE');

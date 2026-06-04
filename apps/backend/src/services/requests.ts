@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { getDb, mutation, serviceRequest } from "@abdimas/db";
+import { getDb, historyEntry, mutation, serviceRequest } from "@abdimas/db";
 
 import { createAuditLogService } from "../lib/admin-logs.js";
 import { conflict, notFound, validationError } from "../lib/errors.js";
@@ -31,6 +31,39 @@ function resolveHeadCitizenFromLegacyRequest(payload: Record<string, unknown>) {
           ? fallbackHead.nama
           : undefined,
   };
+}
+
+function requestTitle(type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT") {
+  if (type === "HOUSEHOLD_CREATE") return "Permohonan Kartu Keluarga";
+  if (type === "MUTATION_IN") return "Permohonan Mutasi Masuk";
+  return "Permohonan Mutasi Keluar";
+}
+
+async function createRequestHistoryStatusEntry(input: {
+  userId: string;
+  requestId: string;
+  type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT";
+  status: "APPROVED" | "REJECTED";
+  rejectionReason?: string | null;
+}) {
+  const title = requestTitle(input.type);
+  const description =
+    input.status === "APPROVED"
+      ? `${title} telah disetujui admin.`
+      : `${title} ditolak admin.${input.rejectionReason ? ` Alasan: ${input.rejectionReason}` : ""}`;
+
+  await getDb().insert(historyEntry).values({
+    userId: input.userId,
+    type: "REQUEST",
+    title,
+    description,
+    metadata: {
+      requestId: input.requestId,
+      requestType: input.type,
+      status: input.status,
+      rejectionReason: input.rejectionReason ?? null,
+    },
+  });
 }
 
 export async function approveRequestService(input: { adminId: string; requestId: string }) {
@@ -113,6 +146,13 @@ export async function approveRequestService(input: { adminId: string; requestId:
     metadata: { requestType: updated.type },
   });
 
+  await createRequestHistoryStatusEntry({
+    userId: updated.requestedBy,
+    requestId: updated.id,
+    type: updated.type,
+    status: "APPROVED",
+  });
+
   return updated;
 }
 
@@ -142,6 +182,14 @@ export async function rejectRequestService(input: { adminId: string; requestId: 
     entityType: "REQUEST",
     entityId: updated.id,
     metadata: { requestType: updated.type, reason },
+  });
+
+  await createRequestHistoryStatusEntry({
+    userId: updated.requestedBy,
+    requestId: updated.id,
+    type: updated.type,
+    status: "REJECTED",
+    rejectionReason: updated.rejectionReason,
   });
 
   return updated;

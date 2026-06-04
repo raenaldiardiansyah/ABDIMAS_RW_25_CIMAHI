@@ -69,7 +69,7 @@ export default function FormFileUpload({
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           className="
-            flex flex-col items-center justify-center gap-2 p-6 rounded-xl cursor-pointer
+            flex flex-col items-center justify-center gap-2 overflow-hidden p-6 rounded-2xl cursor-pointer
             border-2 border-dashed border-border
             bg-muted/40
             hover:border-primary
@@ -88,7 +88,7 @@ export default function FormFileUpload({
           </div>
         </Card>
       ) : (
-        <Card className="flex items-center gap-3 rounded-xl border-border bg-muted/40 p-3">
+        <Card className="flex items-center gap-3 overflow-hidden rounded-2xl border-border bg-muted/40 p-3">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10">
             {isImage && previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

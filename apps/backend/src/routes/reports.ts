@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import * as XLSX from "xlsx";
 
-import { citizen, getDb, household, mutation, serviceRequest } from "@abdimas/db";
+import { aspiration, citizen, getDb, household, mutation, serviceRequest } from "@abdimas/db";
 import {
   citizenListQuerySchema,
   citizenListResponseSchema,
@@ -74,6 +74,11 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
           pendingVerifications: 0,
           pendingRequests: summary.stats.pendingRequests,
           pendingMutations: 0,
+          pendingAspirations: await getDb()
+            .select({ total: sql<number>`count(*)::int` })
+            .from(aspiration)
+            .where(eq(aspiration.status, "SUBMITTED"))
+            .then((rows) => Number(rows[0]?.total || 0)),
         },
       },
     };

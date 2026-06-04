@@ -28,8 +28,11 @@ export default function BottomNavBar() {
           const Icon = item.icon;
 
           const isActive =
-            pathname === item.href ||
-            (item.href !== '/warga' && pathname.startsWith(item.href));
+            item.href === '/warga'
+              ? pathname === '/warga' ||
+                pathname.startsWith('/warga/aspirasi') ||
+                pathname.startsWith('/warga/layanan')
+              : pathname === item.href || pathname.startsWith(item.href);
 
           return (
             <Button

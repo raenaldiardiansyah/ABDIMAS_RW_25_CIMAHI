@@ -49,7 +49,7 @@ export default function FormCheckbox({ label, options, selected, onChange, error
               <label
                 key={opt.value}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-colors duration-200 text-left cursor-pointer",
+                  "flex items-center gap-3 overflow-hidden px-4 py-3 rounded-2xl border text-sm transition-colors duration-200 text-left cursor-pointer",
                   isSelected
                     ? "bg-primary border-primary/30 text-primary-foreground"
                     : "bg-muted/40 border-border text-foreground hover:bg-muted/55",
@@ -78,7 +78,7 @@ export default function FormCheckbox({ label, options, selected, onChange, error
                 onClick={() => toggle(opt.value)}
                 variant="outline"
                 className={cn(
-                  "h-auto flex items-center justify-start gap-3 px-4 py-3 rounded-xl border text-sm transition-colors duration-200 text-left",
+                  "h-auto flex items-center justify-start gap-3 overflow-hidden px-4 py-3 rounded-2xl border text-sm transition-colors duration-200 text-left",
                   isSelected
                     ? "bg-primary border-primary/30 text-primary-foreground hover:bg-primary"
                     : "bg-muted/40 border-border text-foreground hover:bg-muted/55",

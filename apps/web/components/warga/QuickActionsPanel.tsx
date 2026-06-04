@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import {
-  Bell,
   CalendarDays,
   ClipboardList,
   FileText,
+  MessageSquareText,
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
@@ -47,17 +47,17 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     icon: ClipboardList,
   },
   {
-    key: 'pengumuman',
-    label: 'Pengumuman',
-    desc: 'Info terbaru RW',
-    soon: true,
-    icon: Bell,
+    key: 'aspirasi',
+    label: 'Aspirasi',
+    desc: 'Status & tanggapan',
+    href: '/warga/aspirasi',
+    icon: MessageSquareText,
   },
   {
     key: 'layanan',
     label: 'Layanan RT',
     desc: 'Surat & administrasi',
-    soon: true,
+    href: '/warga/layanan',
     icon: FileText,
   },
 ];
@@ -83,7 +83,7 @@ const QUICK_ACTION_TONE_MAP: Record<
     chip: 'bg-primary/10 text-primary',
     glow: 'bg-primary/10',
   },
-  pengumuman: {
+  aspirasi: {
     iconWrap: 'bg-[color:var(--accent-violet)]/10',
     icon: 'text-[color:var(--accent-violet)]',
     chip: 'bg-[color:var(--accent-violet)]/10 text-[color:var(--accent-violet)]',

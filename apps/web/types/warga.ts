@@ -45,6 +45,9 @@ export interface PemiluResult {
 
 /** Jenis laporan aspirasi */
 export type JenisAspirasi = 'masukan' | 'keluhan';
+export type StatusAspirasi = 'SUBMITTED' | 'REVIEWED' | 'RESOLVED';
+export type JenisPermohonan = 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
+export type StatusPermohonan = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /** Hasil pengiriman aspirasi */
 export interface AspirasiResult {
@@ -53,10 +56,23 @@ export interface AspirasiResult {
   tanggal: string;
   uraian: string;
   lampiran?: string;
+  status?: StatusAspirasi;
+  tanggapanAdmin?: string | null;
+  ditanggapiOleh?: string | null;
+  tanggalTanggapan?: string | null;
+}
+
+export interface PermohonanResult {
+  jenis: JenisPermohonan;
+  tanggal: string;
+  status: StatusPermohonan;
+  ringkasan: string;
+  requestId: string;
+  alasanPenolakan?: string | null;
 }
 
 /** Tipe riwayat */
-export type TipeRiwayat = 'bansos' | 'pemilu' | 'laporan';
+export type TipeRiwayat = 'bansos' | 'pemilu' | 'aspirasi' | 'permohonan';
 
 /** Item riwayat generik */
 export interface HistoryItem {
@@ -67,7 +83,7 @@ export interface HistoryItem {
   statusColor: 'green' | 'amber' | 'red';
   judul: string;
   deskripsi: string;
-  detail: BansosResult | PemiluResult | AspirasiResult;
+  detail: BansosResult | PemiluResult | AspirasiResult | PermohonanResult;
 }
 
 /** Event jadwal RW */

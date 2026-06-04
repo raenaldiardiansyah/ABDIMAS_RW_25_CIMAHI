@@ -14,6 +14,7 @@ export const dashboardSummarySchema = z.object({
   }),
   latestActivities: z.array(
     z.object({
+      id: z.string(),
       title: z.string(),
       subtitle: z.string(),
       time: z.string(),
@@ -25,6 +26,7 @@ export const dashboardSummarySchema = z.object({
     pendingVerifications: z.number().int().min(0),
     pendingRequests: z.number().int().min(0),
     pendingMutations: z.number().int().min(0),
+    pendingAspirations: z.number().int().min(0),
   }),
 });
 

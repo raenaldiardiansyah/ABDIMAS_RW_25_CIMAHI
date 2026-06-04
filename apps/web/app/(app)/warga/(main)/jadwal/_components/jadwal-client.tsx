@@ -5,6 +5,7 @@ import { CalendarDays, Search } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { platformFetch } from '@/lib/api/platform';
+import { formatActivityTimeRange } from '@/lib/activity-time';
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,10 +138,7 @@ export default function JadwalClient() {
             id: item.id,
             tanggal: item.date,
             judul: item.title,
-            waktu:
-              item.startTime && item.endTime
-                ? `${item.startTime} - ${item.endTime}`
-                : item.startTime || item.endTime || '-',
+            waktu: formatActivityTimeRange(item.startTime, item.endTime),
             lokasi: item.location,
             kategori: item.category,
             deskripsi: item.description,

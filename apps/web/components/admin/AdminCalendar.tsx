@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 
+import { formatActivityTimeRange } from '@/lib/activity-time';
 import { cn } from '@/lib/utils';
 import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 
@@ -13,6 +14,7 @@ type ScheduleItem = {
   title: string;
   date: string;
   startTime: string | null;
+  endTime?: string | null;
   location: string;
 };
 
@@ -25,7 +27,7 @@ function toIsoDateLocal(date: Date) {
 }
 
 export default function AdminCalendar() {
-  const today = new Date();
+  const [today] = useState(() => new Date());
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
   const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const [events, setEvents] = useState<ScheduleItem[]>([]);
@@ -53,7 +55,7 @@ export default function AdminCalendar() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [today]);
 
   const monthName = new Intl.DateTimeFormat('id-ID', {
     month: 'long',
@@ -67,7 +69,6 @@ export default function AdminCalendar() {
   const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
   const cells: Array<{ iso: string; day: number; isCurrentMonth: boolean }> = [];
 
-  // Previous month
   for (let i = 0; i < firstDay; i++) {
     const day = prevMonthEnd - firstDay + i + 1;
     cells.push({
@@ -77,7 +78,6 @@ export default function AdminCalendar() {
     });
   }
 
-  // Current month
   for (let day = 1; day <= totalDays; day++) {
     cells.push({
       iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth(), day)),
@@ -86,7 +86,6 @@ export default function AdminCalendar() {
     });
   }
 
-  // Next month (fill up to the end of the week)
   const remaining = (7 - (cells.length % 7)) % 7;
   for (let i = 1; i <= remaining; i++) {
     cells.push({
@@ -108,7 +107,6 @@ export default function AdminCalendar() {
 
   return (
     <div className="sticky top-6 flex h-full flex-col overflow-hidden rounded-[24px] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] shadow-lg">
-      {/* Header — Blue gradient */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--admin-gradient-from)] to-[color:var(--admin-gradient-to)] px-6 py-5 text-center text-primary-foreground">
         <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/[0.08]" />
         <CalendarDays className="mx-auto mb-2 h-7 w-7 opacity-90" />
@@ -116,16 +114,15 @@ export default function AdminCalendar() {
         <p className="mt-0.5 text-xs font-medium opacity-75">Kegiatan RW 025</p>
       </div>
 
-      {/* Calendar grid */}
       <div className="px-4 pt-4">
         <div className="rounded-2xl bg-[color:var(--admin-surface-muted)] p-3">
           <div className="grid grid-cols-7 gap-1">
             {HARI.map((hari) => (
-              <div 
-                key={hari} 
+              <div
+                key={hari}
                 className={cn(
-                  "py-1 text-center text-[11px] font-bold",
-                  hari === 'Min' ? "text-red-500" : "text-[color:var(--admin-muted)]"
+                  'py-1 text-center text-[11px] font-bold',
+                  hari === 'Min' ? 'text-red-500' : 'text-[color:var(--admin-muted)]',
                 )}
               >
                 {hari}
@@ -148,14 +145,14 @@ export default function AdminCalendar() {
                       ? 'border border-[#3B82F6] bg-[#EFF6FF] text-[#3B82F6] shadow-sm'
                       : 'hover:bg-[color:var(--admin-surface-soft)]',
                     !isToday && !cell.isCurrentMonth && 'text-[color:var(--admin-muted)] opacity-50',
-                    !isToday && cell.isCurrentMonth && 'text-[color:var(--admin-body)]'
+                    !isToday && cell.isCurrentMonth && 'text-[color:var(--admin-body)]',
                   )}
                 >
                   <span
                     className={cn(
                       'text-[12px] font-semibold',
                       !isToday && hasEvents && 'text-primary',
-                      !isToday && isSunday && 'text-red-500'
+                      !isToday && isSunday && 'text-red-500',
                     )}
                   >
                     {cell.day}
@@ -170,7 +167,6 @@ export default function AdminCalendar() {
         </div>
       </div>
 
-      {/* Agenda Section */}
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
         <h4 className="mb-3 text-sm font-bold text-[color:var(--admin-body)]">Agenda Hari Ini</h4>
         {errorMessage ? (
@@ -191,7 +187,7 @@ export default function AdminCalendar() {
                 <div className="min-w-0">
                   <p className="text-[13px] font-bold text-[color:var(--admin-heading)]">{ev.title}</p>
                   <p className="mt-0.5 text-[11px] font-medium text-[color:var(--admin-muted)]">
-                    {ev.startTime ?? '-'} • {ev.location}
+                    {formatActivityTimeRange(ev.startTime, ev.endTime ?? null)} • {ev.location}
                   </p>
                 </div>
               </div>
@@ -199,9 +195,7 @@ export default function AdminCalendar() {
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[color:var(--admin-border)] px-4 py-4 text-center">
-            <p className="text-xs font-medium text-[color:var(--admin-muted)]">
-              Tidak ada kegiatan terjadwal hari ini.
-            </p>
+            <p className="text-xs font-medium text-[color:var(--admin-muted)]">Tidak ada kegiatan terjadwal hari ini.</p>
           </div>
         )}
       </div>

@@ -5,6 +5,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserPlus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 
 import { platformFetch } from '@/lib/api/platform';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -50,6 +60,7 @@ export default function DataPendudukPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [citizenToDelete, setCitizenToDelete] = useState<CitizenRow | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -109,13 +120,13 @@ export default function DataPendudukPage() {
     };
   }, [currentPage, debouncedQuery, statusFilter]);
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus data warga ${name}?`)) return;
-    
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!citizenToDelete) return;
+
+    setDeletingId(citizenToDelete.id);
     try {
       await runWithToast(
-        () => platformFetch(`/admin/citizens/${id}`, { method: 'DELETE' }),
+        () => platformFetch(`/admin/citizens/${citizenToDelete.id}`, { method: 'DELETE' }),
         {
           loading: 'Menghapus data warga...',
           success: 'Data warga dihapus',
@@ -123,6 +134,7 @@ export default function DataPendudukPage() {
         },
       );
       await fetchCitizens(currentPage, debouncedQuery, statusFilter);
+      setCitizenToDelete(null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -260,7 +272,7 @@ export default function DataPendudukPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => void handleDelete(row.id, row.nama)}
+                        onClick={() => setCitizenToDelete(row)}
                         disabled={deletingId === row.id}
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-red-600 transition hover:bg-red-200 disabled:opacity-50 hover:text-red-700"
                         title="Hapus Warga"
@@ -297,6 +309,31 @@ export default function DataPendudukPage() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={!!citizenToDelete} onOpenChange={(open) => !open && setCitizenToDelete(null)}>
+        <AlertDialogContent className="max-w-sm rounded-3xl p-6 text-center">
+          <AlertDialogHeader className="items-center text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-8 w-8 text-red-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-[#1E293B]">Hapus Data Warga?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-[#64748B]">
+              Apakah Anda yakin ingin menghapus <b>{citizenToDelete?.nama}</b> dari Data Penduduk?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex w-full flex-col gap-3 sm:flex-col sm:justify-center sm:space-x-0">
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              className="w-full rounded-xl bg-red-600 py-6 text-base font-bold text-white hover:bg-red-700"
+            >
+              Ya, Hapus
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full rounded-xl border-gray-200 py-6 text-base font-bold text-[#64748B] hover:bg-gray-100">
+              Batal
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

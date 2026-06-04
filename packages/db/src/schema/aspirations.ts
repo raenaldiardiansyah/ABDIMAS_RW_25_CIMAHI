@@ -21,6 +21,9 @@ export const aspiration = pgTable(
     message: text("message").notNull(),
     category: text("category"),
     status: aspirationStatusEnum("status").notNull().default("SUBMITTED"),
+    adminReplyMessage: text("admin_reply_message"),
+    repliedBy: text("replied_by").references(() => user.id, { onDelete: "set null" }),
+    repliedAt: timestamp("replied_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -30,9 +33,11 @@ export const aspiration = pgTable(
   (t) => ({
     userIdx: index("aspirations_user_id_idx").on(t.userId),
     statusIdx: index("aspirations_status_idx").on(t.status),
+    repliedByIdx: index("aspirations_replied_by_idx").on(t.repliedBy),
   }),
 );
 
 export const aspirationRelations = relations(aspiration, ({ one }) => ({
   user: one(user, { fields: [aspiration.userId], references: [user.id] }),
+  replier: one(user, { fields: [aspiration.repliedBy], references: [user.id] }),
 }));

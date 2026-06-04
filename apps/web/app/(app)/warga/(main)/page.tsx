@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/components/ui/use-toast';
 
 import { useTheme } from '@/app/(app)/warga/_components/theme-context';
 import { useIdentity } from '@/app/(app)/warga/_components/identity-context';
@@ -85,6 +86,7 @@ const BANSOS_PROGRAMS = [
 export default function WargaHomePage() {
   const { isDark, toggleDark } = useTheme();
   const identity = useIdentity();
+  const { toast } = useToast();
 
   const isRestricted = identity.verificationStatus !== 'VERIFIED';
 
@@ -104,7 +106,9 @@ export default function WargaHomePage() {
   const [aspirasiJenis, setAspirasiJenis] = useState<string[]>([]);
   const [aspirasiUraian, setAspirasiUraian] = useState('');
   const [aspirasiFile, setAspirasiFile] = useState<File | null>(null);
+  const [submittedAspirasiJenis, setSubmittedAspirasiJenis] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState<null | 'bansos' | 'pemilu' | 'aspirasi'>(null);
+  const [aspirationRefreshKey, setAspirationRefreshKey] = useState(0);
 
   const handleBansosSubmit = async () => {
     setSubmitting('bansos');
@@ -141,15 +145,31 @@ export default function WargaHomePage() {
         variant: data.eligible ? 'success' : 'error',
         judul: data.eligible ? 'Anda Layak Menerima Bansos' : 'Tidak Memenuhi Kriteria',
       });
+      toast({
+        title: data.eligible ? 'Cek bansos berhasil' : 'Cek bansos selesai',
+        description: data.message,
+        variant: data.eligible ? 'success' : 'destructive',
+      });
     } catch (error) {
       if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
-        setBlockedMessage(
+        const message =
           error.verificationStatus === 'REJECTED' && error.rejectionReason
             ? `Verifikasi ditolak: ${error.rejectionReason}`
-            : 'Fitur ini menunggu verifikasi admin RW/RT.',
-        );
+            : 'Fitur ini menunggu verifikasi admin RW/RT.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Akses ditolak',
+          description: message,
+          variant: 'destructive',
+        });
       } else {
-        setBlockedMessage(error instanceof Error ? error.message : 'Gagal memeriksa status bansos.');
+        const message = error instanceof Error ? error.message : 'Gagal memeriksa status bansos.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Gagal memeriksa bansos',
+          description: message,
+          variant: 'destructive',
+        });
       }
     } finally {
       setSubmitting(null);
@@ -189,15 +209,31 @@ export default function WargaHomePage() {
         variant: data.registered ? 'success' : 'error',
         judul: data.registered ? 'Terdaftar Sebagai Pemilih' : 'Belum Terdaftar di DPT',
       });
+      toast({
+        title: data.registered ? 'Cek pemilu berhasil' : 'Cek pemilu selesai',
+        description: data.message,
+        variant: data.registered ? 'success' : 'destructive',
+      });
     } catch (error) {
       if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
-        setBlockedMessage(
+        const message =
           error.verificationStatus === 'REJECTED' && error.rejectionReason
             ? `Verifikasi ditolak: ${error.rejectionReason}`
-            : 'Fitur ini menunggu verifikasi admin RW/RT.',
-        );
+            : 'Fitur ini menunggu verifikasi admin RW/RT.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Akses ditolak',
+          description: message,
+          variant: 'destructive',
+        });
       } else {
-        setBlockedMessage(error instanceof Error ? error.message : 'Gagal memeriksa status pemilu.');
+        const message = error instanceof Error ? error.message : 'Gagal memeriksa status pemilu.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Gagal memeriksa pemilu',
+          description: message,
+          variant: 'destructive',
+        });
       }
     } finally {
       setSubmitting(null);
@@ -218,19 +254,40 @@ export default function WargaHomePage() {
       });
 
       setActiveSheet(null);
+      setAspirationRefreshKey((value) => value + 1);
       setPopup({
         variant: 'success',
         judul: 'Laporan Berhasil Dikirim',
       });
+      toast({
+        title: 'Laporan berhasil dikirim',
+        description: 'Aduan Anda sudah masuk dan menunggu tanggapan admin.',
+        variant: 'success',
+      });
+      setSubmittedAspirasiJenis(aspirasiJenis);
+      setAspirasiJenis([]);
+      setAspirasiUraian('');
+      setAspirasiFile(null);
     } catch (error) {
       if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
-        setBlockedMessage(
+        const message =
           error.verificationStatus === 'REJECTED' && error.rejectionReason
             ? `Verifikasi ditolak: ${error.rejectionReason}`
-            : 'Fitur ini menunggu verifikasi admin RW/RT.',
-        );
+            : 'Fitur ini menunggu verifikasi admin RW/RT.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Akses ditolak',
+          description: message,
+          variant: 'destructive',
+        });
       } else {
-        setBlockedMessage(error instanceof Error ? error.message : 'Gagal mengirim aspirasi.');
+        const message = error instanceof Error ? error.message : 'Gagal mengirim aspirasi.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Gagal mengirim laporan',
+          description: message,
+          variant: 'destructive',
+        });
       }
     } finally {
       setSubmitting(null);
@@ -397,7 +454,7 @@ export default function WargaHomePage() {
           </>
         )}
 
-        <CommentCarousel />
+        <CommentCarousel refreshKey={aspirationRefreshKey} />
       </WargaPageBody>
 
       <SlideUpSheet
@@ -710,7 +767,7 @@ export default function WargaHomePage() {
             <div className="flex flex-col gap-0.5 text-sm">
               <InfoRow
                 label="Jenis Laporan"
-                value={aspirasiJenis.join(', ') || '-'}
+                value={submittedAspirasiJenis.join(', ') || '-'}
               />
               <InfoRow label="Pelapor" value={identity.userName} />
               <InfoRow

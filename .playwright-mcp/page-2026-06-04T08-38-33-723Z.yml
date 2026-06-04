@@ -1,0 +1,16 @@
+- main [ref=e2]:
+  - generic [ref=e4]:
+    - img [ref=e6]
+    - heading "Layanan Digital RW 25 Cimahi" [level=1] [ref=e8]:
+      - text: Layanan Digital
+      - text: RW 25 Cimahi
+    - paragraph [ref=e9]: Akses layanan warga, pengajuan, dan informasi kegiatan. Masuk jika sudah punya akun, atau daftar untuk verifikasi identitas.
+    - generic [ref=e24]:
+      - button "Masuk" [ref=e25]:
+        - link "Masuk" [ref=e26] [cursor=pointer]:
+          - /url: /sign-in
+          - text: Masuk
+          - img [ref=e27]
+      - link "Daftar Akun Warga" [ref=e29] [cursor=pointer]:
+        - /url: /register
+    - paragraph [ref=e30]: Warga terdaftar dapat langsung masuk. Akun baru tetap melalui verifikasi identitas.

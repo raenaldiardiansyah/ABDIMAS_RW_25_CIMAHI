@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Save, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, Save, CheckCircle2, Search, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,23 @@ type HouseholdDetail = {
   headCitizen?: { name: string };
 };
 
+type CitizenOption = {
+  id: string;
+  nik: string;
+  name: string;
+  gender: string;
+  birthDate: string;
+  birthPlace: string;
+  religion: string;
+  maritalStatus: string;
+  occupation: string;
+  education: string;
+  address: string;
+  rt: string;
+  rw: string;
+  noKK?: string | null;
+};
+
 export default function TambahAnggotaKeluargaPage() {
   const router = useRouter();
   const { runWithToast, toast } = useActionToast();
@@ -50,6 +68,11 @@ export default function TambahAnggotaKeluargaPage() {
   };
 
   const [form, setForm] = useState(INITIAL_FORM);
+  const [selectedCitizen, setSelectedCitizen] = useState<CitizenOption | null>(null);
+  const [citizenQuery, setCitizenQuery] = useState('');
+  const [debouncedCitizenQuery, setDebouncedCitizenQuery] = useState('');
+  const [citizenOptions, setCitizenOptions] = useState<CitizenOption[]>([]);
+  const [loadingCitizens, setLoadingCitizens] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,8 +88,13 @@ export default function TambahAnggotaKeluargaPage() {
     }
   }, [householdId]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCitizenQuery(citizenQuery.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [citizenQuery]);
+
   const handleSaveDraft = () => {
-    localStorage.setItem(`draft_tambah_anggota_${householdId}`, JSON.stringify({ form }));
+    localStorage.setItem(`draft_tambah_anggota_${householdId}`, JSON.stringify({ form, selectedCitizen }));
     setHasDraft(true);
     toast({
       title: 'Draft tersimpan',
@@ -81,6 +109,7 @@ export default function TambahAnggotaKeluargaPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.form) setForm(parsed.form);
+        if (parsed.selectedCitizen) setSelectedCitizen(parsed.selectedCitizen);
       }
       setShowDraftModal(false);
     } catch (e) {
@@ -93,6 +122,7 @@ export default function TambahAnggotaKeluargaPage() {
     setHasDraft(false);
     setShowDraftModal(false);
     setForm(INITIAL_FORM);
+    setSelectedCitizen(null);
   };
 
   useEffect(() => {
@@ -109,8 +139,67 @@ export default function TambahAnggotaKeluargaPage() {
     load();
   }, [householdId]);
 
+  useEffect(() => {
+    if (!debouncedCitizenQuery) {
+      setCitizenOptions([]);
+      return;
+    }
+
+    let active = true;
+
+    async function loadCitizens() {
+      setLoadingCitizens(true);
+      try {
+        const params = new URLSearchParams({
+          q: debouncedCitizenQuery,
+          limit: '6',
+        });
+        const response = await platformFetch<CitizenOption[]>(`/admin/citizens?${params.toString()}`);
+        if (!active) return;
+        setCitizenOptions(
+          (response.data ?? []).filter((item) => item.noKK !== household?.kkNumber),
+        );
+      } catch (err) {
+        console.error(err);
+        if (!active) return;
+        setCitizenOptions([]);
+      } finally {
+        if (active) setLoadingCitizens(false);
+      }
+    }
+
+    void loadCitizens();
+    return () => {
+      active = false;
+    };
+  }, [debouncedCitizenQuery, household?.kkNumber]);
+
   const handleFieldChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCitizenSelect = (citizen: CitizenOption) => {
+    setSelectedCitizen(citizen);
+    setCitizenQuery(`${citizen.name} - ${citizen.nik}`);
+    setCitizenOptions([]);
+    setForm((prev) => ({
+      ...prev,
+      nik: citizen.nik,
+      name: citizen.name,
+      birthDate: citizen.birthDate ? citizen.birthDate.slice(0, 10) : '',
+      birthPlace: citizen.birthPlace || '',
+      gender: citizen.gender,
+      maritalStatus: citizen.maritalStatus || '',
+      religion: citizen.religion || '',
+      education: citizen.education || '',
+    }));
+  };
+
+  const clearSelectedCitizen = () => {
+    setSelectedCitizen(null);
+    setCitizenQuery('');
+    setCitizenOptions([]);
+    setForm(INITIAL_FORM);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,29 +220,33 @@ export default function TambahAnggotaKeluargaPage() {
     try {
       await runWithToast(
         async () => {
-          const citizenResponse = await platformFetch<{ id: string }>('/admin/citizens', {
-            method: 'POST',
-            body: JSON.stringify({
-              nik: form.nik,
-              name: form.name,
-              birthPlace: form.birthPlace || '-',
-              birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : new Date().toISOString(),
-              gender: form.gender,
-              religion: form.religion,
-              maritalStatus: form.maritalStatus || 'Belum Kawin',
-              occupation: 'Belum/Tidak Bekerja',
-              education: form.education,
-              status: 'PENDUDUK_TETAP',
-              address: household?.address || '-',
-              rt: household?.rt || '-',
-              rw: household?.rw || '-',
-            }),
-          });
+          const citizenId = selectedCitizen
+            ? selectedCitizen.id
+            : (
+                await platformFetch<{ id: string }>('/admin/citizens', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    nik: form.nik,
+                    name: form.name,
+                    birthPlace: form.birthPlace || '-',
+                    birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : new Date().toISOString(),
+                    gender: form.gender,
+                    religion: form.religion,
+                    maritalStatus: form.maritalStatus || 'Belum Kawin',
+                    occupation: 'Belum/Tidak Bekerja',
+                    education: form.education,
+                    status: 'PENDUDUK_TETAP',
+                    address: household?.address || '-',
+                    rt: household?.rt || '-',
+                    rw: household?.rw || '-',
+                  }),
+                })
+              ).data.id;
 
           await platformFetch(`/admin/households/${householdId}/members`, {
             method: 'POST',
             body: JSON.stringify({
-              citizenId: citizenResponse.data.id,
+              citizenId,
               relationship: form.relationship,
             }),
           });
@@ -233,6 +326,80 @@ export default function TambahAnggotaKeluargaPage() {
 
       {/* ── Form Content ── */}
       <form id="anggota-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="rounded-[12px] bg-[#FFFFFF] px-[24px] py-[20px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[18px] font-bold text-[#1E293B]">Pilih dari Data Penduduk</h2>
+                <p className="mt-1 text-sm text-[#64748B]">Cari warga yang sudah ada agar form terisi otomatis.</p>
+              </div>
+              <Link href="/admin/data-penduduk" className="text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]">
+                Buka Data Penduduk
+              </Link>
+            </div>
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#3B82F6]" />
+              <Input
+                value={citizenQuery}
+                onChange={(e: any) => {
+                  setCitizenQuery(e.target.value);
+                  if (selectedCitizen) setSelectedCitizen(null);
+                }}
+                placeholder="Cari nama atau NIK warga"
+                className="h-11 rounded-xl border border-gray-200 px-11 pr-12"
+              />
+              {selectedCitizen ? (
+                <button
+                  type="button"
+                  onClick={clearSelectedCitizen}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[#64748B] hover:bg-gray-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+
+            {selectedCitizen ? (
+              <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+                <p className="font-bold text-[#1E293B]">{selectedCitizen.name}</p>
+                <p className="mt-1 text-sm text-[#2563EB]">{selectedCitizen.nik}</p>
+                <p className="mt-2 text-sm text-[#64748B]">
+                  Data personal diambil dari Data Penduduk. Anda hanya perlu memilih hubungan keluarga.
+                </p>
+              </div>
+            ) : null}
+
+            {!selectedCitizen && debouncedCitizenQuery ? (
+              <div className="rounded-xl border border-gray-200 bg-white">
+                {loadingCitizens ? (
+                  <div className="px-4 py-3 text-sm text-[#64748B]">Mencari data penduduk...</div>
+                ) : citizenOptions.length > 0 ? (
+                  citizenOptions.map((citizen) => (
+                    <button
+                      key={citizen.id}
+                      type="button"
+                      onClick={() => handleCitizenSelect(citizen)}
+                      className="flex w-full items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 text-left last:border-b-0 hover:bg-[#F8FAFC]"
+                    >
+                      <div>
+                        <p className="font-semibold text-[#1E293B]">{citizen.name}</p>
+                        <p className="text-xs text-[#2563EB]">{citizen.nik}</p>
+                      </div>
+                      <div className="text-right text-xs text-[#64748B]">
+                        <p>KK: {citizen.noKK || '-'}</p>
+                        <p>RT {citizen.rt} / RW {citizen.rw}</p>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-3 text-sm text-[#64748B]">Data penduduk tidak ditemukan.</div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
         {/* Identitas Personal */}
         <div className="rounded-[12px] bg-[#FFFFFF] px-[24px] py-[20px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <h2 className="mb-6 text-[18px] font-bold text-[#1E293B]">Identitas Personal</h2>
@@ -247,6 +414,7 @@ export default function TambahAnggotaKeluargaPage() {
                 onChange={(e: any) => handleFieldChange('nik', e.target.value)}
                 placeholder="Masukan 16 Digit Nomor NIK"
                 maxLength={16}
+                disabled={!!selectedCitizen}
                 className="h-11 rounded-xl border border-gray-200 px-4"
               />
             </div>
@@ -258,6 +426,7 @@ export default function TambahAnggotaKeluargaPage() {
                 value={form.name}
                 onChange={(e: any) => handleFieldChange('name', e.target.value)}
                 placeholder="Sesuai KTP"
+                disabled={!!selectedCitizen}
                 className="h-11 rounded-xl border border-gray-200 px-4"
               />
             </div>
@@ -267,6 +436,7 @@ export default function TambahAnggotaKeluargaPage() {
                 type="date"
                 value={form.birthDate}
                 onChange={(e: any) => handleFieldChange('birthDate', e.target.value)}
+                disabled={!!selectedCitizen}
                 className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]"
               />
             </div>
@@ -276,6 +446,7 @@ export default function TambahAnggotaKeluargaPage() {
                 value={form.birthPlace}
                 onChange={(e: any) => handleFieldChange('birthPlace', e.target.value)}
                 placeholder="Contoh: Bandung"
+                disabled={!!selectedCitizen}
                 className="h-11 rounded-xl border border-gray-200 px-4"
               />
             </div>
@@ -286,6 +457,7 @@ export default function TambahAnggotaKeluargaPage() {
               <RadioGroup
                 value={form.gender}
                 onValueChange={(val: string) => handleFieldChange('gender', val)}
+                disabled={!!selectedCitizen}
                 className="flex gap-6"
               >
                 <div className="flex items-center space-x-2">
@@ -329,7 +501,7 @@ export default function TambahAnggotaKeluargaPage() {
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">Status Perkawinan</Label>
               <Select value={form.maritalStatus} onValueChange={(val: any) => handleFieldChange('maritalStatus', val)}>
-                <SelectTrigger className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]">
+                <SelectTrigger disabled={!!selectedCitizen} className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]">
                   <SelectValue placeholder="Status Perkawinan" />
                 </SelectTrigger>
                 <SelectContent>
@@ -353,7 +525,7 @@ export default function TambahAnggotaKeluargaPage() {
                 Agama<span className="text-red-500">*</span>
               </Label>
               <Select value={form.religion} onValueChange={(val: any) => handleFieldChange('religion', val)}>
-                <SelectTrigger className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]">
+                <SelectTrigger disabled={!!selectedCitizen} className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]">
                   <SelectValue placeholder="Pilih Agama" />
                 </SelectTrigger>
                 <SelectContent>
@@ -371,7 +543,7 @@ export default function TambahAnggotaKeluargaPage() {
                 Pendidikan Terakhir<span className="text-red-500">*</span>
               </Label>
               <Select value={form.education} onValueChange={(val: any) => handleFieldChange('education', val)}>
-                <SelectTrigger className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]">
+                <SelectTrigger disabled={!!selectedCitizen} className="h-11 rounded-xl border border-gray-200 px-4 text-[#1E293B]">
                   <SelectValue placeholder="Pendidikan" />
                 </SelectTrigger>
                 <SelectContent>

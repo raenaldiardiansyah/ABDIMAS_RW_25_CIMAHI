@@ -50,6 +50,7 @@ type DashboardResponse = {
     pendingVerifications: number;
     pendingRequests: number;
     pendingMutations: number;
+    pendingAspirations: number;
   };
 };
 
@@ -67,6 +68,7 @@ function getCategoryMeta(item: ActivityItem): {
   if (item.entityType === 'ADMIN_USER') return { label: 'Aktivitas Admin', icon: UserCog, href: '/admin/kelola-admin' };
   if (item.entityType === 'ACTIVITY') return { label: 'Kegiatan RW', icon: Calendar, href: '/admin/kegiatan' };
   if (item.entityType === 'VERIFICATION') return { label: 'Verifikasi Warga', icon: ShieldCheck, href: '/admin/verification' };
+  if (item.entityType === 'ASPIRATION') return { label: 'Aduan Warga', icon: FileInput, href: '/admin/laporan' };
 
   return { label: 'Lainnya', icon: ClipboardList, href: '/admin' };
 }
@@ -123,8 +125,8 @@ const quickActions = [
   },
   {
     icon: FileBarChart,
-    label: 'Laporan Mutasi',
-    sub: 'Mutasi Penduduk',
+    label: 'Aduan Warga',
+    sub: 'Balas laporan',
     href: '/admin/laporan',
   },
 ];
@@ -202,6 +204,7 @@ export default function AdminDashboardPage() {
       { label: 'Pembaruan Data KK', icon: FileText, href: '/admin/kartu-keluarga' },
       { label: 'Data Warga', icon: Users, href: '/admin/data-penduduk' },
       { label: 'Permohonan Masuk', icon: FileCheck, href: '/admin/permohonan' },
+      { label: 'Aduan Warga', icon: FileInput, href: '/admin/laporan' },
     ];
 
     defaultCategories.forEach((cat) => {

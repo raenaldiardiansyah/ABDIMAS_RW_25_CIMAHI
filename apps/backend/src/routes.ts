@@ -16,6 +16,7 @@ import { getDb, user, userIdentity } from "@abdimas/db";
 import { adminUsersRoutes } from "./routes/admin-users.js";
 import { adminActivitiesRoutes, scheduleRoutes } from "./routes/activities.js";
 import { aspirationsRoutes } from "./routes/aspirations.js";
+import { adminAspirationsRoutes } from "./routes/admin-aspirations.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { historyRoutes } from "./routes/history.js";
 import { householdsRoutes } from "./routes/households.js";
@@ -25,6 +26,7 @@ import { reportsRoutes } from "./routes/reports.js";
 import { requestsRoutes } from "./routes/requests.js";
 import { servicesRoutes } from "./routes/services.js";
 import { citizensRoutes } from "./routes/citizens.js";
+import { userRequestsRoutes } from "./routes/user-requests.js";
 import { AppError } from "./lib/errors.js";
 import { createRateLimitMiddleware } from "./lib/rate-limit.js";
 import { fail, ok } from "./lib/response.js";
@@ -238,12 +240,14 @@ export function createApp() {
   app.route("/admin/activities", adminActivitiesRoutes);
   app.route("/admin/dashboard", dashboardRoutes);
   app.route("/admin/admin-users", adminUsersRoutes);
+  app.route("/admin/aspirations", adminAspirationsRoutes);
   app.route("/admin/reports", reportsRoutes);
   app.route("/services", servicesRoutes);
   app.route("/history", historyRoutes);
   app.route("/schedule", scheduleRoutes);
   app.route("/me/preferences", preferencesRoutes);
   app.route("/aspirations", aspirationsRoutes);
+  app.route("/requests", userRequestsRoutes);
 
   return app;
 }

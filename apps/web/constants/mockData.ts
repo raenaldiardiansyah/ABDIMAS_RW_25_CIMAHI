@@ -131,7 +131,7 @@ export const MOCK_HISTORY: HistoryItem[] = [
   },
   {
     id: 'h6',
-    tipe: 'laporan',
+    tipe: 'aspirasi',
     tanggal: '22 April 2026',
     status: 'Terkirim',
     statusColor: 'green',
@@ -147,7 +147,7 @@ export const MOCK_HISTORY: HistoryItem[] = [
   },
   {
     id: 'h7',
-    tipe: 'laporan',
+    tipe: 'aspirasi',
     tanggal: '18 April 2026',
     status: 'Terkirim',
     statusColor: 'green',
@@ -162,7 +162,7 @@ export const MOCK_HISTORY: HistoryItem[] = [
   },
   {
     id: 'h8',
-    tipe: 'laporan',
+    tipe: 'aspirasi',
     tanggal: '05 Maret 2026',
     status: 'Terkirim',
     statusColor: 'green',
@@ -177,7 +177,7 @@ export const MOCK_HISTORY: HistoryItem[] = [
   },
   {
     id: 'h9',
-    tipe: 'laporan',
+    tipe: 'aspirasi',
     tanggal: '20 April 2026',
     status: 'Selesai',
     statusColor: 'green',
@@ -192,7 +192,7 @@ export const MOCK_HISTORY: HistoryItem[] = [
   },
   {
     id: 'h10',
-    tipe: 'laporan',
+    tipe: 'aspirasi',
     tanggal: '10 April 2026',
     status: 'Diproses',
     statusColor: 'amber',

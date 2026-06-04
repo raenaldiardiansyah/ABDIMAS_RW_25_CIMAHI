@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { platformFetch } from '@/lib/api/platform';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { WargaPage, WargaPageBody } from '@/app/(app)/warga/_components/warga-page';
 
 import TabBar from '@/components/warga/TabBar';
@@ -34,9 +35,18 @@ function safeParseHistory(raw: string | null): HistoryItem[] {
 
 function isHistoryItem(value: unknown): value is HistoryItem {
   if (!value || typeof value !== 'object') return false;
-  const v = value as Partial<HistoryItem>;
+  const v = value as {
+    id?: unknown;
+    tipe?: unknown;
+    tanggal?: unknown;
+    status?: unknown;
+    statusColor?: unknown;
+    judul?: unknown;
+    deskripsi?: unknown;
+    detail?: unknown;
+  };
   if (typeof v.id !== 'string') return false;
-  if (v.tipe !== 'bansos' && v.tipe !== 'pemilu' && v.tipe !== 'laporan') return false;
+  if (v.tipe !== 'bansos' && v.tipe !== 'pemilu' && v.tipe !== 'aspirasi' && v.tipe !== 'permohonan') return false;
   if (typeof v.tanggal !== 'string') return false;
   if (typeof v.status !== 'string') return false;
   if (v.statusColor !== 'green' && v.statusColor !== 'amber' && v.statusColor !== 'red') return false;
@@ -53,7 +63,7 @@ function tabToTipe(tab: TabLabel): HistoryItem['tipe'] | 'all' {
     case 'Pemilu':
       return 'pemilu';
     case 'Laporan':
-      return 'laporan';
+      return 'aspirasi';
     default:
       return 'all';
   }
@@ -93,6 +103,7 @@ function DetailContent({ item }: { item: HistoryItem }) {
       { label: 'Jenis', value: detail.jenis || '-' },
       { label: 'Pelapor', value: detail.pelapor || '-' },
       { label: 'Tanggal', value: detail.tanggal || item.tanggal },
+      { label: 'Status', value: detail.status || '-' },
     );
     notes = detail.uraian || '-';
   }
@@ -123,12 +134,31 @@ function DetailContent({ item }: { item: HistoryItem }) {
           {notes}
         </p>
       </div>
+
+      {item.tipe === 'aspirasi' ? (
+        <div className="rounded-2xl border border-input bg-background px-3 py-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            Tanggapan Admin
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {(item.detail as AspirasiResult).tanggapanAdmin || 'Belum ada tanggapan admin.'}
+          </p>
+          {(item.detail as AspirasiResult).ditanggapiOleh ? (
+            <p className="mt-2 text-xs font-medium text-foreground">
+              {(item.detail as AspirasiResult).ditanggapiOleh}
+              {(item.detail as AspirasiResult).tanggalTanggapan
+                ? ` • ${new Date((item.detail as AspirasiResult).tanggalTanggapan as string).toLocaleDateString('id-ID')}`
+                : ''}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 export default function HistoryClient({
-  fallbackItems,
+  fallbackItems = [],
 }: {
   fallbackItems?: HistoryItem[];
 }) {
@@ -137,9 +167,9 @@ export default function HistoryClient({
   const [items, setItems] = useState<HistoryItem[]>(() => {
     try {
       const stored = safeParseHistory(localStorage.getItem(STORAGE_KEY));
-      return stored.length > 0 ? stored : (fallbackItems ?? []);
+      return stored.length > 0 ? stored : fallbackItems;
     } catch {
-      return fallbackItems ?? [];
+      return fallbackItems;
     }
   });
 
@@ -202,19 +232,38 @@ export default function HistoryClient({
         };
       }
 
+      const status = String(item.metadata.status || 'SUBMITTED') as 'SUBMITTED' | 'REVIEWED' | 'RESOLVED';
+      const adminReply = typeof item.metadata.adminReply === 'string' ? item.metadata.adminReply : null;
+      const repliedByName = typeof item.metadata.repliedByName === 'string' ? item.metadata.repliedByName : null;
+      const repliedAt = typeof item.metadata.repliedAt === 'string' ? item.metadata.repliedAt : null;
+
       return {
         id: item.id,
-        tipe: 'laporan',
+        tipe: 'aspirasi',
         tanggal: createdDate,
-        status: item.type === 'ASPIRATION' ? 'Terkirim' : 'Diproses',
-        statusColor: item.type === 'ASPIRATION' ? 'green' : 'amber',
+        status:
+          status === 'RESOLVED'
+            ? 'Selesai'
+            : status === 'REVIEWED'
+              ? 'Ditanggapi'
+              : 'Terkirim',
+        statusColor:
+          status === 'RESOLVED'
+            ? 'green'
+            : status === 'REVIEWED'
+              ? 'amber'
+              : 'amber',
         judul: item.title,
         deskripsi: item.description,
         detail: {
-          jenis: 'masukan',
+          jenis: item.metadata.category === 'keluhan' ? 'keluhan' : 'masukan',
           pelapor: String(item.metadata.pelapor || '-'),
           tanggal: createdDate,
           uraian: item.description,
+          status,
+          tanggapanAdmin: adminReply,
+          ditanggapiOleh: repliedByName,
+          tanggalTanggapan: repliedAt,
         },
       };
     };
@@ -243,6 +292,104 @@ export default function HistoryClient({
       mounted = false;
     };
   }, []);
+
+  useAutoRefresh(async () => {
+    const response = await platformFetch<
+      Array<{
+        id: string;
+        type: 'BANSOS_CHECK' | 'PEMILU_CHECK' | 'ASPIRATION' | 'REQUEST' | 'MUTATION';
+        title: string;
+        description: string;
+        metadata: Record<string, unknown>;
+        createdAt: string;
+      }>
+    >('/history?page=1&limit=20');
+
+    const mapped = response.data.map((item) => {
+      const createdDate = new Date(item.createdAt).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+
+      if (item.type === 'BANSOS_CHECK') {
+        const eligible = Boolean(item.metadata.eligible);
+        return {
+          id: item.id,
+          tipe: 'bansos' as const,
+          tanggal: createdDate,
+          status: eligible ? 'Aktif' : 'Tidak Layak',
+          statusColor: eligible ? 'green' as const : 'red' as const,
+          judul: item.title,
+          deskripsi: item.description,
+          detail: {
+            status: eligible ? 'aktif' : 'tidak_layak',
+            nama: String(item.metadata.nama || '-'),
+            nik: String(item.metadata.nik || '-'),
+            program: 'PKH' as const,
+            dtks: new Date(item.createdAt).getFullYear().toString(),
+            keterangan: item.description,
+          },
+        };
+      }
+
+      if (item.type === 'PEMILU_CHECK') {
+        const registered = Boolean(item.metadata.registered);
+        return {
+          id: item.id,
+          tipe: 'pemilu' as const,
+          tanggal: createdDate,
+          status: registered ? 'Terdaftar' : 'Tidak Terdaftar',
+          statusColor: registered ? 'green' as const : 'red' as const,
+          judul: item.title,
+          deskripsi: item.description,
+          detail: {
+            status: registered ? 'terdaftar' : 'tidak_terdaftar',
+            nama: String(item.metadata.nama || '-'),
+            nik: String(item.metadata.nik || '-'),
+            dptTahun: new Date(item.createdAt).getFullYear().toString(),
+            tps: item.metadata.tps ? String(item.metadata.tps) : undefined,
+            keterangan: item.description,
+          },
+        };
+      }
+
+      const status = String(item.metadata.status || 'SUBMITTED') as 'SUBMITTED' | 'REVIEWED' | 'RESOLVED';
+      const adminReply = typeof item.metadata.adminReply === 'string' ? item.metadata.adminReply : null;
+      const repliedByName = typeof item.metadata.repliedByName === 'string' ? item.metadata.repliedByName : null;
+      const repliedAt = typeof item.metadata.repliedAt === 'string' ? item.metadata.repliedAt : null;
+
+      return {
+        id: item.id,
+        tipe: 'aspirasi' as const,
+        tanggal: createdDate,
+        status:
+          status === 'RESOLVED'
+            ? 'Selesai'
+            : status === 'REVIEWED'
+              ? 'Ditanggapi'
+              : 'Terkirim',
+        statusColor: status === 'RESOLVED' ? 'green' as const : 'amber' as const,
+        judul: item.title,
+        deskripsi: item.description,
+        detail: {
+          jenis: item.metadata.category === 'keluhan' ? 'keluhan' : 'masukan',
+          pelapor: String(item.metadata.pelapor || '-'),
+          tanggal: createdDate,
+          uraian: item.description,
+          status,
+          tanggapanAdmin: adminReply,
+          ditanggapiOleh: repliedByName,
+          tanggalTanggapan: repliedAt,
+        },
+      };
+    });
+
+    setItems(mapped);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+  }, {
+    intervalMs: 10000,
+  });
 
   const filtered = useMemo(() => {
     const tab = TABS[activeTab] ?? 'Semua';
@@ -282,9 +429,7 @@ export default function HistoryClient({
               <p className="text-base font-bold leading-tight text-white">
                 Pantau status terbaru
               </p>
-              <p className="mt-1 text-xs text-primary-foreground/75">
-                Riwayat tersimpan di perangkat Anda.
-              </p>
+              <p className="mt-1 text-xs text-primary-foreground/75">Riwayat akun warga dari backend.</p>
             </div>
           </div>
         }

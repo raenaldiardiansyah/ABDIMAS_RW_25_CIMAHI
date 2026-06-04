@@ -42,7 +42,7 @@ const TITLE_MAP: Record<string, string> = {
   '/admin/mutasi': 'Riwayat Mutasi Penduduk',
   '/admin/permohonan': 'Permohonan Penduduk',
   '/admin/verification': 'Verifikasi Warga',
-  '/admin/laporan': 'Laporan & Statistik',
+  '/admin/laporan': 'Aduan Warga',
   '/admin/data-penduduk/tambah': 'Data Penduduk RW > Tambah Warga',
   '/admin/mutasi/tambah': 'Riwayat Mutasi Penduduk > Tambah Mutasi',
   '/admin/kegiatan': 'Kegiatan RW',

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useEffect, useState } from 'react';
 import { CalendarDays, MapPin, Clock, Search, Plus } from 'lucide-react';
 
+import { ActivityTimeRangeField } from '@/components/admin/ActivityTimeRangeField';
 import { cn } from '@/lib/utils';
 import { platformFetch } from '@/lib/api/platform';
 import {
@@ -16,6 +17,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { formatActivityTimeRange, isValidTimeRange } from '@/lib/activity-time';
 import { useActionToast } from '@/lib/use-action-toast';
 
 type EventCategory = 'rapat' | 'kesehatan' | 'sosial' | 'keamanan' | 'lainnya';
@@ -48,9 +50,11 @@ export default function KegiatanPage() {
   const [newJudul, setNewJudul] = useState('');
   const [newKategori, setNewKategori] = useState<EventCategory>('rapat');
   const [newTanggal, setNewTanggal] = useState('');
-  const [newWaktu, setNewWaktu] = useState('');
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
   const [newLokasi, setNewLokasi] = useState('');
   const [newDeskripsi, setNewDeskripsi] = useState('');
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -84,7 +88,13 @@ export default function KegiatanPage() {
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newJudul || !newTanggal || !newWaktu || !newLokasi || !newDeskripsi) return;
+    if (!newJudul || !newTanggal || !newStartTime || !newEndTime || !newLokasi || !newDeskripsi) return;
+    if (!isValidTimeRange(newStartTime, newEndTime)) {
+      setTimeError('Jam selesai harus lebih besar dari jam mulai.');
+      return;
+    }
+
+    setTimeError(null);
 
     try {
       const response = await runWithToast(
@@ -97,8 +107,8 @@ export default function KegiatanPage() {
               location: newLokasi,
               category: newKategori,
               date: newTanggal,
-              startTime: newWaktu,
-              endTime: null,
+              startTime: newStartTime,
+              endTime: newEndTime,
             }),
           }),
         {
@@ -113,9 +123,11 @@ export default function KegiatanPage() {
       setNewJudul('');
       setNewKategori('rapat');
       setNewTanggal('');
-      setNewWaktu('');
+      setNewStartTime('');
+      setNewEndTime('');
       setNewLokasi('');
       setNewDeskripsi('');
+      setTimeError(null);
     } catch (error) {
       console.error(error);
     }
@@ -199,10 +211,10 @@ export default function KegiatanPage() {
                   <h3 className="mt-4 text-base font-bold text-[color:var(--admin-heading)] transition-colors group-hover:text-primary">{ev.title}</h3>
                   <p className="mt-2 flex-1 line-clamp-2 text-sm leading-relaxed text-[color:var(--admin-subtle)]">{ev.description}</p>
 
-                  <div className="mt-5 flex flex-col gap-2 border-t border-[color:var(--admin-border)] pt-4">
+                    <div className="mt-5 flex flex-col gap-2 border-t border-[color:var(--admin-border)] pt-4">
                     <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--admin-subtle)]">
                       <Clock className="h-3.5 w-3.5 text-[color:var(--admin-muted)]" />
-                      <span>{ev.startTime ?? '-'}</span>
+                      <span>{formatActivityTimeRange(ev.startTime, ev.endTime)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--admin-subtle)]">
                       <MapPin className="h-3.5 w-3.5 text-[color:var(--admin-muted)]" />
@@ -271,17 +283,19 @@ export default function KegiatanPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Waktu (Jam)</Label>
-                <Input
-                  type="text"
-                  required
-                  value={newWaktu}
-                  onChange={(e: any) => setNewWaktu(e.target.value)}
-                  placeholder="08:00 - 10:00 WIB"
-                  className="w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm"
-                />
-              </div>
+              <ActivityTimeRangeField
+                startTime={newStartTime}
+                endTime={newEndTime}
+                onStartTimeChange={(value) => {
+                  setNewStartTime(value);
+                  setTimeError(null);
+                }}
+                onEndTimeChange={(value) => {
+                  setNewEndTime(value);
+                  setTimeError(null);
+                }}
+                error={timeError}
+              />
               <div>
                 <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Tempat / Lokasi</Label>
                 <Input
