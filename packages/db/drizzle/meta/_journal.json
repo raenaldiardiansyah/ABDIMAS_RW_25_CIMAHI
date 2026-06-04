@@ -8,6 +8,20 @@
       "when": 1780454545806,
       "tag": "0000_flowery_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780500000000,
+      "tag": "0001_mutation_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780503600000,
+      "tag": "0002_household_delete_cascade",
+      "breakpoints": true
     }
   ]
 }

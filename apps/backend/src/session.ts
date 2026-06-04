@@ -106,6 +106,7 @@ export async function resolveIdentity(userId: string) {
       maskedNik: userIdentity.nikFirst4,
       maskedNikLast4: userIdentity.nikLast4,
       verificationStatus: userIdentity.verificationStatus,
+      rejectionReason: userIdentity.rejectionReason,
     })
     .from(userIdentity)
     .innerJoin(user, eq(user.id, userIdentity.userId))
@@ -120,5 +121,6 @@ export async function resolveIdentity(userId: string) {
     userEmail: identity.userEmail,
     maskedNik: maskNikFromParts(identity.maskedNik, identity.maskedNikLast4),
     verificationStatus: identity.verificationStatus,
+    rejectionReason: identity.rejectionReason,
   };
 }

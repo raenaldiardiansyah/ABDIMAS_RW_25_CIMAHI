@@ -14,6 +14,7 @@ import {
   Menu,
   RefreshCw,
   Settings,
+  ShieldCheck,
   TrendingUp,
   UserPlus,
   Users,
@@ -42,6 +43,7 @@ const MAIN_NAV: NavItem[] = [
 ];
 
 const ACTION_NAV: NavItem[] = [
+  { href: '/admin/verification', label: 'Verifikasi Warga', icon: ShieldCheck, hasNotification: true },
   { href: '/admin/permohonan', label: 'Permohonan', icon: FileInput, hasNotification: true },
   { href: '/admin/laporan', label: 'Laporan', icon: TrendingUp },
 ];
@@ -55,13 +57,18 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
   const pathname = usePathname();
   const router = useRouter();
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
+  const [hasPendingVerifications, setHasPendingVerifications] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING')
-      .then(({ data }) => {
+    Promise.all([
+      platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING'),
+      platformFetch<any[]>('/admin/verifications?status=PENDING'),
+    ])
+      .then(([requestsResponse, verificationsResponse]) => {
         if (!mounted) return;
-        setHasPendingRequests(data.length > 0);
+        setHasPendingRequests(requestsResponse.data.length > 0);
+        setHasPendingVerifications(verificationsResponse.data.length > 0);
       })
       .catch(() => {
         // silently ignore error
@@ -79,7 +86,12 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
   const renderItem = (item: NavItem) => {
     const active = isActive(item.href);
     const Icon = item.icon;
-    const showNotification = item.href === '/admin/permohonan' ? hasPendingRequests : item.hasNotification;
+    const showNotification =
+      item.href === '/admin/permohonan'
+        ? hasPendingRequests
+        : item.href === '/admin/verification'
+          ? hasPendingVerifications
+          : item.hasNotification;
 
     return (
       <Link
@@ -89,8 +101,8 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
           'group relative flex items-center rounded-xl px-4 py-3 text-sm transition-colors',
           isCollapsed && !mobile ? 'justify-center' : 'gap-3',
           active
-            ? 'bg-[#EAF2FF] font-semibold text-[#2563EB]'
-            : 'text-slate-600 hover:bg-[#F4F8FF] hover:text-slate-900',
+            ? 'bg-[color:var(--admin-primary-soft)] font-semibold text-[color:var(--admin-primary)]'
+            : 'text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-soft)] hover:text-[color:var(--admin-heading)]',
         )}
       >
         <div className="relative flex items-center justify-center">
@@ -111,7 +123,7 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
     <nav className="flex h-full flex-col gap-6">
       <div className="space-y-1">{MAIN_NAV.map(renderItem)}</div>
       <div className="space-y-1">{ACTION_NAV.map(renderItem)}</div>
-      <div className="mt-auto space-y-1 border-t border-slate-200 pt-4">
+      <div className="mt-auto space-y-1 border-t border-[color:var(--admin-border)] pt-4">
         {SYSTEM_NAV.map(renderItem)}
         <Button
           variant="ghost"
@@ -120,7 +132,7 @@ function AdminNavContent({ isCollapsed = false, mobile = false }: { isCollapsed?
             router.push('/sign-in');
           }}
           className={cn(
-            'flex h-auto w-full items-center justify-start rounded-xl px-4 py-3 text-sm font-normal text-slate-600 transition-colors hover:bg-[#F4F8FF] hover:text-slate-900',
+            'flex h-auto w-full items-center justify-start rounded-xl px-4 py-3 text-sm font-normal text-[color:var(--admin-subtle)] transition-colors hover:bg-[color:var(--admin-surface-soft)] hover:text-[color:var(--admin-heading)]',
             isCollapsed && !mobile ? 'justify-center' : 'gap-3',
           )}
         >
@@ -136,14 +148,18 @@ export function AdminMobileSidebar() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-[#D8DEE8] bg-white lg:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] text-[color:var(--admin-heading)] lg:hidden"
+        >
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[320px] border-r border-[#D8DEE8] bg-[#F8FBFF] p-0">
+      <SheetContent side="left" className="w-[320px] border-r border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-0">
         <div className="flex h-full flex-col p-5">
-          <SheetHeader className="border-b border-[#D8DEE8] pb-4 text-left">
-            <SheetTitle className="text-base font-semibold text-slate-900">Portal RW 25</SheetTitle>
+          <SheetHeader className="border-b border-[color:var(--admin-border)] pb-4 text-left">
+            <SheetTitle className="text-base font-semibold text-[color:var(--admin-heading)]">Portal RW 25</SheetTitle>
           </SheetHeader>
           <div className="mt-5 flex-1">
             <AdminNavContent mobile />
@@ -160,7 +176,7 @@ export default function AdminSidebar() {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 border-r border-[#D8DEE8] bg-[#F8FBFF] backdrop-blur lg:flex',
+        'sticky top-0 hidden h-screen shrink-0 border-r border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] backdrop-blur lg:flex',
         isCollapsed ? 'w-[88px]' : 'w-[272px]',
       )}
     >
@@ -168,8 +184,8 @@ export default function AdminSidebar() {
         <div className={cn('mb-6 flex items-center', isCollapsed ? 'justify-center' : 'justify-between')}>
           {!isCollapsed ? (
             <div>
-              <p className="text-sm font-semibold text-slate-900">Portal RW 25</p>
-              <p className="text-xs text-[#667085]">Admin dashboard</p>
+              <p className="text-sm font-semibold text-[color:var(--admin-heading)]">Portal RW 25</p>
+              <p className="text-xs text-[color:var(--admin-subtle)]">Admin dashboard</p>
             </div>
           ) : null}
           <Button
@@ -177,7 +193,7 @@ export default function AdminSidebar() {
             variant="ghost"
             size="icon"
             onClick={() => setIsCollapsed((prev) => !prev)}
-            className="h-9 w-9 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            className="h-9 w-9 rounded-xl text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-soft)] hover:text-[color:var(--admin-heading)]"
           >
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>

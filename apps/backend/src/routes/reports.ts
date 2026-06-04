@@ -4,8 +4,15 @@ import { Hono } from "hono";
 import * as XLSX from "xlsx";
 
 import { citizen, getDb, household, mutation, serviceRequest } from "@abdimas/db";
-import { citizenListResponseSchema, reportSummaryResponseSchema, rtBreakdownResponseSchema } from "@abdimas/contracts";
+import {
+  citizenListQuerySchema,
+  citizenListResponseSchema,
+  reportDemographicsResponseSchema,
+  reportSummaryResponseSchema,
+  rtBreakdownResponseSchema,
+} from "@abdimas/contracts";
 
+import { buildPageMeta, getOffset } from "../lib/pagination";
 import { ok } from "../lib/response";
 import { toIso } from "../lib/serialize";
 import { adminMiddleware } from "../middleware/auth";
@@ -102,13 +109,80 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     rtBreakdownResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
-  .get("/rt/:rtId/citizens", async (c) => {
-    const rtId = c.req.param("rtId").replace(/^RT\s*/i, "").padStart(2, "0");
+  .get("/demographics", async (c) => {
+    const rt = c.req.query("rt") || undefined;
+    const where = rt ? eq(citizen.rt, rt) : undefined;
     const rows = await getDb()
+      .select({
+        gender: citizen.gender,
+        birthDate: citizen.birthDate,
+      })
+      .from(citizen)
+      .where(where);
+
+    const ageGroups = [
+      { label: "0-17" as const, value: 0 },
+      { label: "18-35" as const, value: 0 },
+      { label: "36-60" as const, value: 0 },
+      { label: "60+" as const, value: 0 },
+    ];
+    let male = 0;
+    let female = 0;
+    const currentYear = new Date().getFullYear();
+
+    for (const row of rows) {
+      const age = currentYear - new Date(row.birthDate).getFullYear();
+      if (age <= 17) ageGroups[0].value += 1;
+      else if (age <= 35) ageGroups[1].value += 1;
+      else if (age <= 60) ageGroups[2].value += 1;
+      else ageGroups[3].value += 1;
+
+      if (row.gender === "L") male += 1;
+      if (row.gender === "P") female += 1;
+    }
+
+    const payload = {
+      success: true as const,
+      data: {
+        totalCitizens: rows.length,
+        ageGroups,
+        gender: {
+          male,
+          female,
+        },
+      },
+    };
+    reportDemographicsResponseSchema.parse(payload);
+    return ok(c, payload.data);
+  })
+  .get("/rt/:rtId/citizens", async (c) => {
+    const query = {
+      page: c.req.query("page"),
+      limit: c.req.query("limit"),
+      q: c.req.query("q") || undefined,
+    };
+    const parsed = citizenListQuerySchema.parse(query);
+    const rtId = c.req.param("rtId").replace(/^RT\s*/i, "").padStart(2, "0");
+    const where = parsed.q
+      ? and(
+          eq(citizen.rt, rtId),
+          sql`(${citizen.name} ilike ${`%${parsed.q}%`} or ${citizen.nik} ilike ${`%${parsed.q}%`})`,
+        )
+      : eq(citizen.rt, rtId);
+    const db = getDb();
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(citizen)
+      .where(where);
+    const rows = await db
       .select()
       .from(citizen)
-      .where(eq(citizen.rt, rtId))
-      .orderBy(citizen.name);
+      .where(where)
+      .orderBy(citizen.name)
+      .limit(parsed.limit)
+      .offset(getOffset(parsed.page, parsed.limit));
+
+    const meta = buildPageMeta({ page: parsed.page, limit: parsed.limit, total: Number(total || 0) });
 
     const payload = {
       success: true as const,
@@ -132,9 +206,10 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
         createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
         updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
       })),
+      meta,
     };
     citizenListResponseSchema.parse(payload);
-    return ok(c, payload.data);
+    return ok(c, payload.data, meta);
   })
   .get("/export/xlsx", async (c) => {
     const rows = await getDb().select().from(citizen).orderBy(citizen.rt, citizen.name);

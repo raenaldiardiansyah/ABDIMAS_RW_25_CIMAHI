@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { date, index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
 import { citizen } from "./citizens";
@@ -14,11 +14,14 @@ export const mutation = pgTable(
     id: text("id").primaryKey().$defaultFn(() => randomUUID()),
     citizenId: text("citizen_id")
       .notNull()
-      .references(() => citizen.id, { onDelete: "restrict" }),
+      .references(() => citizen.id, { onDelete: "cascade" }),
     type: mutationTypeEnum("type").notNull(),
     status: mutationStatusEnum("status").notNull().default("PENDING"),
+    mutationDate: date("mutation_date"),
     fromAddress: text("from_address"),
     toAddress: text("to_address"),
+    targetRt: text("target_rt"),
+    phone: text("phone"),
     reason: text("reason"),
     requestedBy: text("requested_by")
       .notNull()

@@ -27,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
 
 type Citizen = {
   id: string;
@@ -80,6 +81,7 @@ export default function DetailKartuKeluargaPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const householdId = params.id;
+  const { runWithToast } = useActionToast();
 
   const [detail, setDetail] = useState<HouseholdDetail | null>(null);
   const [auditLogs, setAuditLogs] = useState<HouseholdAuditLog[]>([]);
@@ -122,9 +124,17 @@ export default function DetailKartuKeluargaPage() {
     if (!memberToDelete) return;
 
     try {
-      await platformFetch<{ id: string }>(
-        `/admin/households/${householdId}/members/${memberToDelete.id}`,
-        { method: 'DELETE' },
+      await runWithToast(
+        () =>
+          platformFetch<{ id: string }>(
+            `/admin/households/${householdId}/members/${memberToDelete.id}`,
+            { method: 'DELETE' },
+          ),
+        {
+          loading: 'Menghapus anggota keluarga...',
+          success: 'Anggota keluarga dihapus',
+          error: 'Gagal menghapus anggota keluarga',
+        },
       );
 
       setDetail((prev) =>
@@ -154,11 +164,19 @@ export default function DetailKartuKeluargaPage() {
     if (!memberToEdit) return;
 
     try {
-      await platformFetch<HouseholdMember>(
-        `/admin/households/${householdId}/members/${memberToEdit.id}`,
+      await runWithToast(
+        () =>
+          platformFetch<HouseholdMember>(
+            `/admin/households/${householdId}/members/${memberToEdit.id}`,
+            {
+              method: 'PATCH',
+              body: JSON.stringify(editForm),
+            },
+          ),
         {
-          method: 'PATCH',
-          body: JSON.stringify(editForm),
+          loading: 'Menyimpan perubahan anggota...',
+          success: 'Data anggota keluarga diperbarui',
+          error: 'Gagal memperbarui data anggota keluarga',
         },
       );
 

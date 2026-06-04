@@ -14,7 +14,7 @@ export type ToastItem = {
 
 type ToastContextValue = {
   toasts: ToastItem[];
-  toast: (item: Omit<ToastItem, "id">) => void;
+  toast: (item: Omit<ToastItem, "id">) => string;
   dismiss: (id: string) => void;
 };
 
@@ -40,6 +40,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       if (durationMs > 0) {
         window.setTimeout(() => dismiss(id), durationMs);
       }
+      return id;
     },
     [dismiss],
   );

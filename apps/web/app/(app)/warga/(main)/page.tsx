@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { platformFetch } from '@/lib/api/platform';
+import { PlatformApiError, platformFetch } from '@/lib/api/platform';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -90,6 +90,7 @@ export default function WargaHomePage() {
 
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [popup, setPopup] = useState<PopupState>(null);
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
 
   const [bansosNik, setBansosNik] = useState('');
   const [bansosNama, setBansosNama] = useState('');
@@ -108,6 +109,7 @@ export default function WargaHomePage() {
   const handleBansosSubmit = async () => {
     setSubmitting('bansos');
     try {
+      setBlockedMessage(null);
       const { data } = await platformFetch<{
         eligible: boolean;
         message: string;
@@ -139,6 +141,16 @@ export default function WargaHomePage() {
         variant: data.eligible ? 'success' : 'error',
         judul: data.eligible ? 'Anda Layak Menerima Bansos' : 'Tidak Memenuhi Kriteria',
       });
+    } catch (error) {
+      if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
+        setBlockedMessage(
+          error.verificationStatus === 'REJECTED' && error.rejectionReason
+            ? `Verifikasi ditolak: ${error.rejectionReason}`
+            : 'Fitur ini menunggu verifikasi admin RW/RT.',
+        );
+      } else {
+        console.error(error);
+      }
     } finally {
       setSubmitting(null);
     }
@@ -147,6 +159,7 @@ export default function WargaHomePage() {
   const handlePemiluSubmit = async () => {
     setSubmitting('pemilu');
     try {
+      setBlockedMessage(null);
       const { data } = await platformFetch<{
         registered: boolean;
         tps?: string;
@@ -176,6 +189,16 @@ export default function WargaHomePage() {
         variant: data.registered ? 'success' : 'error',
         judul: data.registered ? 'Terdaftar Sebagai Pemilih' : 'Belum Terdaftar di DPT',
       });
+    } catch (error) {
+      if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
+        setBlockedMessage(
+          error.verificationStatus === 'REJECTED' && error.rejectionReason
+            ? `Verifikasi ditolak: ${error.rejectionReason}`
+            : 'Fitur ini menunggu verifikasi admin RW/RT.',
+        );
+      } else {
+        console.error(error);
+      }
     } finally {
       setSubmitting(null);
     }
@@ -184,6 +207,7 @@ export default function WargaHomePage() {
   const handleAspirasiSubmit = async () => {
     setSubmitting('aspirasi');
     try {
+      setBlockedMessage(null);
       await platformFetch('/aspirations', {
         method: 'POST',
         body: JSON.stringify({
@@ -198,6 +222,16 @@ export default function WargaHomePage() {
         variant: 'success',
         judul: 'Laporan Berhasil Dikirim',
       });
+    } catch (error) {
+      if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
+        setBlockedMessage(
+          error.verificationStatus === 'REJECTED' && error.rejectionReason
+            ? `Verifikasi ditolak: ${error.rejectionReason}`
+            : 'Fitur ini menunggu verifikasi admin RW/RT.',
+        );
+      } else {
+        console.error(error);
+      }
     } finally {
       setSubmitting(null);
     }
@@ -299,23 +333,30 @@ export default function WargaHomePage() {
                   </AlertTitle>
 
                   <span className="shrink-0 rounded-full bg-(--accent-amber)/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-(--accent-amber)">
-                    Pending
+                    {identity.verificationStatus}
                   </span>
                 </div>
 
                 <AlertDescription className="text-xs leading-relaxed text-muted-foreground">
-                  Akun Anda belum diverifikasi RW/RT. Sebagian fitur masih dikunci
-                  sampai proses verifikasi selesai.
+                  {identity.verificationStatus === 'REJECTED'
+                    ? `Verifikasi ditolak. ${identity.rejectionReason ? `Alasan: ${identity.rejectionReason}` : 'Hubungi admin RW/RT.'}`
+                    : 'Akun Anda belum diverifikasi RW/RT. Sebagian fitur masih dikunci sampai proses verifikasi selesai.'}
                 </AlertDescription>
               </div>
             </div>
           </Alert>
         )}
 
+        {blockedMessage && (
+          <Alert className="rounded-3xl border border-[color:var(--status-error)]/20 bg-[color:var(--status-error)]/8 p-4 shadow-sm">
+            <AlertDescription className="text-xs font-medium text-foreground">{blockedMessage}</AlertDescription>
+          </Alert>
+        )}
+
         <QuickActionsPanel isRestricted={isRestricted} />
 
         {isRestricted ? (
-          <VerificationRequiredCard />
+          <VerificationRequiredCard rejectionReason={identity.rejectionReason} />
         ) : (
           <>
             <FeatureCard
@@ -687,7 +728,7 @@ export default function WargaHomePage() {
   );
 }
 
-function VerificationRequiredCard() {
+function VerificationRequiredCard({ rejectionReason }: { rejectionReason?: string | null }) {
   return (
     <Card className="overflow-hidden rounded-3xl bg-card shadow-sm">
       <CardContent className="flex flex-col items-center px-6 pt-6 text-center">
@@ -707,6 +748,13 @@ function VerificationRequiredCard() {
           Setelah akun diverifikasi oleh RW/RT, Anda bisa cek bansos, DPT/TPS,
           dan mengirim aspirasi langsung dari aplikasi.
         </p>
+
+        {rejectionReason ? (
+          <div className="mt-4 w-full rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-left">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-red-600">Alasan penolakan</p>
+            <p className="mt-1 text-sm text-red-700">{rejectionReason}</p>
+          </div>
+        ) : null}
 
         <div className="mt-6 grid w-full gap-2 text-left">
           <VerificationStep checked label="Data warga sudah dikirim" />

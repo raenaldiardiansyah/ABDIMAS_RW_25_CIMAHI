@@ -9,10 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useActionToast } from '@/lib/use-action-toast';
+
+const PAGE_SIZE = 20;
 
 /* ── Page ────────────────────────────────────────────────── */
 
 export default function DataPendudukPage() {
+  const { runWithToast } = useActionToast();
   const [rows, setRows] = useState<
     Array<{
       id: string;
@@ -26,12 +30,31 @@ export default function DataPendudukPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Penduduk Tetap' | 'Ngekost'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchCitizens = async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+      setCurrentPage(1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const fetchCitizens = async (page = currentPage, search = debouncedQuery, status = statusFilter) => {
     try {
       setLoading(true);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+      });
+      if (search) params.set('q', search);
+      if (status === 'Penduduk Tetap') params.set('status', 'PENDUDUK_TETAP');
+      if (status === 'Ngekost') params.set('status', 'NGEKOST');
       const res = await platformFetch<Array<{
         id: string;
         name: string;
@@ -39,7 +62,7 @@ export default function DataPendudukPage() {
         noKK: string;
         address: string;
         status: string;
-      }>>('/admin/citizens?page=1&limit=50');
+      }>>(`/admin/citizens?${params.toString()}`);
       
       const mapped = (res.data || []).map((c: any) => ({
         id: c.id,
@@ -50,15 +73,20 @@ export default function DataPendudukPage() {
         status: c.status === 'NGEKOST' ? 'Ngekost' : 'Penduduk Tetap',
       }));
       setRows(mapped as any);
+      setTotalItems(res.meta?.total ?? mapped.length);
+      setTotalPages(res.meta?.totalPages ?? 1);
+      setCurrentPage(res.meta?.page ?? page);
     } catch (e) {
       console.error('Failed to load citizens', e);
+      setTotalItems(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCitizens();
+    void fetchCitizens(currentPage, debouncedQuery, statusFilter);
 
     // Check for pending requests
     platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING')
@@ -72,35 +100,30 @@ export default function DataPendudukPage() {
     return () => {
       // no-op
     };
-  }, []);
+  }, [currentPage, debouncedQuery, statusFilter]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus data warga ${name}?`)) return;
     
     setDeletingId(id);
     try {
-      await platformFetch(`/admin/citizens/${id}`, { method: 'DELETE' });
-      await fetchCitizens();
+      await runWithToast(
+        () => platformFetch(`/admin/citizens/${id}`, { method: 'DELETE' }),
+        {
+          loading: 'Menghapus data warga...',
+          success: 'Data warga dihapus',
+          error: 'Gagal menghapus data warga',
+        },
+      );
+      await fetchCitizens(currentPage, debouncedQuery, statusFilter);
     } catch (e) {
       console.error(e);
-      alert('Gagal menghapus data warga.');
     } finally {
       setDeletingId(null);
     }
   };
 
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const matchesSearch =
-          row.nama.toLowerCase().includes(query.toLowerCase()) ||
-          row.nik.includes(query) ||
-          row.alamat.toLowerCase().includes(query.toLowerCase());
-        const matchesStatus = statusFilter === 'ALL' || row.status === statusFilter;
-        return matchesSearch && matchesStatus;
-      }),
-    [query, statusFilter, rows],
-  );
+  const filteredRows = useMemo(() => rows, [rows]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -148,7 +171,7 @@ export default function DataPendudukPage() {
       <div className="flex items-center gap-3">
         {/* Badge count */}
         <div className="shrink-0 rounded-full bg-[#2563EB] px-6 py-2.5">
-          <span className="text-lg font-bold text-white">{rows.length}</span>
+          <span className="text-lg font-bold text-white">{totalItems}</span>
           <span className="ml-2 text-sm text-white/80">Total Penduduk</span>
         </div>
 
@@ -252,14 +275,14 @@ export default function DataPendudukPage() {
         {/* ── Pagination Footer ── */}
         <div className="flex items-center justify-between bg-[#3B82F6] px-5 py-3 text-white">
           <span className="text-sm">
-            Menampilkan 1 - {filteredRows.length} dari {rows.length} Penduduk
+            Menampilkan {filteredRows.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} Penduduk
           </span>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white">
+            <Button variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white disabled:opacity-50">
               &lt;
             </Button>
-            <span className="text-sm font-medium">Halaman 1</span>
-            <Button variant="ghost" size="icon" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white">
+            <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
+            <Button variant="ghost" size="icon" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white disabled:opacity-50">
               &gt;
             </Button>
           </div>

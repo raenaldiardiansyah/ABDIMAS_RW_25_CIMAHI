@@ -3,6 +3,7 @@ export * from "./identity";
 export * from "./citizens";
 export * from "./households";
 export * from "./mutations";
+export * from "./mutation-attachments";
 export * from "./requests";
 export * from "./activities";
 export * from "./aspirations";

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const apiErrorCodeSchema = z.enum([
   "UNAUTHORIZED",
   "FORBIDDEN",
+  "VERIFICATION_REQUIRED",
   "VALIDATION_ERROR",
   "NOT_FOUND",
   "CONFLICT",
@@ -11,7 +12,7 @@ export const apiErrorCodeSchema = z.enum([
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
+  limit: z.coerce.number().int().min(1).max(20).default(10),
 });
 
 export const pageMetaSchema = z.object({

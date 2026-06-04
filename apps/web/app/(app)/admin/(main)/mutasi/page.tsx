@@ -24,21 +24,22 @@ import {
 } from '@/components/ui/dialog';
 import { platformFetch } from '@/lib/api/platform';
 
+const PAGE_SIZE = 20;
+
 type MutationRow = {
   id: string;
   citizenId: string;
+  citizen?: {
+    id: string;
+    nik: string;
+    name: string;
+  };
   type: 'IN' | 'OUT' | 'MOVE' | 'DEATH' | 'BIRTH';
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   fromAddress: string | null;
   toAddress: string | null;
   reason: string | null;
   createdAt: string;
-};
-
-type CitizenRow = {
-  id: string;
-  nik: string;
-  name: string;
 };
 
 function getStatusColor(status: MutationRow['status']) {
@@ -55,33 +56,47 @@ function getStatusLabel(status: MutationRow['status']) {
 
 export default function MutasiPage() {
   const [rows, setRows] = useState<MutationRow[]>([]);
-  const [citizens, setCitizens] = useState<Record<string, CitizenRow>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [activeType, setActiveType] = useState<string>('ALL');
   const [viewedMutasi, setViewedMutasi] = useState<MutationRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+      setCurrentPage(1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
       try {
-        const [mutationResponse, citizenResponse] = await Promise.all([
-          platformFetch<MutationRow[]>('/admin/mutations?page=1&limit=100'),
-          platformFetch<CitizenRow[]>('/admin/citizens?page=1&limit=200'),
-        ]);
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(PAGE_SIZE),
+        });
+        if (debouncedSearchQuery) params.set('q', debouncedSearchQuery);
+        if (activeType !== 'ALL') params.set('type', activeType);
+        const mutationResponse = await platformFetch<MutationRow[]>(`/admin/mutations?${params.toString()}`);
 
         if (!active) return;
         setRows(mutationResponse.data);
-        setCitizens(
-          Object.fromEntries(citizenResponse.data.map((citizen) => [citizen.id, citizen])),
-        );
+        setTotalItems(mutationResponse.meta?.total ?? mutationResponse.data.length);
+        setTotalPages(mutationResponse.meta?.totalPages ?? 1);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setRows([]);
-        setCitizens({});
+        setTotalItems(0);
+        setTotalPages(1);
       } finally {
         if (active) setLoading(false);
       }
@@ -102,25 +117,14 @@ export default function MutasiPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentPage, debouncedSearchQuery, activeType]);
 
-  const filteredRows = rows.filter((row) => {
-    const citizen = citizens[row.citizenId];
-    const search = searchQuery.toLowerCase();
-    const matchesSearch =
-      citizen?.name.toLowerCase().includes(search) ||
-      citizen?.nik.includes(searchQuery) ||
-      row.reason?.toLowerCase().includes(search) ||
-      row.toAddress?.toLowerCase().includes(search) ||
-      row.fromAddress?.toLowerCase().includes(search);
-    const matchesType = activeType === 'ALL' || row.type === activeType;
-    return matchesSearch && matchesType;
-  });
+  const filteredRows = rows;
 
   const stats = {
     masuk: rows.filter((row) => row.type === 'IN').length,
     keluar: rows.filter((row) => row.type === 'OUT').length,
-    total: rows.length,
+    total: totalItems,
   };
 
   const detail = viewedMutasi
@@ -270,7 +274,6 @@ export default function MutasiPage() {
           <tbody>
             {filteredRows.length > 0 ? (
               filteredRows.map((row, i) => {
-                const citizen = citizens[row.citizenId];
                 const statusColor = getStatusColor(row.status);
 
                 return (
@@ -291,8 +294,8 @@ export default function MutasiPage() {
                       </p>
                     </td>
                     <td className="px-5 py-4">
-                      <p className="font-semibold text-[#1E293B]">{citizen?.name ?? row.citizenId}</p>
-                      <p className="text-xs text-[#3B82F6]">{citizen?.nik ?? '-'}</p>
+                      <p className="font-semibold text-[#1E293B]">{row.citizen?.name ?? row.citizenId}</p>
+                      <p className="text-xs text-[#3B82F6]">{row.citizen?.nik ?? '-'}</p>
                     </td>
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1 rounded-full bg-[#EFF6FF] px-3 py-1 text-xs font-medium text-[#3B82F6]">
@@ -337,13 +340,13 @@ export default function MutasiPage() {
         </table>
 
         <div className="flex items-center justify-between bg-[#3B82F6] px-5 py-3 text-white">
-          <span className="text-sm">Menampilkan {filteredRows.length} dari {rows.length} laporan</span>
-          <div className="flex items-center gap-2">
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30">
+            <span className="text-sm">Menampilkan {filteredRows.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} laporan</span>
+            <div className="flex items-center gap-2">
+            <button disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 disabled:opacity-50">
               &lt;
             </button>
-            <span className="text-sm font-medium">Halaman 1</span>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30">
+            <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
+            <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 disabled:opacity-50">
               &gt;
             </button>
           </div>
@@ -371,10 +374,10 @@ export default function MutasiPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-[#1E293B]">
-                    {citizens[viewedMutasi.citizenId]?.name ?? viewedMutasi.citizenId}
+                    {viewedMutasi.citizen?.name ?? viewedMutasi.citizenId}
                   </h3>
                   <p className="text-xs font-semibold text-[#64748B]">
-                    NIK: {citizens[viewedMutasi.citizenId]?.nik ?? '-'}
+                    NIK: {viewedMutasi.citizen?.nik ?? '-'}
                   </p>
                 </div>
               </div>

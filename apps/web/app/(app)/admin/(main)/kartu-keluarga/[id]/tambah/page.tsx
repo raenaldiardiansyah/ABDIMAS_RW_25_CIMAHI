@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
 
 type HouseholdDetail = {
   id: string;
@@ -29,6 +30,7 @@ type HouseholdDetail = {
 
 export default function TambahAnggotaKeluargaPage() {
   const router = useRouter();
+  const { runWithToast, toast } = useActionToast();
   const params = useParams<{ id: string }>();
   const householdId = params.id;
 
@@ -66,7 +68,11 @@ export default function TambahAnggotaKeluargaPage() {
   const handleSaveDraft = () => {
     localStorage.setItem(`draft_tambah_anggota_${householdId}`, JSON.stringify({ form }));
     setHasDraft(true);
-    alert('Draft berhasil disimpan!');
+    toast({
+      title: 'Draft tersimpan',
+      description: 'Draft anggota keluarga berhasil disimpan di browser ini.',
+      variant: 'success',
+    });
   };
 
   const handleLoadDraft = () => {
@@ -123,34 +129,41 @@ export default function TambahAnggotaKeluargaPage() {
     setLoading(true);
 
     try {
-      // 1. Buat Citizen
-      const citizenResponse = await platformFetch<{ id: string }>('/admin/citizens', {
-        method: 'POST',
-        body: JSON.stringify({
-          nik: form.nik,
-          name: form.name,
-          birthPlace: form.birthPlace || '-',
-          birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : new Date().toISOString(),
-          gender: form.gender,
-          religion: form.religion,
-          maritalStatus: form.maritalStatus || 'Belum Kawin',
-          occupation: 'Belum/Tidak Bekerja', // default
-          education: form.education,
-          status: 'PENDUDUK_TETAP',
-          address: household?.address || '-',
-          rt: household?.rt || '-',
-          rw: household?.rw || '-',
-        }),
-      });
+      await runWithToast(
+        async () => {
+          const citizenResponse = await platformFetch<{ id: string }>('/admin/citizens', {
+            method: 'POST',
+            body: JSON.stringify({
+              nik: form.nik,
+              name: form.name,
+              birthPlace: form.birthPlace || '-',
+              birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : new Date().toISOString(),
+              gender: form.gender,
+              religion: form.religion,
+              maritalStatus: form.maritalStatus || 'Belum Kawin',
+              occupation: 'Belum/Tidak Bekerja',
+              education: form.education,
+              status: 'PENDUDUK_TETAP',
+              address: household?.address || '-',
+              rt: household?.rt || '-',
+              rw: household?.rw || '-',
+            }),
+          });
 
-      // 2. Tambahkan ke KK
-      await platformFetch(`/admin/households/${householdId}/members`, {
-        method: 'POST',
-        body: JSON.stringify({
-          citizenId: citizenResponse.data.id,
-          relationship: form.relationship,
-        }),
-      });
+          await platformFetch(`/admin/households/${householdId}/members`, {
+            method: 'POST',
+            body: JSON.stringify({
+              citizenId: citizenResponse.data.id,
+              relationship: form.relationship,
+            }),
+          });
+        },
+        {
+          loading: 'Menambahkan anggota keluarga...',
+          success: 'Anggota keluarga berhasil ditambahkan',
+          error: 'Gagal menambahkan anggota keluarga',
+        },
+      );
 
       router.push(`/admin/kartu-keluarga/${householdId}`);
     } catch (err: any) {
@@ -174,7 +187,17 @@ export default function TambahAnggotaKeluargaPage() {
           Keluar Halaman
         </button>
         <Button
-          onClick={() => hasDraft ? setShowDraftModal(true) : alert('Belum ada draft yang tersimpan.')}
+          onClick={() => {
+            if (hasDraft) {
+              setShowDraftModal(true);
+              return;
+            }
+            toast({
+              title: 'Belum ada draft',
+              description: 'Simpan draft terlebih dahulu untuk membukanya kembali.',
+              variant: 'destructive',
+            });
+          }}
           variant="outline"
           className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
         >

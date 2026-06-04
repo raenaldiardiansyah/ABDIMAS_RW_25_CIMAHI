@@ -40,6 +40,7 @@ const TITLE_MAP: Record<string, string> = {
   '/admin/kartu-keluarga': 'Kartu Keluarga',
   '/admin/mutasi': 'Riwayat Mutasi Penduduk',
   '/admin/permohonan': 'Permohonan Penduduk',
+  '/admin/verification': 'Verifikasi Warga',
   '/admin/laporan': 'Laporan & Statistik',
   '/admin/data-penduduk/tambah': 'Data Penduduk RW > Tambah Warga',
   '/admin/mutasi/tambah': 'Riwayat Mutasi Penduduk > Tambah Mutasi',
@@ -132,16 +133,16 @@ export default function AdminTopbar() {
 
   return (
     <>
-      <header className="border-b border-[#D8DEE8] bg-[#F8FBFF] px-4 py-3 backdrop-blur sm:px-6">
+      <header className="border-b border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-3 backdrop-blur sm:px-6">
         <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <AdminMobileSidebar />
           {isDashboard ? (
             <div className="relative w-full max-w-xl">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--admin-subtle)]" />
               <Input
                 placeholder="Cari data warga, mutasi, atau permohonan"
-                className="h-10 rounded-xl border-[#D8DEE8] bg-white pl-9 text-sm text-[#1F2937] shadow-sm"
+                className="h-10 rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] pl-9 text-sm text-[color:var(--admin-heading)] shadow-sm"
               />
             </div>
           ) : (
@@ -188,8 +189,10 @@ export default function AdminTopbar() {
 
         <div className="flex items-center gap-4">
           {/* Notification button */}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
             onClick={handleNotificationClick}
             title={
               !notifActive
@@ -198,35 +201,37 @@ export default function AdminTopbar() {
                   : 'Aktifkan notifikasi'
                 : 'Notifikasi aktif'
             }
-            className="relative hidden h-10 w-10 items-center justify-center rounded-xl border border-[#D8DEE8] bg-white text-[#5B6574] transition hover:bg-[#EEF3F1] md:flex"
+            className="relative hidden h-10 w-10 rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] text-[color:var(--admin-subtle)] transition hover:bg-[color:var(--admin-surface-soft)] md:inline-flex"
           >
             {!notifActive ? (
-              <BellOff className="h-5 w-5 text-[#9CA3AF] opacity-70" />
+              <BellOff className="h-5 w-5 text-[color:var(--admin-muted)] opacity-70" />
             ) : (
               <>
-                <Bell className="h-5 w-5 text-[#1F2937]" />
+                <Bell className="h-5 w-5 text-[color:var(--admin-heading)]" />
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-green-500" />
               </>
             )}
-          </button>
+          </Button>
 
           {/* Help / About button */}
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
             onClick={() => setHelpOpen(true)}
             title="Bantuan & Tentang"
-            className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#D8DEE8] bg-white text-[#5B6574] transition hover:bg-[#F3ECE7] md:flex"
+            className="hidden h-10 w-10 rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] text-[color:var(--admin-subtle)] transition hover:bg-[color:var(--admin-surface-soft)] md:inline-flex"
           >
             <HelpCircle className="h-5 w-5" />
-          </button>
+          </Button>
 
-          <div className="ml-1 flex items-center gap-3 rounded-2xl border border-[#D8DEE8] bg-white px-3 py-2 shadow-sm">
+          <div className="ml-1 flex items-center gap-3 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] px-3 py-2 shadow-sm">
             <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${profile.avatarClassName} text-sm font-bold text-white`}>
               {profile.initials}
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-[#18212F]">{profile.name}</p>
-              <p className="text-xs text-[#6B7280]">{profile.email}</p>
+              <p className="text-sm font-semibold text-[color:var(--admin-heading)]">{profile.name}</p>
+              <p className="text-xs text-[color:var(--admin-subtle)]">{profile.email}</p>
             </div>
           </div>
         </div>
@@ -237,22 +242,22 @@ export default function AdminTopbar() {
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#1F2937]">
+            <DialogTitle className="text-xl font-bold text-[color:var(--admin-heading)]">
               Tentang Portal RW 25
             </DialogTitle>
-            <DialogDescription className="text-sm text-[#6B7280]">
+            <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
               Panduan penggunaan & informasi aplikasi
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-2 space-y-5 text-sm text-[#374151]">
+          <div className="mt-2 space-y-5 text-sm text-[color:var(--admin-body)]">
             {/* Section: Apa itu */}
             <div>
-              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[#1F2937]">
-                <ClipboardList className="h-4 w-4 text-[#2563EB]" />
+              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[color:var(--admin-heading)]">
+                <ClipboardList className="h-4 w-4 text-[color:var(--admin-primary)]" />
                 Apa itu Portal RW 25?
               </h4>
-              <p className="leading-relaxed text-[#6B7280]">
+              <p className="leading-relaxed text-[color:var(--admin-subtle)]">
                 Portal RW 25 adalah sistem informasi digital untuk mengelola data kependudukan warga
                 di lingkungan RW 025, Kota Cimahi. Aplikasi ini membantu pengurus RW mengelola data
                 warga, kartu keluarga, mutasi penduduk, dan permohonan secara efisien.
@@ -261,64 +266,64 @@ export default function AdminTopbar() {
 
             {/* Section: Fitur */}
             <div>
-              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[#1F2937]">
-                <Rocket className="h-4 w-4 text-[#2563EB]" />
+              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[color:var(--admin-heading)]">
+                <Rocket className="h-4 w-4 text-[color:var(--admin-primary)]" />
                 Fitur Utama
               </h4>
-              <ul className="space-y-2 text-[#6B7280]">
+              <ul className="space-y-2 text-[color:var(--admin-subtle)]">
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Dashboard</strong> — Ringkasan statistik warga, keluarga, dan mutasi penduduk secara real-time.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Dashboard</strong> — Ringkasan statistik warga, keluarga, dan mutasi penduduk secara real-time.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Data Penduduk</strong> — Tambah, edit, dan kelola seluruh data warga RW.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Data Penduduk</strong> — Tambah, edit, dan kelola seluruh data warga RW.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Kartu Keluarga</strong> — Kelola data KK beserta anggota keluarga.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Kartu Keluarga</strong> — Kelola data KK beserta anggota keluarga.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Mutasi Penduduk</strong> — Catat perpindahan masuk dan keluar warga.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Mutasi Penduduk</strong> — Catat perpindahan masuk dan keluar warga.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Permohonan</strong> — Terima dan proses permohonan dari warga.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Permohonan</strong> — Terima dan proses permohonan dari warga.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Kegiatan RW</strong> — Jadwalkan dan kelola kegiatan warga.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Kegiatan RW</strong> — Jadwalkan dan kelola kegiatan warga.</span>
                 </li>
                 <li className="flex gap-2">
                   <span className="shrink-0">•</span>
-                  <span><strong className="text-[#374151]">Laporan</strong> — Ekspor data dan statistik dalam berbagai format.</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Laporan</strong> — Ekspor data dan statistik dalam berbagai format.</span>
                 </li>
               </ul>
             </div>
 
             {/* Section: Cara Penggunaan */}
             <div>
-              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[#1F2937]">
-                <BookOpen className="h-4 w-4 text-[#2563EB]" />
+              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[color:var(--admin-heading)]">
+                <BookOpen className="h-4 w-4 text-[color:var(--admin-primary)]" />
                 Cara Penggunaan
               </h4>
-              <ol className="list-inside list-decimal space-y-1.5 text-[#6B7280]">
-                <li>Gunakan <strong className="text-[#374151]">menu sidebar</strong> di sebelah kiri untuk navigasi antar halaman.</li>
-                <li>Di <strong className="text-[#374151]">Dashboard</strong>, Anda bisa melihat ringkasan dan mengakses fitur utama dengan cepat.</li>
-                <li>Gunakan <strong className="text-[#374151]">kolom pencarian</strong> di atas untuk mencari data warga, mutasi, atau permohonan.</li>
-                <li>Klik <strong className="text-[#374151]">ikon notifikasi</strong> untuk mengaktifkan pemberitahuan browser.</li>
-                <li>Untuk menambah data, gunakan tombol <strong className="text-[#374151]">Aksi Cepat</strong> di bagian bawah dashboard.</li>
+              <ol className="list-inside list-decimal space-y-1.5 text-[color:var(--admin-subtle)]">
+                <li>Gunakan <strong className="text-[color:var(--admin-body)]">menu sidebar</strong> di sebelah kiri untuk navigasi antar halaman.</li>
+                <li>Di <strong className="text-[color:var(--admin-body)]">Dashboard</strong>, Anda bisa melihat ringkasan dan mengakses fitur utama dengan cepat.</li>
+                <li>Gunakan <strong className="text-[color:var(--admin-body)]">kolom pencarian</strong> di atas untuk mencari data warga, mutasi, atau permohonan.</li>
+                <li>Klik <strong className="text-[color:var(--admin-body)]">ikon notifikasi</strong> untuk mengaktifkan pemberitahuan browser.</li>
+                <li>Untuk menambah data, gunakan tombol <strong className="text-[color:var(--admin-body)]">Aksi Cepat</strong> di bagian bawah dashboard.</li>
               </ol>
             </div>
 
             {/* Section: Info Teknis */}
-            <div className="rounded-xl bg-[#F8FAFC] p-4">
-              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[#1F2937]">
-                <Info className="h-4 w-4 text-[#2563EB]" />
+            <div className="rounded-xl bg-[color:var(--admin-surface-muted)] p-4">
+              <h4 className="mb-1.5 flex items-center gap-2 font-semibold text-[color:var(--admin-heading)]">
+                <Info className="h-4 w-4 text-[color:var(--admin-primary)]" />
                 Informasi
               </h4>
-              <div className="space-y-1 text-xs text-[#6B7280]">
+              <div className="space-y-1 text-xs text-[color:var(--admin-subtle)]">
                 <p><strong>Versi:</strong> 1.0.0</p>
                 <p><strong>Dikembangkan oleh:</strong> Tim ABDIMAS — Telkom University</p>
                 <p><strong>Untuk:</strong> RW 025, Kota Cimahi, Jawa Barat</p>
@@ -329,7 +334,7 @@ export default function AdminTopbar() {
           <div className="mt-2 flex justify-end">
             <Button
               onClick={() => setHelpOpen(false)}
-              className="rounded-xl bg-[#2563EB] px-6 text-white hover:bg-[#1D4ED8]"
+              className="rounded-xl bg-primary px-6 text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]"
             >
               Mengerti
             </Button>

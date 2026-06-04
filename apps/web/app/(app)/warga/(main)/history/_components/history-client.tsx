@@ -228,7 +228,7 @@ export default function HistoryClient({
         metadata: Record<string, unknown>;
         createdAt: string;
       }>
-    >('/history?page=1&limit=50')
+    >('/history?page=1&limit=20')
       .then(({ data }) => {
         if (!mounted) return;
         const mapped = data.map(mapHistoryItem);

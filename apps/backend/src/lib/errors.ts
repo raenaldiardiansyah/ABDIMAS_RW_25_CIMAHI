@@ -5,10 +5,12 @@ import type { ApiErrorCode } from "@abdimas/contracts";
 
 export class AppError extends HTTPException {
   code: ApiErrorCode;
+  details?: Record<string, unknown>;
 
-  constructor(status: number, code: ApiErrorCode, message: string) {
+  constructor(status: number, code: ApiErrorCode, message: string, details?: Record<string, unknown>) {
     super(status as ContentfulStatusCode, { message });
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -18,6 +20,17 @@ export function unauthorized(message = "Unauthorized") {
 
 export function forbidden(message = "Forbidden") {
   return new AppError(403, "FORBIDDEN", message);
+}
+
+export function verificationRequired(params: {
+  verificationStatus: "PENDING" | "REJECTED";
+  rejectionReason?: string | null;
+  message?: string;
+}) {
+  return new AppError(403, "VERIFICATION_REQUIRED", params.message ?? "Verification required", {
+    verificationStatus: params.verificationStatus,
+    ...(params.rejectionReason ? { rejectionReason: params.rejectionReason } : {}),
+  });
 }
 
 export function validationError(message = "Invalid request") {

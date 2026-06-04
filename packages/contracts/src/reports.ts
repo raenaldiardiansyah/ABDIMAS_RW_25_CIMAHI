@@ -37,5 +37,20 @@ export const rtBreakdownItemSchema = z.object({
   produktif: z.number().int().min(0),
 });
 
+export const reportDemographicsSchema = z.object({
+  totalCitizens: z.number().int().min(0),
+  ageGroups: z.array(
+    z.object({
+      label: z.enum(["0-17", "18-35", "36-60", "60+"]),
+      value: z.number().int().min(0),
+    }),
+  ),
+  gender: z.object({
+    male: z.number().int().min(0),
+    female: z.number().int().min(0),
+  }),
+});
+
 export const reportSummaryResponseSchema = createApiSuccessSchema(dashboardSummarySchema);
 export const rtBreakdownResponseSchema = createApiSuccessSchema(z.array(rtBreakdownItemSchema));
+export const reportDemographicsResponseSchema = createApiSuccessSchema(reportDemographicsSchema);

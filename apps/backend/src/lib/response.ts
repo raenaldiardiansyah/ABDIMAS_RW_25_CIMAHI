@@ -15,7 +15,7 @@ type ApiFailure = {
     code: string;
     message: string;
   };
-};
+} & Record<string, unknown>;
 
 export function ok<T>(c: Context, data: T, meta?: PageMeta, status = 200) {
   return c.json<ApiSuccess<T>>(
@@ -32,11 +32,12 @@ export function created<T>(c: Context, data: T, meta?: PageMeta) {
   return ok(c, data, meta, 201);
 }
 
-export function fail(c: Context, code: string, message: string, status = 400) {
+export function fail(c: Context, code: string, message: string, status = 400, details?: Record<string, unknown>) {
   return c.json<ApiFailure>(
     {
       success: false,
       error: { code, message },
+      ...(details ?? {}),
     },
     { status: status as ContentfulStatusCode },
   );

@@ -41,8 +41,8 @@
   --accent-foreground: var(--primary-900);
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --input: #dbeafe;
-  --border: #dbeafe;
+  --input: color-mix(in srgb, var(--primary), white 86%);
+  --border: color-mix(in srgb, var(--primary), white 84%);
   --ring: color-mix(in srgb, var(--primary), transparent 58%);
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
@@ -58,8 +58,32 @@
   --panel-tint: rgba(255, 255, 255, 0.68);
 
   /* Admin surface */
-  --admin-background: #07130d;
-  --admin-foreground: #ffffff;
+  --admin-background: var(--background);
+  --admin-foreground: var(--foreground);
+  --admin-surface: var(--card);
+  --admin-surface-muted: color-mix(in srgb, var(--primary), white 96.5%);
+  --admin-surface-soft: color-mix(in srgb, var(--primary), white 94%);
+  --admin-border: color-mix(in srgb, var(--primary), white 86%);
+  --admin-heading: color-mix(in srgb, var(--foreground), var(--primary) 8%);
+  --admin-body: #475569;
+  --admin-subtle: #64748b;
+  --admin-muted: #94a3b8;
+  --admin-primary: var(--primary);
+  --admin-primary-strong: var(--primary-700);
+  --admin-primary-soft: var(--primary-50);
+  --admin-primary-soft-foreground: var(--primary-800);
+  --admin-primary-soft-border: color-mix(in srgb, var(--primary), white 70%);
+  --admin-gradient-from: var(--primary);
+  --admin-gradient-to: var(--primary-500);
+  --admin-success-soft: color-mix(in srgb, var(--status-success), white 88%);
+  --admin-success-foreground: color-mix(in srgb, var(--status-success), black 12%);
+  --admin-success-border: color-mix(in srgb, var(--status-success), white 72%);
+  --admin-warning-soft: color-mix(in srgb, var(--status-warning), white 86%);
+  --admin-warning-foreground: color-mix(in srgb, var(--status-warning), black 18%);
+  --admin-warning-border: color-mix(in srgb, var(--status-warning), white 68%);
+  --admin-danger-soft: color-mix(in srgb, var(--status-error), white 90%);
+  --admin-danger-foreground: color-mix(in srgb, var(--status-error), black 10%);
+  --admin-danger-border: color-mix(in srgb, var(--status-error), white 76%);
 
   /* Brand aliases */
   --brand-950: var(--primary-950);
@@ -139,7 +163,7 @@
   --chip-active: var(--primary);
   --chip-active-shadow: color-mix(in srgb, var(--primary-900), transparent 76%);
   --panel-soft: #ffffff;
-  --panel-soft-border: #dbeafe;
+  --panel-soft-border: color-mix(in srgb, var(--primary), white 84%);
 }
 
 .dark {
@@ -177,8 +201,32 @@
   --overlay-strong: rgba(9, 15, 11, 0.92);
   --panel-tint: rgba(9, 15, 11, 0.45);
 
-  --admin-background: #07130d;
-  --admin-foreground: #ffffff;
+  --admin-background: var(--background);
+  --admin-foreground: var(--foreground);
+  --admin-surface: var(--card);
+  --admin-surface-muted: color-mix(in srgb, var(--primary), transparent 90%);
+  --admin-surface-soft: color-mix(in srgb, var(--primary), transparent 87%);
+  --admin-border: color-mix(in srgb, var(--primary), transparent 78%);
+  --admin-heading: var(--foreground);
+  --admin-body: #cbd5e1;
+  --admin-subtle: #a7b7ad;
+  --admin-muted: #8aa0b6;
+  --admin-primary: var(--primary);
+  --admin-primary-strong: var(--primary-400);
+  --admin-primary-soft: color-mix(in srgb, var(--primary), transparent 88%);
+  --admin-primary-soft-foreground: #dbeafe;
+  --admin-primary-soft-border: color-mix(in srgb, var(--primary), transparent 78%);
+  --admin-gradient-from: color-mix(in srgb, var(--primary), black 12%);
+  --admin-gradient-to: var(--primary);
+  --admin-success-soft: color-mix(in srgb, var(--status-success), transparent 86%);
+  --admin-success-foreground: #dcfce7;
+  --admin-success-border: color-mix(in srgb, var(--status-success), transparent 76%);
+  --admin-warning-soft: color-mix(in srgb, var(--status-warning), transparent 84%);
+  --admin-warning-foreground: #fef3c7;
+  --admin-warning-border: color-mix(in srgb, var(--status-warning), transparent 74%);
+  --admin-danger-soft: color-mix(in srgb, var(--status-error), transparent 86%);
+  --admin-danger-foreground: #fee2e2;
+  --admin-danger-border: color-mix(in srgb, var(--status-error), transparent 76%);
 
   --surface-primary: #090f0b;
   --surface-secondary: #101a13;

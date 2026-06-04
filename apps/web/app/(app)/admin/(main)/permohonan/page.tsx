@@ -12,6 +12,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
+
+const PAGE_SIZE = 20;
 
 type RequestItem = {
   id: string;
@@ -31,23 +34,31 @@ function formatDate(value: string) {
 }
 
 export default function PermohonanPage() {
+  const { runWithToast } = useActionToast();
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewedAnggota, setViewedAnggota] = useState<RequestItem | null>(null);
   const [viewedMutasi, setViewedMutasi] = useState<RequestItem | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
       try {
-        const response = await platformFetch<RequestItem[]>('/admin/requests?page=1&limit=100&status=PENDING');
+        const response = await platformFetch<RequestItem[]>(`/admin/requests?page=${currentPage}&limit=${PAGE_SIZE}&status=PENDING`);
         if (!active) return;
         setRequests(response.data);
+        setTotalItems(response.meta?.total ?? response.data.length);
+        setTotalPages(response.meta?.totalPages ?? 1);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setRequests([]);
+        setTotalItems(0);
+        setTotalPages(1);
       } finally {
         if (active) setLoading(false);
       }
@@ -58,14 +69,21 @@ export default function PermohonanPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentPage]);
 
   const permohonan = requests.filter((item) => item.type === 'HOUSEHOLD_CREATE');
   const permohonanMutasi = requests.filter((item) => item.type !== 'HOUSEHOLD_CREATE');
 
   const handleApprove = async (id: string) => {
     try {
-      await platformFetch<RequestItem>(`/admin/requests/${id}/approve`, { method: 'POST' });
+      await runWithToast(
+        () => platformFetch<RequestItem>(`/admin/requests/${id}/approve`, { method: 'POST' }),
+        {
+          loading: 'Menyetujui permohonan...',
+          success: 'Permohonan disetujui',
+          error: 'Gagal menyetujui permohonan',
+        },
+      );
       setRequests((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error(error);
@@ -74,10 +92,18 @@ export default function PermohonanPage() {
 
   const handleReject = async (id: string) => {
     try {
-      await platformFetch<RequestItem>(`/admin/requests/${id}/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: 'Rejected by admin' }),
-      });
+      await runWithToast(
+        () =>
+          platformFetch<RequestItem>(`/admin/requests/${id}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: 'Rejected by admin' }),
+          }),
+        {
+          loading: 'Menolak permohonan...',
+          success: 'Permohonan ditolak',
+          error: 'Gagal menolak permohonan',
+        },
+      );
       setRequests((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error(error);
@@ -268,6 +294,21 @@ export default function PermohonanPage() {
             );
           })
         )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl bg-[#3B82F6] px-5 py-3 text-white">
+        <span className="text-sm">
+          Menampilkan {requests.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} permohonan
+        </span>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="h-8 w-8 rounded-full bg-white/20 text-white hover:bg-white/30 disabled:opacity-50">
+            {'<'}
+          </Button>
+          <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
+          <Button type="button" variant="ghost" size="icon" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="h-8 w-8 rounded-full bg-white/20 text-white hover:bg-white/30 disabled:opacity-50">
+            {'>'}
+          </Button>
+        </div>
       </div>
 
       <Dialog open={!!viewedAnggota} onOpenChange={(open) => !open && setViewedAnggota(null)}>

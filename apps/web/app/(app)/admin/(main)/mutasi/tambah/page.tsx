@@ -1,18 +1,14 @@
 'use client';
 
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
-  ArrowRight,
   Calendar,
   CheckCircle2,
   ChevronLeft,
   Save,
-  UploadCloud,
-  X,
   FileText,
   MapPin,
   Settings,
@@ -22,6 +18,9 @@ import {
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import FormFileUpload from '@/components/warga/FormFileUpload';
+import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
 
 /* ── Constants ── */
 
@@ -56,13 +55,6 @@ const ALASAN_PINDAH_OPTIONS = ['Pekerjaan', 'Pendidikan', 'Keluarga', 'Perumahan
 
 /* ── Types ── */
 
-type FileData = {
-  name: string;
-  size: number;
-  type: string;
-  url: string; // Object URL for preview
-};
-
 type FormData = {
   jenisMutasi: 'Mutasi Masuk' | 'Mutasi Keluar' | '';
   nik: string;
@@ -76,9 +68,9 @@ type FormData = {
   rtTujuan: string;
   alasanPindah: string;
 
-  suratKeterangan: FileData | null;
-  ktp: FileData | null;
-  kk: FileData | null;
+  suratKeterangan: File | null;
+  ktp: File | null;
+  kk: File | null;
   telepon: string;
 };
 
@@ -103,6 +95,7 @@ const INITIAL_DATA: FormData = {
 
 export default function TambahMutasiPage() {
   const router = useRouter();
+  const { runWithToast, toast } = useActionToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<FormData>(INITIAL_DATA);
   const [loading, setLoading] = useState(false);
@@ -111,9 +104,14 @@ export default function TambahMutasiPage() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isDragging, setIsDragging] = useState(false);
   
   const dateRef = useRef<HTMLInputElement>(null);
+
+  const openFilePreview = (file: File) => {
+    const url = URL.createObjectURL(file);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
 
   // 1. Check for draft on mount
   useEffect(() => {
@@ -164,7 +162,11 @@ export default function TambahMutasiPage() {
       setCurrentStep((p) => Math.min(STEPS.length, p + 1));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      alert('Mohon lengkapi semua data wajib (kolom yang berwarna merah) sebelum melanjutkan ke langkah berikutnya.');
+      toast({
+        title: 'Validasi gagal',
+        description: 'Lengkapi semua data wajib sebelum melanjutkan.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -175,8 +177,18 @@ export default function TambahMutasiPage() {
 
   /* ── Draft Logic ── */
   const handleSaveDraft = () => {
-    localStorage.setItem('mutasi_draft', JSON.stringify(form));
-    alert('Draft berhasil disimpan!');
+    const draft = {
+      ...form,
+      suratKeterangan: null,
+      ktp: null,
+      kk: null,
+    };
+    localStorage.setItem('mutasi_draft', JSON.stringify(draft));
+    toast({
+      title: 'Draft tersimpan',
+      description: 'Draft mutasi berhasil disimpan di browser ini.',
+      variant: 'success',
+    });
   };
 
   const handleLoadDraft = () => {
@@ -210,57 +222,72 @@ export default function TambahMutasiPage() {
 
     setLoading(true);
     try {
-      // Mock API call since actual endpoint logic for creating full mutation with citizen doesn't exist yet
-      console.log('Submitting mutation:', form);
+      await runWithToast(
+        async () => {
+          const formData = new FormData();
+          formData.set('nik', form.nik);
+          formData.set('name', form.nama);
+          formData.set('gender', form.jenisKelamin);
+          formData.set('occupation', form.pekerjaan);
+          formData.set('type', form.jenisMutasi === 'Mutasi Masuk' ? 'IN' : 'OUT');
+          formData.set('mutationDate', form.tanggalMutasi);
+          formData.set('fromAddress', form.alamatLama);
+          formData.set('toAddress', form.alamatBaru);
+          formData.set('targetRt', form.rtTujuan);
+          formData.set('reason', form.alasanPindah);
+          formData.set('phone', form.telepon);
+          if (form.suratKeterangan) formData.set('suratKeterangan', form.suratKeterangan);
+          if (form.ktp) formData.set('ktp', form.ktp);
+          if (form.kk) formData.set('kk', form.kk);
 
+          await platformFetch('/admin/mutations', {
+            method: 'POST',
+            body: formData,
+          });
+        },
+        {
+          loading: 'Menyimpan mutasi...',
+          success: 'Mutasi berhasil disimpan',
+          error: 'Gagal menyimpan mutasi',
+          loadingDescription: 'Dokumen sedang diunggah ke server.',
+          successDescription: 'Data mutasi dan dokumen pendukung berhasil tersimpan.',
+        },
+      );
       localStorage.removeItem('mutasi_draft');
-      alert('Berhasil menyimpan data mutasi!');
       router.push('/admin/mutasi');
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert('Terjadi kesalahan saat menyimpan data mutasi.');
     } finally {
       setLoading(false);
     }
   };
 
   /* ── File Upload ── */
-  const handleFileUpload = (type: 'suratKeterangan' | 'ktp' | 'kk', file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran file maksimal 5MB!');
-      return;
-    }
-    const fileData: FileData = {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: URL.createObjectURL(file),
-    };
-    handleFieldChange(type, fileData);
-  };
-
   return (
     <div className="flex flex-col gap-5">
       {/* ── Header ── */}
-      <div className="flex items-center gap-4 text-[#3B82F6]">
-        <button
+      <div className="flex items-center gap-4 text-[color:var(--admin-primary)]">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => setShowExitModal(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3B82F6] text-white transition hover:bg-[#2563EB]"
+          className="h-10 w-10 rounded-full bg-[color:var(--admin-primary)] text-primary-foreground shadow-sm hover:bg-[color:var(--admin-primary-strong)]"
         >
           <ChevronLeft className="h-6 w-6" />
-        </button>
-        <span className="text-xl font-bold cursor-pointer" onClick={() => setShowExitModal(true)}>Keluar Halaman</span>
+        </Button>
+        <span className="cursor-pointer text-xl font-bold" onClick={() => setShowExitModal(true)}>Keluar Halaman</span>
       </div>
 
       {/* ── Title & Stepper ── */}
-      <div className="relative overflow-hidden rounded-[12px] bg-[#EEF2FF] p-6">
-        <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#3B82F6]/[0.05]" />
-        <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-[#3B82F6]/[0.08]" />
+      <div className="relative overflow-hidden rounded-[12px] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-6 shadow-sm">
+        <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[color:var(--admin-primary)]/5" />
+        <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-[color:var(--admin-primary)]/8" />
         
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold text-[#3B82F6]">Input Mutasi Warga</h1>
-          <p className="mt-1 text-sm text-[#3B82F6]/80">
+          <h1 className="text-2xl font-bold text-[color:var(--admin-primary)]">Input Mutasi Warga</h1>
+          <p className="mt-1 text-sm text-[color:var(--admin-primary-soft-foreground)]">
             Isi semua field wajib bertanda bintang merah. Data akan tersimpan ke modul Mutasi penduduk.
           </p>
         </div>
@@ -272,12 +299,12 @@ export default function TambahMutasiPage() {
             const isCurrentOrCompleted = isActive || isCompleted;
 
             const circleStyle = isCurrentOrCompleted
-              ? 'bg-transparent text-[#2563EB] border-[1.5px] border-[#2563EB]'
-              : 'bg-[#EEF0FD] text-[#7C8FE8] border-[1.5px] border-[#C5CFFB]';
+              ? 'border-[1.5px] border-[color:var(--admin-primary)] bg-white/90 text-[color:var(--admin-primary)]'
+              : 'border-[1.5px] border-[color:var(--admin-primary-soft-border)] bg-white/70 text-[color:var(--admin-subtle)]';
 
             const labelStyle = isCurrentOrCompleted
-              ? 'text-[#2563EB] font-[600]'
-              : 'text-[#7C8FE8] font-[400]';
+              ? 'font-[600] text-[color:var(--admin-primary)]'
+              : 'font-[400] text-[color:var(--admin-subtle)]';
 
             return (
               <div key={step.id} className={`flex items-center ${idx < STEPS.length - 1 ? 'flex-1' : ''}`}>
@@ -292,7 +319,7 @@ export default function TambahMutasiPage() {
                 {idx < STEPS.length - 1 && (
                   <div
                     className={`mx-4 h-[1px] flex-1 rounded-full transition-colors ${
-                      isCompleted ? 'bg-[#2563EB]' : 'bg-[#C5CFFB]'
+                      isCompleted ? 'bg-[color:var(--admin-primary)]' : 'bg-[color:var(--admin-primary-soft-border)]'
                     }`}
                   />
                 )}
@@ -302,11 +329,11 @@ export default function TambahMutasiPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 rounded-[12px] bg-[#EEF2FF] px-6 py-4 border border-blue-100">
-        <CheckCircle2 className="h-5 w-5 text-[#3B82F6]" />
+      <div className="flex items-center gap-3 rounded-[12px] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-6 py-4 shadow-sm">
+        <CheckCircle2 className="h-5 w-5 text-[color:var(--admin-primary)]" />
         <div>
-          <p className="text-sm font-bold text-[#3B82F6]">Periksa kembali sebelum menyimpan.</p>
-          <p className="text-sm text-[#3B82F6]/80">Pastikan semua data sudah benar. Kamu masih bisa kembali ke langkah sebelumnya untuk koreksi data</p>
+          <p className="text-sm font-bold text-[color:var(--admin-primary)]">Periksa kembali sebelum menyimpan.</p>
+          <p className="text-sm text-[color:var(--admin-primary-soft-foreground)]">Pastikan semua data sudah benar. Kamu masih bisa kembali ke langkah sebelumnya untuk koreksi data</p>
         </div>
       </div>
 
@@ -316,16 +343,16 @@ export default function TambahMutasiPage() {
         {/* STEP 1: Jenis Mutasi & Detail Penduduk */}
         {currentStep === 1 && (
           <>
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
-              <h2 className="mb-6 text-xl font-bold text-[#1E293B]">Jenis Mutasi</h2>
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
+              <h2 className="mb-6 text-xl font-bold text-[color:var(--admin-heading)]">Jenis Mutasi</h2>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => handleFieldChange('jenisMutasi', 'Mutasi Masuk')}
                   className={`flex items-center justify-center gap-2 rounded-xl border-2 px-6 py-4 font-bold transition ${
                     form.jenisMutasi === 'Mutasi Masuk'
-                      ? 'border-[#3B82F6] bg-[#EFF6FF] text-[#3B82F6]'
-                      : 'border-gray-200 text-[#64748B] hover:bg-gray-50'
+                      ? 'border-[color:var(--admin-primary)] bg-[color:var(--admin-primary-soft)] text-[color:var(--admin-primary)]'
+                      : 'border-[color:var(--admin-border)] text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-soft)]'
                   }`}
                 >
                   <LogIn className="h-5 w-5" />
@@ -336,8 +363,8 @@ export default function TambahMutasiPage() {
                   onClick={() => handleFieldChange('jenisMutasi', 'Mutasi Keluar')}
                   className={`flex items-center justify-center gap-2 rounded-xl border-2 px-6 py-4 font-bold transition ${
                     form.jenisMutasi === 'Mutasi Keluar'
-                      ? 'border-[#3B82F6] bg-[#EFF6FF] text-[#3B82F6]'
-                      : 'border-gray-200 text-[#64748B] hover:bg-gray-50'
+                      ? 'border-[color:var(--admin-primary)] bg-[color:var(--admin-primary-soft)] text-[color:var(--admin-primary)]'
+                      : 'border-[color:var(--admin-border)] text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-soft)]'
                   }`}
                 >
                   <LogOut className="h-5 w-5" />
@@ -347,12 +374,12 @@ export default function TambahMutasiPage() {
               {errors.jenisMutasi && <p className="mt-2 text-sm text-red-500">{errors.jenisMutasi}</p>}
             </div>
 
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
-              <h2 className="mb-6 text-xl font-bold text-[#1E293B]">Detail Penduduk</h2>
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
+              <h2 className="mb-6 text-xl font-bold text-[color:var(--admin-heading)]">Detail Penduduk</h2>
               
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[#1E293B]">NIK<span className="text-red-500">*</span></label>
+                  <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">NIK<span className="text-red-500">*</span></label>
                   <Input
                     value={form.nik}
                     onChange={(e) => handleFieldChange('nik', e.target.value.replace(/\D/g, ''))}
@@ -363,7 +390,7 @@ export default function TambahMutasiPage() {
                   {errors.nik && <p className="mt-1 text-xs text-red-500">{errors.nik}</p>}
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Nama Lengkap<span className="text-red-500">*</span></label>
+                  <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Nama Lengkap<span className="text-red-500">*</span></label>
                   <Input
                     value={form.nama}
                     onChange={(e) => handleFieldChange('nama', e.target.value)}
@@ -373,7 +400,7 @@ export default function TambahMutasiPage() {
                   {errors.nama && <p className="mt-1 text-xs text-red-500">{errors.nama}</p>}
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Tanggal Mutasi<span className="text-red-500">*</span></label>
+                  <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Tanggal Mutasi<span className="text-red-500">*</span></label>
                   <div className="relative">
                     <Input
                       ref={dateRef}
@@ -383,7 +410,7 @@ export default function TambahMutasiPage() {
                       className={`h-12 rounded-xl pr-10 [&::-webkit-calendar-picker-indicator]:hidden ${errors.tanggalMutasi ? 'border-red-500' : ''}`}
                     />
                     <Calendar 
-                      className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 cursor-pointer hover:text-[#2563EB] transition-colors" 
+                      className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 cursor-pointer text-[color:var(--admin-muted)] transition-colors hover:text-[color:var(--admin-primary)]" 
                       onClick={() => {
                         try {
                           dateRef.current?.showPicker();
@@ -396,9 +423,9 @@ export default function TambahMutasiPage() {
                   {errors.tanggalMutasi && <p className="mt-1 text-xs text-red-500">{errors.tanggalMutasi}</p>}
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Jenis Kelamin<span className="text-red-500">*</span></label>
+                  <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Jenis Kelamin<span className="text-red-500">*</span></label>
                   <Select value={form.jenisKelamin} onValueChange={(v) => handleFieldChange('jenisKelamin', v)}>
-                    <SelectTrigger className={`h-12 rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 ${errors.jenisKelamin ? 'border-red-500' : ''}`}>
+                    <SelectTrigger className={`h-12 rounded-xl border border-[color:var(--admin-border)] bg-white px-4 text-sm text-[color:var(--admin-heading)] outline-none transition focus:border-[color:var(--admin-primary)] focus:ring-2 focus:ring-[color:var(--admin-primary-soft)] ${errors.jenisKelamin ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Masukan Jenis Kelamin" />
                     </SelectTrigger>
                     <SelectContent>
@@ -409,9 +436,9 @@ export default function TambahMutasiPage() {
                   {errors.jenisKelamin && <p className="mt-1 text-xs text-red-500">{errors.jenisKelamin}</p>}
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Pekerjaan<span className="text-red-500">*</span></label>
+                  <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Pekerjaan<span className="text-red-500">*</span></label>
                   <Select value={form.pekerjaan} onValueChange={(v) => handleFieldChange('pekerjaan', v)}>
-                    <SelectTrigger className={`h-12 rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 ${errors.pekerjaan ? 'border-red-500' : ''}`}>
+                    <SelectTrigger className={`h-12 rounded-xl border border-[color:var(--admin-border)] bg-white px-4 text-sm text-[color:var(--admin-heading)] outline-none transition focus:border-[color:var(--admin-primary)] focus:ring-2 focus:ring-[color:var(--admin-primary-soft)] ${errors.pekerjaan ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Pilih Pekerjaan" />
                     </SelectTrigger>
                     <SelectContent>
@@ -429,12 +456,12 @@ export default function TambahMutasiPage() {
 
         {/* STEP 2: Informasi Alamat */}
         {currentStep === 2 && (
-          <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="mb-6 text-xl font-bold text-[#1E293B]">Informasi Alamat</h2>
+          <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
+            <h2 className="mb-6 text-xl font-bold text-[color:var(--admin-heading)]">Informasi Alamat</h2>
             
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Alamat Lama<span className="text-red-500">*</span></label>
+                <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Alamat Lama<span className="text-red-500">*</span></label>
                 <Input
                   value={form.alamatLama}
                   onChange={(e) => handleFieldChange('alamatLama', e.target.value)}
@@ -444,7 +471,7 @@ export default function TambahMutasiPage() {
                 {errors.alamatLama && <p className="mt-1 text-xs text-red-500">{errors.alamatLama}</p>}
               </div>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Alamat Baru<span className="text-red-500">*</span></label>
+                <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Alamat Baru<span className="text-red-500">*</span></label>
                 <Input
                   value={form.alamatBaru}
                   onChange={(e) => handleFieldChange('alamatBaru', e.target.value)}
@@ -454,9 +481,9 @@ export default function TambahMutasiPage() {
                 {errors.alamatBaru && <p className="mt-1 text-xs text-red-500">{errors.alamatBaru}</p>}
               </div>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#1E293B]">RT Tujuan<span className="text-red-500">*</span></label>
+                <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">RT Tujuan<span className="text-red-500">*</span></label>
                 <Select value={form.rtTujuan} onValueChange={(v) => handleFieldChange('rtTujuan', v)}>
-                  <SelectTrigger className={`h-12 rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 ${errors.rtTujuan ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-12 rounded-xl border border-[color:var(--admin-border)] bg-white px-4 text-sm text-[color:var(--admin-heading)] outline-none transition focus:border-[color:var(--admin-primary)] focus:ring-2 focus:ring-[color:var(--admin-primary-soft)] ${errors.rtTujuan ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Pilih RT Tujuan" />
                   </SelectTrigger>
                   <SelectContent>
@@ -468,9 +495,9 @@ export default function TambahMutasiPage() {
                 {errors.rtTujuan && <p className="mt-1 text-xs text-red-500">{errors.rtTujuan}</p>}
               </div>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Alasan Pindah<span className="text-red-500">*</span></label>
+                <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Alasan Pindah<span className="text-red-500">*</span></label>
                 <Select value={form.alasanPindah} onValueChange={(v) => handleFieldChange('alasanPindah', v)}>
-                  <SelectTrigger className={`h-12 rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100 ${errors.alasanPindah ? 'border-red-500' : ''}`}>
+                  <SelectTrigger className={`h-12 rounded-xl border border-[color:var(--admin-border)] bg-white px-4 text-sm text-[color:var(--admin-heading)] outline-none transition focus:border-[color:var(--admin-primary)] focus:ring-2 focus:ring-[color:var(--admin-primary-soft)] ${errors.alasanPindah ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Pilih alasan" />
                   </SelectTrigger>
                   <SelectContent>
@@ -488,79 +515,33 @@ export default function TambahMutasiPage() {
         {/* STEP 3: Berkas Pendukung */}
         {currentStep === 3 && (
           <div className="space-y-6">
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
-              <h2 className="mb-6 text-xl font-bold text-[#1E293B]">Berkas Pendukung</h2>
-              
-              <div className={`relative mb-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed ${isDragging ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-gray-50'} py-12 transition-colors hover:bg-blue-50`}>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  onDragEnter={() => setIsDragging(true)}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={() => setIsDragging(false)}
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    let usedSk = !!form.suratKeterangan;
-                    let usedKtp = !!form.ktp;
-                    let usedKk = !!form.kk;
-                    
-                    files.forEach((file) => {
-                      if (!usedSk) {
-                        handleFileUpload('suratKeterangan', file);
-                        usedSk = true;
-                      } else if (!usedKtp) {
-                        handleFileUpload('ktp', file);
-                        usedKtp = true;
-                      } else if (!usedKk) {
-                        handleFileUpload('kk', file);
-                        usedKk = true;
-                      }
-                    });
-                  }}
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
+              <h2 className="mb-6 text-xl font-bold text-[color:var(--admin-heading)]">Berkas Pendukung</h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormFileUpload
+                  label="Surat Keterangan"
+                  file={form.suratKeterangan}
+                  onChange={(file) => handleFieldChange('suratKeterangan', file)}
                 />
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF6FF] text-[#3B82F6]">
-                  <UploadCloud className="h-6 w-6" />
-                </div>
-                <p className="mt-4 font-bold text-[#3B82F6]">Klik untuk unggah atau seret file ke sini</p>
-                <p className="mt-1 text-center text-sm text-[#64748B]">
-                  Format yang didukung: PDF, JPG, PNG (Maksimal 5MB per file).<br/>Unggah Surat Keterangan, KTP, Atau KK
-                </p>
-              </div>
-
-              {/* Uploaded Files Chips */}
-              <div className="flex flex-wrap gap-4">
-                {(['suratKeterangan', 'ktp', 'kk'] as const).map((type) => {
-                  const fileData = form[type];
-                  if (!fileData) return null;
-                  return (
-                    <div key={type} className="flex items-center gap-4 rounded-xl border border-gray-200 p-3 pr-5 shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => handleFieldChange(type, null)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                      <div>
-                        <p className="font-bold text-[#3B82F6]">
-                          {type === 'suratKeterangan' ? 'Surat Keterangan' : type.toUpperCase()}
-                        </p>
-                        <p className="text-xs text-[#3B82F6]/60">File {fileData.name.split('.').pop()?.toUpperCase()}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                <FormFileUpload
+                  label="KTP"
+                  file={form.ktp}
+                  onChange={(file) => handleFieldChange('ktp', file)}
+                />
+                <FormFileUpload
+                  label="KK"
+                  file={form.kk}
+                  onChange={(file) => handleFieldChange('kk', file)}
+                />
               </div>
             </div>
 
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
-              <h2 className="mb-6 text-xl font-bold text-[#1E293B]">Kontak</h2>
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
+              <h2 className="mb-6 text-xl font-bold text-[color:var(--admin-heading)]">Kontak</h2>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-[#1E293B]">Nomor Telepon<span className="text-red-500">*</span></label>
-                <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden focus-within:border-[#3B82F6] focus-within:ring-1 focus-within:ring-[#3B82F6]">
-                  <div className="bg-gray-50 px-4 py-3 font-semibold text-[#3B82F6] border-r border-gray-200">+62</div>
+                <label className="mb-2 block text-sm font-semibold text-[color:var(--admin-heading)]">Nomor Telepon<span className="text-red-500">*</span></label>
+                <div className="flex items-center overflow-hidden rounded-xl border border-[color:var(--admin-border)] focus-within:border-[color:var(--admin-primary)] focus-within:ring-1 focus-within:ring-[color:var(--admin-primary-soft-border)]">
+                  <div className="border-r border-[color:var(--admin-border)] bg-[color:var(--admin-surface-soft)] px-4 py-3 font-semibold text-[color:var(--admin-primary)]">+62</div>
                   <Input
                     value={form.telepon}
                     onChange={(e) => {
@@ -581,76 +562,84 @@ export default function TambahMutasiPage() {
         {/* STEP 4: Konfirmasi */}
         {currentStep === 4 && (
           <div className="space-y-6">
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
-                <Settings className="h-5 w-5 text-[#3B82F6]" />
-                <h2 className="text-lg font-bold text-[#1E293B]">Jenis Mutasi</h2>
+                <Settings className="h-5 w-5 text-[color:var(--admin-primary)]" />
+                <h2 className="text-lg font-bold text-[color:var(--admin-heading)]">Jenis Mutasi</h2>
               </div>
-              <div className="grid grid-cols-2 gap-y-4 text-sm border-t border-gray-100 pt-4">
-                <div className="font-semibold text-[#1E293B]">Jenis Mutasi</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.jenisMutasi}</div>
+              <div className="grid grid-cols-2 gap-y-4 border-t border-[color:var(--admin-border)] pt-4 text-sm">
+                <div className="font-semibold text-[color:var(--admin-heading)]">Jenis Mutasi</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.jenisMutasi}</div>
                 
-                <div className="font-semibold text-[#1E293B]">NIK</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.nik}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">NIK</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.nik}</div>
                 
-                <div className="font-semibold text-[#1E293B]">Nama Lengkap</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.nama}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">Nama Lengkap</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.nama}</div>
                 
-                <div className="font-semibold text-[#1E293B]">Tanggal Mutasi</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.tanggalMutasi}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">Tanggal Mutasi</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.tanggalMutasi}</div>
                 
-                <div className="font-semibold text-[#1E293B]">Jenis Kelamin</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">Jenis Kelamin</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</div>
                 
-                <div className="font-semibold text-[#1E293B]">Pekerjaan</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.pekerjaan}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">Pekerjaan</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.pekerjaan}</div>
               </div>
             </div>
 
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-[#64748B]" />
-                <h2 className="text-lg font-bold text-[#1E293B]">Informasi Alamat</h2>
+                <MapPin className="h-5 w-5 text-[color:var(--admin-subtle)]" />
+                <h2 className="text-lg font-bold text-[color:var(--admin-heading)]">Informasi Alamat</h2>
               </div>
-              <div className="grid grid-cols-2 gap-y-4 text-sm border-t border-gray-100 pt-4">
-                <div className="font-semibold text-[#1E293B]">Alamat Lama</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.alamatLama}</div>
+              <div className="grid grid-cols-2 gap-y-4 border-t border-[color:var(--admin-border)] pt-4 text-sm">
+                <div className="font-semibold text-[color:var(--admin-heading)]">Alamat Lama</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.alamatLama}</div>
                 
-                <div className="font-semibold text-[#1E293B]">Alamat Baru</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.alamatBaru}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">Alamat Baru</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.alamatBaru}</div>
                 
-                <div className="font-semibold text-[#1E293B]">RT/RW Tujuan</div>
-                <div className="text-right font-medium text-[#1E293B]">RT {form.rtTujuan} / RW 25</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">RT/RW Tujuan</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">RT {form.rtTujuan} / RW 25</div>
                 
-                <div className="font-semibold text-[#1E293B]">Alasan Pindah</div>
-                <div className="text-right font-medium text-[#1E293B]">{form.alasanPindah}</div>
+                <div className="font-semibold text-[color:var(--admin-heading)]">Alasan Pindah</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">{form.alasanPindah}</div>
               </div>
             </div>
 
-            <div className="rounded-[12px] border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="rounded-[12px] border border-[color:var(--admin-border)] bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-[#64748B]" />
-                <h2 className="text-lg font-bold text-[#1E293B]">Berkas Pendukung</h2>
+                <FileText className="h-5 w-5 text-[color:var(--admin-subtle)]" />
+                <h2 className="text-lg font-bold text-[color:var(--admin-heading)]">Berkas Pendukung</h2>
               </div>
-              <div className="grid grid-cols-2 gap-y-4 text-sm mb-6 border-t border-gray-100 pt-4">
-                <div className="font-semibold text-[#1E293B]">Nomor Telepon</div>
-                <div className="text-right font-medium text-[#1E293B]">+62 {form.telepon}</div>
+              <div className="mb-6 grid grid-cols-2 gap-y-4 border-t border-[color:var(--admin-border)] pt-4 text-sm">
+                <div className="font-semibold text-[color:var(--admin-heading)]">Nomor Telepon</div>
+                <div className="text-right font-medium text-[color:var(--admin-heading)]">+62 {form.telepon}</div>
               </div>
               <div className="flex flex-wrap gap-4">
                 {(['suratKeterangan', 'ktp', 'kk'] as const).map((type) => {
                   const fileData = form[type];
                   if (!fileData) return null;
                   return (
-                    <div key={type} className="flex items-center gap-4 rounded-xl border border-gray-200 p-3 pr-5 shadow-sm">
-                      <button type="button" className="text-gray-400 hover:text-red-500">
-                        <X className="h-5 w-5" />
-                      </button>
-                      <div>
-                        <p className="font-bold text-[#3B82F6]">
+                    <div key={type} className="flex items-center gap-4 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-soft)] p-3 pr-3 shadow-sm">
+                      <div className="flex-1">
+                        <p className="font-bold text-[color:var(--admin-primary)]">
                           {type === 'suratKeterangan' ? 'Surat Keterangan' : type.toUpperCase()}
                         </p>
-                        <p className="text-xs text-[#3B82F6]/60">File {fileData.name.split('.').pop()?.toUpperCase()}</p>
+                        <p className="text-sm font-medium text-[color:var(--admin-heading)]">{fileData.name}</p>
+                        <p className="text-xs text-[color:var(--admin-subtle)]">
+                          File {fileData.name.split('.').pop()?.toUpperCase()} • {(fileData.size / 1024).toFixed(0)} KB
+                        </p>
                       </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => openFilePreview(fileData)}
+                        className="rounded-lg border-[color:var(--admin-primary-soft-border)] text-[color:var(--admin-primary)] hover:bg-[color:var(--admin-primary-soft)]"
+                      >
+                        Preview
+                      </Button>
                     </div>
                   );
                 })}
@@ -664,7 +653,7 @@ export default function TambahMutasiPage() {
           <Button
             type="button"
             onClick={currentStep > 1 ? handlePrev : () => setShowExitModal(true)}
-            className="h-12 rounded-xl border-2 border-[#3B82F6] bg-white px-8 font-bold text-[#3B82F6] hover:bg-blue-50 hover:text-[#2563EB]"
+            className="h-12 rounded-xl border border-[color:var(--admin-primary-soft-border)] bg-white px-8 font-bold text-[color:var(--admin-primary)] hover:bg-[color:var(--admin-primary-soft)] hover:text-[color:var(--admin-primary-strong)]"
           >
             Kembali
           </Button>
@@ -674,7 +663,7 @@ export default function TambahMutasiPage() {
               type="button"
               onClick={handleSaveDraft}
               variant="outline"
-              className="flex h-12 items-center gap-2 rounded-xl px-8 font-bold text-[#3B82F6] hover:bg-blue-50"
+              className="flex h-12 items-center gap-2 rounded-xl border border-[color:var(--admin-primary-soft-border)] bg-white px-8 font-bold text-[color:var(--admin-primary)] hover:bg-[color:var(--admin-primary-soft)]"
             >
               <Save className="h-5 w-5" />
               Simpan Draft
@@ -685,7 +674,7 @@ export default function TambahMutasiPage() {
             <Button
               type="button"
               onClick={handleNext}
-              className="flex h-12 items-center gap-2 rounded-xl bg-[#3B82F6] px-8 font-bold text-white hover:bg-[#2563EB]"
+              className="flex h-12 items-center gap-2 rounded-xl bg-[color:var(--admin-primary)] px-8 font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]"
             >
               Lanjutkan
               <ChevronLeft className="h-5 w-5 rotate-180" />
@@ -694,7 +683,7 @@ export default function TambahMutasiPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="flex h-12 items-center gap-2 rounded-xl bg-[#3B82F6] px-8 font-bold text-white hover:bg-[#2563EB]"
+              className="flex h-12 items-center gap-2 rounded-xl bg-[color:var(--admin-primary)] px-8 font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]"
             >
               {loading ? 'Menyimpan...' : 'Konfirmasi'}
             </Button>
@@ -706,19 +695,19 @@ export default function TambahMutasiPage() {
       <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
         <DialogContent className="max-w-sm rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[#1E293B]">Draft Tersimpan</DialogTitle>
-            <DialogDescription className="text-sm text-[#64748B]">
+            <DialogTitle className="text-lg font-bold text-[color:var(--admin-heading)]">Draft Tersimpan</DialogTitle>
+            <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
               Anda memiliki draft formulir yang belum selesai. Ingin memuat ulang atau menghapusnya?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            <Button onClick={handleLoadDraft} className="w-full rounded-xl bg-[#2563EB] py-3 text-sm font-bold text-white hover:bg-[#1D4ED8]">
+            <Button onClick={handleLoadDraft} className="w-full rounded-xl bg-[color:var(--admin-primary)] py-3 text-sm font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]">
               Muat Draft
             </Button>
-            <Button onClick={handleDeleteDraft} variant="outline" className="w-full rounded-xl border-red-100 bg-red-50 py-3 text-sm font-bold text-red-600 hover:bg-red-100">
+            <Button onClick={handleDeleteDraft} variant="outline" className="w-full rounded-xl border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] py-3 text-sm font-bold text-[color:var(--admin-danger-foreground)] hover:bg-[color:var(--admin-danger-soft)]/80">
               Hapus Draft
             </Button>
-            <Button onClick={() => setShowDraftModal(false)} variant="ghost" className="w-full rounded-xl py-3 text-sm font-bold hover:bg-gray-100">
+            <Button onClick={() => setShowDraftModal(false)} variant="ghost" className="w-full rounded-xl py-3 text-sm font-bold hover:bg-[color:var(--admin-surface-soft)]">
               Tutup
             </Button>
           </div>
@@ -729,19 +718,19 @@ export default function TambahMutasiPage() {
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
         <DialogContent className="max-w-sm rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[#1E293B]">Keluar Halaman?</DialogTitle>
-            <DialogDescription className="text-sm text-[#64748B]">
+            <DialogTitle className="text-lg font-bold text-[color:var(--admin-heading)]">Keluar Halaman?</DialogTitle>
+            <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
               Anda memiliki data yang belum disimpan. Apakah Anda ingin menyimpannya sebagai draft sebelum keluar?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            <Button onClick={() => { handleSaveDraft(); router.push('/admin/mutasi'); }} className="w-full rounded-xl bg-[#2563EB] py-3 font-bold text-white hover:bg-[#1D4ED8]">
+            <Button onClick={() => { handleSaveDraft(); router.push('/admin/mutasi'); }} className="w-full rounded-xl bg-[color:var(--admin-primary)] py-3 font-bold text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]">
               Simpan & Keluar
             </Button>
-            <Button onClick={() => router.push('/admin/mutasi')} variant="outline" className="w-full rounded-xl border-red-100 bg-red-50 py-3 font-bold text-red-600 hover:bg-red-100">
+            <Button onClick={() => router.push('/admin/mutasi')} variant="outline" className="w-full rounded-xl border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] py-3 font-bold text-[color:var(--admin-danger-foreground)] hover:bg-[color:var(--admin-danger-soft)]/80">
               Keluar Tanpa Menyimpan
             </Button>
-            <Button onClick={() => setShowExitModal(false)} variant="ghost" className="w-full rounded-xl py-3 font-bold hover:bg-gray-100">
+            <Button onClick={() => setShowExitModal(false)} variant="ghost" className="w-full rounded-xl py-3 font-bold hover:bg-[color:var(--admin-surface-soft)]">
               Batal
             </Button>
           </div>

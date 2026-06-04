@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
 
 type FormState = {
   kkNumber: string;
@@ -31,6 +32,7 @@ type FormState = {
 
 export default function TambahKartuKeluargaPage() {
   const router = useRouter();
+  const { runWithToast, toast } = useActionToast();
 
   const INITIAL_FORM: FormState = {
     kkNumber: '',
@@ -63,7 +65,11 @@ export default function TambahKartuKeluargaPage() {
   const handleSaveDraft = () => {
     localStorage.setItem('draft_tambah_kk', JSON.stringify({ form }));
     setHasDraft(true);
-    alert('Draft berhasil disimpan!');
+    toast({
+      title: 'Draft tersimpan',
+      description: 'Draft kartu keluarga berhasil disimpan di browser ini.',
+      variant: 'success',
+    });
   };
 
   const handleLoadDraft = () => {
@@ -118,17 +124,25 @@ export default function TambahKartuKeluargaPage() {
       // For now, we'll construct the address to include them.
       const fullAddress = `${form.address}, Kelurahan ${form.kelurahan}, Kecamatan ${form.kecamatan}`;
 
-      await platformFetch('/admin/households', {
-        method: 'POST',
-        body: JSON.stringify({
-          kkNumber: form.kkNumber,
-          headCitizenName: form.headCitizenName,
-          address: fullAddress,
-          rt: form.rt,
-          rw: form.rw,
-          status: 'ACTIVE',
-        }),
-      });
+      await runWithToast(
+        () =>
+          platformFetch('/admin/households', {
+            method: 'POST',
+            body: JSON.stringify({
+              kkNumber: form.kkNumber,
+              headCitizenName: form.headCitizenName,
+              address: fullAddress,
+              rt: form.rt,
+              rw: form.rw,
+              status: 'ACTIVE',
+            }),
+          }),
+        {
+          loading: 'Menyimpan kartu keluarga...',
+          success: 'Kartu keluarga berhasil disimpan',
+          error: 'Gagal menyimpan kartu keluarga',
+        },
+      );
 
       router.push('/admin/kartu-keluarga');
     } catch (err: any) {
@@ -152,7 +166,17 @@ export default function TambahKartuKeluargaPage() {
           Keluar Halaman
         </button>
         <Button
-          onClick={() => hasDraft ? setShowDraftModal(true) : alert('Belum ada draft yang tersimpan.')}
+          onClick={() => {
+            if (hasDraft) {
+              setShowDraftModal(true);
+              return;
+            }
+            toast({
+              title: 'Belum ada draft',
+              description: 'Simpan draft terlebih dahulu untuk membukanya kembali.',
+              variant: 'destructive',
+            });
+          }}
           variant="outline"
           className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
         >

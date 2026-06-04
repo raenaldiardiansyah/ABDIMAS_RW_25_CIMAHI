@@ -21,6 +21,7 @@ export const meIdentityResponseSchema = z.object({
   userEmail: z.string().email(),
   maskedNik: z.string(),
   verificationStatus: verificationStatusSchema,
+  rejectionReason: z.string().nullable().optional(),
 });
 
 export type AppRole = z.infer<typeof appRoleSchema>;

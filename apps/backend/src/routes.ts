@@ -34,12 +34,16 @@ const querySchema = z.object({
   q: z.string().optional(),
 });
 
+const rejectVerificationSchema = z.object({
+  reason: z.string().trim().max(255).optional(),
+});
+
 export function createApp() {
   const app = new Hono<{ Variables: { sessionUser: { id: string; name: string; email: string; username?: string; role: string; status?: string } } }>();
 
   app.onError((error, c) => {
     if (error instanceof AppError) {
-      return fail(c, error.code, error.message, error.status);
+      return fail(c, error.code, error.message, error.status, error.details);
     }
     if (error instanceof HTTPException) {
       return fail(c, "INTERNAL_ERROR", error.message, error.status);
@@ -112,14 +116,14 @@ export function createApp() {
       })),
     });
 
-    return c.json(payload);
+    return ok(c, payload.data);
   });
 
   app.post("/admin/verifications/:userId/approve", adminMiddleware, async (c) => {
     const adminUser = c.get("sessionUser");
     const userId = c.req.param("userId");
 
-    await getDb()
+    const [updated] = await getDb()
       .update(userIdentity)
       .set({
         verificationStatus: "VERIFIED",
@@ -127,19 +131,25 @@ export function createApp() {
         verifiedAt: new Date(),
         verifiedBy: adminUser.id,
       })
-      .where(eq(userIdentity.userId, userId));
+      .where(eq(userIdentity.userId, userId))
+      .returning();
 
-    const referer = c.req.header("referer") || "/admin/verification";
-    return c.redirect(referer, 303);
+    if (!updated) return fail(c, "NOT_FOUND", "Verification target not found", 404);
+    return ok(c, {
+      userId: updated.userId,
+      verificationStatus: updated.verificationStatus,
+      verifiedAt: updated.verifiedAt?.toISOString() ?? null,
+      verifiedBy: updated.verifiedBy,
+    });
   });
 
   app.post("/admin/verifications/:userId/reject", adminMiddleware, async (c) => {
     const adminUser = c.get("sessionUser");
     const userId = c.req.param("userId");
-    const body = await c.req.parseBody();
-    const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : "Data tidak sesuai";
+    const body = rejectVerificationSchema.parse(await c.req.json().catch(() => ({})));
+    const reason = body.reason || "Data tidak sesuai";
 
-    await getDb()
+    const [updated] = await getDb()
       .update(userIdentity)
       .set({
         verificationStatus: "REJECTED",
@@ -147,10 +157,17 @@ export function createApp() {
         verifiedAt: new Date(),
         verifiedBy: adminUser.id,
       })
-      .where(eq(userIdentity.userId, userId));
+      .where(eq(userIdentity.userId, userId))
+      .returning();
 
-    const referer = c.req.header("referer") || "/admin/verification";
-    return c.redirect(referer, 303);
+    if (!updated) return fail(c, "NOT_FOUND", "Verification target not found", 404);
+    return ok(c, {
+      userId: updated.userId,
+      verificationStatus: updated.verificationStatus,
+      rejectionReason: updated.rejectionReason,
+      verifiedAt: updated.verifiedAt?.toISOString() ?? null,
+      verifiedBy: updated.verifiedBy,
+    });
   });
 
   app.route("/admin/citizens", citizensRoutes);

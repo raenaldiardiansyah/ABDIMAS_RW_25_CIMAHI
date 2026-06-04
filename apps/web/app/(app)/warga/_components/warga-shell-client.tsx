@@ -15,6 +15,7 @@ export default function WargaShellClient({
     userEmail: string;
     maskedNik: string;
     verificationStatus: VerificationStatus;
+    rejectionReason?: string | null;
   };
 }) {
   const [isDark, setIsDark] = useState(() => {

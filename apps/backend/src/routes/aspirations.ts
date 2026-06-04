@@ -6,10 +6,11 @@ import { aspirationResponseSchema, createAspirationSchema } from "@abdimas/contr
 import { created } from "../lib/response";
 import { toIso } from "../lib/serialize";
 import { parseJson } from "../lib/validation";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth";
 
 export const aspirationsRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string; name?: string } } }>()
   .use("*", authMiddleware)
+  .use("*", verifiedWargaMiddleware)
   .post("/", async (c) => {
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, createAspirationSchema);

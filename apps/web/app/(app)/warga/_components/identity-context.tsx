@@ -9,6 +9,7 @@ export type IdentityContextValue = {
   userEmail: string;
   maskedNik: string;
   verificationStatus: VerificationStatus;
+  rejectionReason?: string | null;
 };
 
 export const IdentityContext = createContext<IdentityContextValue | null>(null);

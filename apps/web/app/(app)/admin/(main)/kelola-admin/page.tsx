@@ -25,6 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useActionToast } from '@/lib/use-action-toast';
+
+const PAGE_SIZE = 20;
 
 type AdminUser = {
   id: string;
@@ -46,6 +49,7 @@ type AdminLog = {
 };
 
 export default function KelolaAdminPage() {
+  const { runWithToast, toast } = useActionToast();
   const [activeTab, setActiveTab] = useState<'daftar' | 'log'>('daftar');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,25 +64,48 @@ export default function KelolaAdminPage() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editName, setEditName] = useState('');
+  const [adminPage, setAdminPage] = useState(1);
+  const [adminTotalPages, setAdminTotalPages] = useState(1);
+  const [adminTotalItems, setAdminTotalItems] = useState(0);
+  const [logPage, setLogPage] = useState(1);
+  const [logTotalPages, setLogTotalPages] = useState(1);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+      setAdminPage(1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
       try {
+        const adminParams = new URLSearchParams({ page: String(adminPage), limit: String(PAGE_SIZE) });
+        if (debouncedSearchQuery) adminParams.set('q', debouncedSearchQuery);
+        const logParams = new URLSearchParams({ page: String(logPage), limit: String(PAGE_SIZE) });
         const [adminResponse, logResponse] = await Promise.all([
-          platformFetch<AdminUser[]>('/admin/admin-users?page=1&limit=100'),
-          platformFetch<AdminLog[]>('/admin/admin-users/activity-logs'),
+          platformFetch<AdminUser[]>(`/admin/admin-users?${adminParams.toString()}`),
+          platformFetch<AdminLog[]>(`/admin/admin-users/activity-logs?${logParams.toString()}`),
         ]);
 
         if (!active) return;
         setAdmins(adminResponse.data);
         setLogs(logResponse.data);
+        setAdminTotalPages(adminResponse.meta?.totalPages ?? 1);
+        setAdminTotalItems(adminResponse.meta?.total ?? adminResponse.data.length);
+        setLogTotalPages(logResponse.meta?.totalPages ?? 1);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setAdmins([]);
         setLogs([]);
+        setAdminTotalPages(1);
+        setAdminTotalItems(0);
+        setLogTotalPages(1);
       }
     }
 
@@ -87,28 +114,30 @@ export default function KelolaAdminPage() {
     return () => {
       active = false;
     };
-  }, []);
-
-  const filteredAdmins = admins.filter(
-    (admin) =>
-      admin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      admin.username.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  }, [adminPage, logPage, debouncedSearchQuery]);
+  const filteredAdmins = admins;
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const response = await platformFetch<AdminUser>('/admin/admin-users', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: newNama,
-          email: newEmail,
-          username: newUsername,
-          role: newRole,
-        }),
-      });
+      const response = await runWithToast(
+        () =>
+          platformFetch<AdminUser>('/admin/admin-users', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: newNama,
+              email: newEmail,
+              username: newUsername,
+              role: newRole,
+            }),
+          }),
+        {
+          loading: 'Membuat admin...',
+          success: 'Admin berhasil dibuat',
+          error: 'Gagal membuat admin',
+        },
+      );
 
       setAdmins((prev) => [response.data, ...prev]);
       setNewNama('');
@@ -130,10 +159,18 @@ export default function KelolaAdminPage() {
     if (!selectedAdminForAction) return;
 
     try {
-      const response = await platformFetch<AdminUser>(`/admin/admin-users/${selectedAdminForAction.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: editName }),
-      });
+      const response = await runWithToast(
+        () =>
+          platformFetch<AdminUser>(`/admin/admin-users/${selectedAdminForAction.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ name: editName }),
+          }),
+        {
+          loading: 'Menyimpan perubahan admin...',
+          success: 'Admin berhasil diperbarui',
+          error: 'Gagal memperbarui admin',
+        },
+      );
 
       setAdmins((prev) => prev.map((admin) => (admin.id === response.data.id ? response.data : admin)));
       setIsEditModalOpen(false);
@@ -146,11 +183,24 @@ export default function KelolaAdminPage() {
     if (!selectedAdminForAction) return;
 
     try {
-      const response = await platformFetch<{ userId: string; temporaryPassword: string }>(
-        `/admin/admin-users/${selectedAdminForAction.id}/reset-password`,
-        { method: 'POST' },
+      const response = await runWithToast(
+        () =>
+          platformFetch<{ userId: string; temporaryPassword: string }>(
+            `/admin/admin-users/${selectedAdminForAction.id}/reset-password`,
+            { method: 'POST' },
+          ),
+        {
+          loading: 'Mereset password admin...',
+          success: 'Password admin direset',
+          error: 'Gagal mereset password admin',
+        },
       );
-      alert(`Temporary password: ${response.data.temporaryPassword}`);
+      toast({
+        title: 'Password sementara',
+        description: response.data.temporaryPassword,
+        variant: 'success',
+        durationMs: 7000,
+      });
       setIsResetModalOpen(false);
     } catch (error) {
       console.error(error);
@@ -161,9 +211,17 @@ export default function KelolaAdminPage() {
     if (!selectedAdminForAction) return;
 
     try {
-      const response = await platformFetch<AdminUser>(
-        `/admin/admin-users/${selectedAdminForAction.id}/deactivate`,
-        { method: 'POST' },
+      const response = await runWithToast(
+        () =>
+          platformFetch<AdminUser>(
+            `/admin/admin-users/${selectedAdminForAction.id}/deactivate`,
+            { method: 'POST' },
+          ),
+        {
+          loading: 'Menonaktifkan admin...',
+          success: 'Admin dinonaktifkan',
+          error: 'Gagal menonaktifkan admin',
+        },
       );
       setAdmins((prev) => prev.map((admin) => (admin.id === response.data.id ? response.data : admin)));
       setIsDeleteModalOpen(false);
@@ -344,6 +402,16 @@ export default function KelolaAdminPage() {
                 ) : null}
               </tbody>
             </table>
+            <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+              <span className="text-sm text-[#64748B]">
+                Menampilkan {filteredAdmins.length === 0 ? 0 : (adminPage - 1) * PAGE_SIZE + 1} - {Math.min(adminPage * PAGE_SIZE, adminTotalItems)} dari {adminTotalItems} admin
+              </span>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={adminPage === 1} onClick={() => setAdminPage((page) => Math.max(1, page - 1))}>Prev</Button>
+                <span className="text-sm font-medium text-[#1E293B]">Halaman {adminPage} / {adminTotalPages}</span>
+                <Button type="button" variant="outline" size="sm" disabled={adminPage >= adminTotalPages} onClick={() => setAdminPage((page) => Math.min(adminTotalPages, page + 1))}>Next</Button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-6 p-6">
@@ -365,6 +433,13 @@ export default function KelolaAdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+              <span className="text-sm text-[#64748B]">Halaman log {logPage} / {logTotalPages}</span>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={logPage === 1} onClick={() => setLogPage((page) => Math.max(1, page - 1))}>Prev</Button>
+                <Button type="button" variant="outline" size="sm" disabled={logPage >= logTotalPages} onClick={() => setLogPage((page) => Math.min(logTotalPages, page + 1))}>Next</Button>
+              </div>
             </div>
           </div>
         )}

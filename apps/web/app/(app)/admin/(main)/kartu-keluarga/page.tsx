@@ -1,13 +1,26 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, Search, SlidersHorizontal, Eye, UserPlus } from 'lucide-react';
+import { ClipboardList, Search, SlidersHorizontal, Eye, Trash2, UserPlus } from 'lucide-react';
 
 import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
+
+const PAGE_SIZE = 20;
 
 type HouseholdRow = {
   id: string;
@@ -25,26 +38,46 @@ type HouseholdRow = {
 };
 
 export default function KartuKeluargaPage() {
+  const { runWithToast } = useActionToast();
   const [rows, setRows] = useState<HouseholdRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [householdToDelete, setHouseholdToDelete] = useState<HouseholdRow | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [activeRt, setActiveRt] = useState<string>('');
   const [hasPendingRequests, setHasPendingRequests] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+      setCurrentPage(1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
       try {
-        const query = new URLSearchParams({ page: '1', limit: '100' });
+        const query = new URLSearchParams({ page: String(currentPage), limit: String(PAGE_SIZE) });
         if (activeRt) query.set('rt', activeRt);
+        if (debouncedSearchQuery) query.set('q', debouncedSearchQuery);
         const response = await platformFetch<HouseholdRow[]>(`/admin/households?${query.toString()}`);
         if (!active) return;
         setRows(response.data);
+        setTotalItems(response.meta?.total ?? response.data.length);
+        setTotalPages(response.meta?.totalPages ?? 1);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setRows([]);
+        setTotalItems(0);
+        setTotalPages(1);
       } finally {
         if (active) setLoading(false);
       }
@@ -67,18 +100,49 @@ export default function KartuKeluargaPage() {
     return () => {
       active = false;
     };
-  }, [activeRt]);
+  }, [activeRt, currentPage, debouncedSearchQuery]);
 
-  const filteredKK = rows.filter((item) => {
-    const search = searchQuery.toLowerCase();
-    const matchesSearch =
-      item.headCitizen?.name.toLowerCase().includes(search) ||
-      item.headCitizen?.nik.includes(searchQuery) ||
-      item.kkNumber.includes(searchQuery) ||
-      item.address.toLowerCase().includes(search);
-    const matchesRt = activeRt === '' || item.rt === activeRt;
-    return matchesSearch && matchesRt;
-  });
+  const fetchHouseholds = async (page = currentPage, rt = activeRt, search = debouncedSearchQuery) => {
+    const query = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    if (rt) query.set('rt', rt);
+    if (search) query.set('q', search);
+
+    const response = await platformFetch<HouseholdRow[]>(`/admin/households?${query.toString()}`);
+    setRows(response.data);
+    setTotalItems(response.meta?.total ?? response.data.length);
+    setTotalPages(response.meta?.totalPages ?? 1);
+  };
+
+  const handleDelete = async () => {
+    if (!householdToDelete) return;
+
+    const { id } = householdToDelete;
+    setDeletingId(id);
+    try {
+      await runWithToast(
+        () => platformFetch(`/admin/households/${id}`, { method: 'DELETE' }),
+        {
+          loading: 'Deleting household...',
+          success: 'Household deleted',
+          error: 'Failed to delete household',
+        },
+      );
+
+      const nextPage = rows.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+      if (nextPage !== currentPage) {
+        setCurrentPage(nextPage);
+      } else {
+        await fetchHouseholds(nextPage, activeRt, debouncedSearchQuery);
+      }
+      setHouseholdToDelete(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const filteredKK = rows;
 
   return (
     <div className="flex flex-col gap-5">
@@ -120,7 +184,7 @@ export default function KartuKeluargaPage() {
 
       <div className="flex items-center gap-3">
         <div className="shrink-0 rounded-full bg-[#2563EB] px-6 py-2.5">
-          <span className="text-lg font-bold text-white">{rows.length}</span>
+          <span className="text-lg font-bold text-white">{totalItems}</span>
           <span className="ml-2 text-sm text-white/80">Total Kartu Keluarga</span>
         </div>
         <div className="relative flex-1">
@@ -184,9 +248,20 @@ export default function KartuKeluargaPage() {
                     </span>
                   </td>
                   <td className="px-5 py-4">
-                    <Link href={`/admin/kartu-keluarga/${row.id}`} className="transition hover:opacity-70">
-                      <Eye className="h-5 w-5 text-[#3B82F6]" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link href={`/admin/kartu-keluarga/${row.id}`} className="transition hover:opacity-70">
+                        <Eye className="h-5 w-5 text-[#3B82F6]" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setHouseholdToDelete(row)}
+                        disabled={deletingId === row.id}
+                        className="transition hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Delete household"
+                      >
+                        <Trash2 className="h-5 w-5 text-red-500" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -202,27 +277,73 @@ export default function KartuKeluargaPage() {
 
         <div className="flex items-center justify-between border-t-0 bg-[#3B82F6] px-5 py-3 text-white">
           <span className="text-sm">
-            Menampilkan {filteredKK.length} dari {rows.length} kartu keluarga
+            Menampilkan {filteredKK.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} kartu keluarga
           </span>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white disabled:opacity-50"
             >
               &lt;
             </Button>
-            <span className="text-sm font-medium">Halaman 1</span>
+            <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
             <Button
               variant="ghost"
               size="icon"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white disabled:opacity-50"
             >
               &gt;
             </Button>
           </div>
         </div>
       </div>
+
+      <AlertDialog open={!!householdToDelete} onOpenChange={(open) => !open && setHouseholdToDelete(null)}>
+        <AlertDialogContent className="max-w-md rounded-3xl border-0 p-0 overflow-hidden">
+          <div className="bg-gradient-to-br from-red-500 via-red-500 to-orange-500 px-6 pb-14 pt-7 text-white">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
+              <Trash2 className="h-7 w-7" />
+            </div>
+            <AlertDialogHeader className="space-y-2 text-left">
+              <AlertDialogTitle className="text-2xl font-bold leading-tight text-white">
+                Hapus Kartu Keluarga?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm leading-6 text-red-50">
+                Data KK <span className="font-semibold text-white">{householdToDelete?.kkNumber}</span> akan dihapus
+                bersama data relasi yang terhubung.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+
+          <div className="-mt-8 rounded-t-[28px] bg-white px-6 pb-6 pt-5">
+            <div className="mb-5 rounded-2xl border border-red-100 bg-red-50/70 p-4">
+              <p className="text-sm font-semibold text-[#1E293B]">
+                Kepala Keluarga: <span className="text-red-600">{householdToDelete?.headCitizen?.name ?? '-'}</span>
+              </p>
+              <p className="mt-1 text-xs text-[#64748B]">
+                Tindakan ini tidak bisa dibatalkan.
+              </p>
+            </div>
+
+            <AlertDialogFooter className="flex flex-col gap-3 sm:flex-col sm:space-x-0">
+              <AlertDialogAction
+                onClick={() => void handleDelete()}
+                className="h-12 w-full rounded-2xl bg-red-600 text-sm font-bold text-white hover:bg-red-700"
+              >
+                Ya, Hapus Sekarang
+              </AlertDialogAction>
+              <AlertDialogCancel className="h-12 w-full rounded-2xl border-gray-200 text-sm font-bold text-[#64748B] hover:bg-gray-100">
+                Batal
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

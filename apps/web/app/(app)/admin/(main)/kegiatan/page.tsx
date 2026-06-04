@@ -13,6 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useActionToast } from '@/lib/use-action-toast';
 
 type EventCategory = 'rapat' | 'kesehatan' | 'sosial' | 'keamanan' | 'lainnya';
 
@@ -36,6 +40,7 @@ const KATEGORI_COLORS: Record<EventCategory, { bg: string; text: string; dot: st
 };
 
 export default function KegiatanPage() {
+  const { runWithToast } = useActionToast();
   const [jadwal, setJadwal] = useState<ActivityItem[]>([]);
   const [filterKategori, setFilterKategori] = useState<string>('semua');
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,18 +87,26 @@ export default function KegiatanPage() {
     if (!newJudul || !newTanggal || !newWaktu || !newLokasi || !newDeskripsi) return;
 
     try {
-      const response = await platformFetch<ActivityItem>('/admin/activities', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: newJudul,
-          description: newDeskripsi,
-          location: newLokasi,
-          category: newKategori,
-          date: newTanggal,
-          startTime: newWaktu,
-          endTime: null,
-        }),
-      });
+      const response = await runWithToast(
+        () =>
+          platformFetch<ActivityItem>('/admin/activities', {
+            method: 'POST',
+            body: JSON.stringify({
+              title: newJudul,
+              description: newDeskripsi,
+              location: newLokasi,
+              category: newKategori,
+              date: newTanggal,
+              startTime: newWaktu,
+              endTime: null,
+            }),
+          }),
+        {
+          loading: 'Menyimpan kegiatan...',
+          success: 'Kegiatan berhasil dibuat',
+          error: 'Gagal menyimpan kegiatan',
+        },
+      );
 
       setJadwal((prev) => [response.data, ...prev]);
       setIsModalOpen(false);
@@ -114,19 +127,19 @@ export default function KegiatanPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-[clamp(18px,2vw,24px)] font-bold text-[#1E293B]">Agenda Kegiatan RW</h2>
-          <p className="mt-1 text-sm text-[#64748B]">Kelola dan pantau seluruh jadwal kegiatan di lingkungan RW 25</p>
+          <h2 className="text-[clamp(18px,2vw,24px)] font-bold text-[color:var(--admin-heading)]">Agenda Kegiatan RW</h2>
+          <p className="mt-1 text-sm text-[color:var(--admin-subtle)]">Kelola dan pantau seluruh jadwal kegiatan di lingkungan RW 25</p>
         </div>
         <Button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#2563EB]"
+          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-[color:var(--admin-primary-strong)]"
         >
           <Plus className="h-4 w-4" />
           Tambah Kegiatan
         </Button>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
             <Button
@@ -135,8 +148,8 @@ export default function KegiatanPage() {
               className={cn(
                 'rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-all',
                 filterKategori === cat
-                  ? 'bg-[#3B82F6] text-white shadow-md'
-                  : 'bg-gray-100 text-[#64748B] hover:bg-gray-200',
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-muted text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-soft)]',
               )}
             >
               {cat}
@@ -145,13 +158,13 @@ export default function KegiatanPage() {
         </div>
 
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--admin-muted)]" />
           <Input
             type="text"
             placeholder="Cari kegiatan..."
             value={searchQuery}
             onChange={(e: any) => setSearchQuery(e.target.value)}
-            className="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[#3B82F6] focus:bg-white"
+            className="w-full rounded-full border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] py-2 pl-9 pr-4 text-sm transition focus-visible:ring-[color:var(--ring)]"
           />
         </div>
       </div>
@@ -167,15 +180,15 @@ export default function KegiatanPage() {
             return (
               <div
                 key={ev.id}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:shadow-md"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] shadow-sm transition-all duration-300 hover:shadow-md"
               >
                 <div className={cn('h-1.5 w-full', colors.dot)} />
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-[50px] rounded-xl border border-gray-100 bg-gray-50 p-2 text-center">
-                      <span className="text-[10px] font-bold uppercase leading-none text-[#64748B]">{monthStr}</span>
-                      <span className="mt-0.5 text-xl font-extrabold text-[#3B82F6]">{day}</span>
+                    <div className="min-w-[50px] rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-2 text-center">
+                      <span className="text-[10px] font-bold uppercase leading-none text-[color:var(--admin-subtle)]">{monthStr}</span>
+                      <span className="mt-0.5 text-xl font-extrabold text-primary">{day}</span>
                     </div>
 
                     <span className={cn('rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider', colors.bg, colors.text)}>
@@ -183,16 +196,16 @@ export default function KegiatanPage() {
                     </span>
                   </div>
 
-                  <h3 className="mt-4 text-base font-bold text-[#1E293B] transition-colors group-hover:text-[#3B82F6]">{ev.title}</h3>
-                  <p className="mt-2 flex-1 line-clamp-2 text-sm leading-relaxed text-[#64748B]">{ev.description}</p>
+                  <h3 className="mt-4 text-base font-bold text-[color:var(--admin-heading)] transition-colors group-hover:text-primary">{ev.title}</h3>
+                  <p className="mt-2 flex-1 line-clamp-2 text-sm leading-relaxed text-[color:var(--admin-subtle)]">{ev.description}</p>
 
-                  <div className="mt-5 flex flex-col gap-2 border-t border-gray-100 pt-4">
-                    <div className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-                      <Clock className="h-3.5 w-3.5 text-gray-400" />
+                  <div className="mt-5 flex flex-col gap-2 border-t border-[color:var(--admin-border)] pt-4">
+                    <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--admin-subtle)]">
+                      <Clock className="h-3.5 w-3.5 text-[color:var(--admin-muted)]" />
                       <span>{ev.startTime ?? '-'}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-                      <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                    <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--admin-subtle)]">
+                      <MapPin className="h-3.5 w-3.5 text-[color:var(--admin-muted)]" />
                       <span className="truncate">{ev.location}</span>
                     </div>
                   </div>
@@ -202,100 +215,101 @@ export default function KegiatanPage() {
           })}
         </div>
       ) : (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-12 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
-            <CalendarDays className="h-8 w-8 text-gray-400" />
+        <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-2xl border border-dashed border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] p-12 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--admin-surface-muted)]">
+            <CalendarDays className="h-8 w-8 text-[color:var(--admin-muted)]" />
           </div>
-          <h3 className="text-lg font-bold text-[#1E293B]">Tidak Ada Kegiatan</h3>
-          <p className="mt-1 text-sm text-[#64748B]">Tidak ditemukan jadwal kegiatan yang cocok dengan filter atau pencarian Anda.</p>
+          <h3 className="text-lg font-bold text-[color:var(--admin-heading)]">Tidak Ada Kegiatan</h3>
+          <p className="mt-1 text-sm text-[color:var(--admin-subtle)]">Tidak ditemukan jadwal kegiatan yang cocok dengan filter atau pencarian Anda.</p>
         </div>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-md rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#1E293B]">Tambah Kegiatan RW</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-[color:var(--admin-heading)]">Tambah Kegiatan RW</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddEvent} className="mt-4 flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Judul Kegiatan</label>
+              <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Judul Kegiatan</Label>
               <Input
                 type="text"
                 required
                 value={newJudul}
                 onChange={(e: any) => setNewJudul(e.target.value)}
                 placeholder="Misal: Kerja Bakti Massal"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
+                className="w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Kategori</label>
-                <select
-                  value={newKategori}
-                  onChange={(e: any) => setNewKategori(e.target.value as EventCategory)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
-                >
-                  {categories.filter((c) => c !== 'semua').map((cat) => (
-                    <option key={cat} value={cat} className="capitalize">
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Kategori</Label>
+                <Select value={newKategori} onValueChange={(value) => setNewKategori(value as EventCategory)}>
+                  <SelectTrigger className="w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm">
+                    <SelectValue placeholder="Pilih kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.filter((c) => c !== 'semua').map((cat) => (
+                      <SelectItem key={cat} value={cat} className="capitalize">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Tanggal</label>
+                <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Tanggal</Label>
                 <Input
                   type="date"
                   required
                   value={newTanggal}
                   onChange={(e: any) => setNewTanggal(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
+                  className="w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Waktu (Jam)</label>
+                <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Waktu (Jam)</Label>
                 <Input
                   type="text"
                   required
                   value={newWaktu}
                   onChange={(e: any) => setNewWaktu(e.target.value)}
                   placeholder="08:00 - 10:00 WIB"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
+                  className="w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Tempat / Lokasi</label>
+                <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Tempat / Lokasi</Label>
                 <Input
                   type="text"
                   required
                   value={newLokasi}
                   onChange={(e: any) => setNewLokasi(e.target.value)}
                   placeholder="Balai RW 25"
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
+                  className="w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Deskripsi Singkat</label>
-              <textarea
+              <Label className="mb-1 block text-sm font-semibold text-[color:var(--admin-heading)]">Deskripsi Singkat</Label>
+              <Textarea
                 rows={3}
                 required
                 value={newDeskripsi}
                 onChange={(e: any) => setNewDeskripsi(e.target.value)}
                 placeholder="Jelaskan secara singkat mengenai kegiatan ini..."
-                className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
+                className="w-full resize-none rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] px-4 py-2.5 text-sm"
               />
             </div>
 
             <Button
               type="submit"
-              className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]"
+              className="mt-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:bg-[color:var(--admin-primary-strong)]"
             >
               Simpan Kegiatan
             </Button>

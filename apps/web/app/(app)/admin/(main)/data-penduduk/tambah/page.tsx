@@ -19,6 +19,7 @@ import {
 
 import { platformFetch } from '@/lib/api/platform';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useActionToast } from '@/lib/use-action-toast';
 
 /* ── Constants ── */
 
@@ -143,6 +144,7 @@ const INITIAL_FORM: FormData = {
 
 export default function TambahDataPendudukPage() {
   const router = useRouter();
+  const { runWithToast, toast } = useActionToast();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>({ ...INITIAL_FORM });
   const [submitting, setSubmitting] = useState(false);
@@ -202,7 +204,11 @@ export default function TambahDataPendudukPage() {
   const handleSaveDraft = () => {
     localStorage.setItem('draft_tambah_penduduk', JSON.stringify({ step, form }));
     setHasDraft(true);
-    alert('Draft berhasil disimpan!');
+    toast({
+      title: 'Draft tersimpan',
+      description: 'Draft data penduduk berhasil disimpan di browser ini.',
+      variant: 'success',
+    });
   };
 
   const handleLoadDraft = () => {
@@ -256,35 +262,46 @@ export default function TambahDataPendudukPage() {
   const handleSubmit = async () => {
     if (submitting) return;
     if (!validate()) {
-      alert('Terdapat isian yang belum lengkap atau tidak valid. Mohon periksa kembali (kolom berwarna merah).');
+      toast({
+        title: 'Validasi gagal',
+        description: 'Periksa kembali isian yang belum lengkap atau tidak valid.',
+        variant: 'destructive',
+      });
       return;
     }
     setSubmitting(true);
     try {
-      await platformFetch('/admin/citizens', {
-        method: 'POST',
-        body: JSON.stringify({
-          nik: form.nik,
-          name: form.name,
-          gender: form.gender,
-          birthPlace: form.birthPlace,
-          birthDate: form.birthDate,
-          religion: form.religion,
-          bloodType: form.bloodType || null,
-          maritalStatus: form.maritalStatus,
-          occupation: form.occupation,
-          education: form.education,
-          address: form.address,
-          rt: form.rt,
-          rw: form.rw,
-          status: form.status,
-        }),
-      });
+      await runWithToast(
+        () =>
+          platformFetch('/admin/citizens', {
+            method: 'POST',
+            body: JSON.stringify({
+              nik: form.nik,
+              name: form.name,
+              gender: form.gender,
+              birthPlace: form.birthPlace,
+              birthDate: form.birthDate,
+              religion: form.religion,
+              bloodType: form.bloodType || null,
+              maritalStatus: form.maritalStatus,
+              occupation: form.occupation,
+              education: form.education,
+              address: form.address,
+              rt: form.rt,
+              rw: form.rw,
+              status: form.status,
+            }),
+          }),
+        {
+          loading: 'Menyimpan data penduduk...',
+          success: 'Data penduduk berhasil disimpan',
+          error: 'Gagal menyimpan data penduduk',
+        },
+      );
       localStorage.removeItem('draft_tambah_penduduk');
       router.push('/admin/data-penduduk');
     } catch (error) {
       console.error(error);
-      alert('Gagal menyimpan data. Silakan periksa kembali formulir Anda.');
     } finally {
       setSubmitting(false);
     }
@@ -317,7 +334,17 @@ export default function TambahDataPendudukPage() {
           Keluar Halaman
         </button>
         <Button 
-          onClick={() => hasDraft ? setShowDraftModal(true) : alert('Belum ada draft yang tersimpan.')}
+          onClick={() => {
+            if (hasDraft) {
+              setShowDraftModal(true);
+              return;
+            }
+            toast({
+              title: 'Belum ada draft',
+              description: 'Simpan draft terlebih dahulu untuk membukanya kembali.',
+              variant: 'destructive',
+            });
+          }}
           className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
         >
           <Save className="h-4 w-4 text-[#3B82F6]" />

@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef } from 'react';
-import { Upload, FileText, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Upload, FileText, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
 
 interface FormFileUploadProps {
   label: string;
@@ -24,14 +25,33 @@ export default function FormFileUpload({
   error,
 }: FormFileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const handleFile = (f: File) => {
     if (f.size > maxSizeMB * 1024 * 1024) {
-      alert(`Ukuran file maksimal ${maxSizeMB}MB`);
+      toast({
+        title: 'File terlalu besar',
+        description: `Ukuran file maksimal ${maxSizeMB}MB.`,
+        variant: 'destructive',
+      });
       return;
     }
     onChange(f);
   };
+
+  const isImage = !!file && file.type.startsWith('image/');
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -68,16 +88,33 @@ export default function FormFileUpload({
           </div>
         </Card>
       ) : (
-        <Card className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border-border">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5 text-foreground" />
+        <Card className="flex items-center gap-3 rounded-xl border-border bg-muted/40 p-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10">
+            {isImage && previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewUrl} alt={file.name} className="h-full w-full object-cover" />
+            ) : (
+              <FileText className="h-5 w-5 text-foreground" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
             <p className="text-xs text-muted-foreground/70">
               {(file.size / 1024).toFixed(0)} KB
+              {file.type ? ` • ${file.type.includes('pdf') ? 'PDF' : 'Image'}` : ''}
             </p>
           </div>
+          {previewUrl ? (
+            <Button
+              type="button"
+              onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-primary"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          ) : null}
           <Button
             type="button"
             onClick={() => onChange(null)}

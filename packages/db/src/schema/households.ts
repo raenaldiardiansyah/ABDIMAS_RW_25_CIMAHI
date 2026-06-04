@@ -11,7 +11,7 @@ export const household = pgTable(
     kkNumber: text("kk_number").notNull(),
     headCitizenId: text("head_citizen_id")
       .notNull()
-      .references(() => citizen.id, { onDelete: "restrict" }),
+      .references(() => citizen.id, { onDelete: "cascade" }),
     address: text("address").notNull(),
     rt: text("rt").notNull(),
     rw: text("rw").notNull(),
@@ -38,7 +38,7 @@ export const householdMember = pgTable(
       .references(() => household.id, { onDelete: "cascade" }),
     citizenId: text("citizen_id")
       .notNull()
-      .references(() => citizen.id, { onDelete: "restrict" }),
+      .references(() => citizen.id, { onDelete: "cascade" }),
     relationship: text("relationship").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

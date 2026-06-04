@@ -17,6 +17,7 @@ export default async function WargaLayout({ children }: { children: React.ReactN
         userEmail: identity.userEmail || session.user.email,
         maskedNik: identity.maskedNik,
         verificationStatus: identity.verificationStatus,
+        rejectionReason: identity.rejectionReason,
       }}
     >
       {children}

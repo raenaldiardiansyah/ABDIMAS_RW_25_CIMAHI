@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import {
@@ -11,12 +11,12 @@ import {
   updateHouseholdMemberSchema,
   updateHouseholdSchema,
 } from "@abdimas/contracts";
-import { adminActivityLog, citizen, getDb, household, householdMember } from "@abdimas/db";
+import { adminActivityLog, citizen, getDb, household, householdMember, mutation } from "@abdimas/db";
 
 import { logAdminActivity } from "../lib/admin-logs";
 import { conflict, notFound } from "../lib/errors";
 import { buildPageMeta, getOffset } from "../lib/pagination";
-import { created, ok } from "../lib/response";
+import { created, fail, ok } from "../lib/response";
 import { toIso } from "../lib/serialize";
 import { parseJson, parseQuery } from "../lib/validation";
 import { adminMiddleware } from "../middleware/auth";
@@ -319,6 +319,79 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     };
     householdResponseSchema.parse(payload);
     return ok(c, payload.data);
+  })
+  .delete("/:id", async (c) => {
+    const householdId = c.req.param("id");
+    const db = getDb();
+    const [householdRow, members] = await Promise.all([
+      db
+        .select()
+        .from(household)
+        .where(eq(household.id, householdId))
+        .limit(1),
+      db
+        .select({
+          citizenId: householdMember.citizenId,
+          relationship: householdMember.relationship,
+        })
+        .from(householdMember)
+        .where(eq(householdMember.householdId, householdId)),
+    ]);
+
+    if (!householdRow[0]) throw notFound("Household not found");
+
+    const relatedCitizenIds = Array.from(
+      new Set([householdRow[0].headCitizenId, ...members.map((member) => member.citizenId)]),
+    );
+
+    const relatedCounts =
+      relatedCitizenIds.length > 0
+        ? await db
+            .select({
+              citizenId: householdMember.citizenId,
+              householdCount: sql<number>`count(distinct ${householdMember.householdId})::int`,
+            })
+            .from(householdMember)
+            .where(inArray(householdMember.citizenId, relatedCitizenIds))
+            .groupBy(householdMember.citizenId)
+        : [];
+
+    const deletableCitizenIds = relatedCounts
+      .filter((row) => Number(row.householdCount) <= 1)
+      .map((row) => row.citizenId);
+
+    const [deletedHousehold] = await db
+      .delete(household)
+      .where(eq(household.id, householdId))
+      .returning();
+
+    if (!deletedHousehold) throw notFound("Household not found");
+
+    if (deletableCitizenIds.length > 0) {
+      await db.delete(mutation).where(inArray(mutation.citizenId, deletableCitizenIds)).returning();
+      await db
+        .delete(citizen)
+        .where(inArray(citizen.id, deletableCitizenIds))
+        .returning();
+    }
+
+    await logAdminActivity({
+      adminId: c.get("sessionUser").id,
+      action: "HOUSEHOLD_DELETED",
+      entityType: "HOUSEHOLD",
+      entityId: deletedHousehold.id,
+      metadata: {
+        kkNumber: deletedHousehold.kkNumber,
+        deletedCitizenIds: deletableCitizenIds,
+        retainedCitizenIds: relatedCitizenIds.filter((id) => !deletableCitizenIds.includes(id)),
+      },
+    });
+
+    return ok(c, {
+      id: deletedHousehold.id,
+      deletedCitizenIds: deletableCitizenIds,
+      retainedCitizenIds: relatedCitizenIds.filter((id) => !deletableCitizenIds.includes(id)),
+    });
   })
   .post("/:id/members", async (c) => {
     const householdId = c.req.param("id");

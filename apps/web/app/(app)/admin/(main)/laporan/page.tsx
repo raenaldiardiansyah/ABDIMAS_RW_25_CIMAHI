@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { platformFetch } from '@/lib/api/platform';
 
+const PAGE_SIZE = 20;
+
 type SummaryData = {
   stats: {
     totalWarga: number;
@@ -44,13 +46,14 @@ type CitizenRow = {
   rw: string;
 };
 
-function getAgeGroup(birthDate: string) {
-  const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
-  if (age <= 17) return '0-17';
-  if (age <= 35) return '18-35';
-  if (age <= 60) return '36-60';
-  return '60+';
-}
+type DemographicsData = {
+  totalCitizens: number;
+  ageGroups: Array<{ label: '0-17' | '18-35' | '36-60' | '60+'; value: number }>;
+  gender: {
+    male: number;
+    female: number;
+  };
+};
 
 export default function LaporanPage() {
   const [tahun, setTahun] = useState('2026');
@@ -64,33 +67,65 @@ export default function LaporanPage() {
     pendingRequests: 0,
   });
   const [rtData, setRtData] = useState<RtRow[]>([]);
-  const [allCitizens, setAllCitizens] = useState<CitizenRow[]>([]);
+  const [demographics, setDemographics] = useState<DemographicsData>({
+    totalCitizens: 0,
+    ageGroups: [
+      { label: '0-17', value: 0 },
+      { label: '18-35', value: 0 },
+      { label: '36-60', value: 0 },
+      { label: '60+', value: 0 },
+    ],
+    gender: { male: 0, female: 0 },
+  });
   const [viewedRT, setViewedRT] = useState<RtRow | null>(null);
   const [rtCitizens, setRtCitizens] = useState<CitizenRow[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [detailTotalItems, setDetailTotalItems] = useState(0);
+  const [detailTotalPages, setDetailTotalPages] = useState(1);
+  const [appliedRt, setAppliedRt] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+      setCurrentPage(1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let active = true;
 
     async function load() {
       try {
+        const summaryParams = new URLSearchParams();
+        if (appliedRt) summaryParams.set('rt', appliedRt);
         const [summaryResponse, rtResponse, citizenResponse] = await Promise.all([
-          platformFetch<SummaryData>('/admin/reports/summary'),
+          platformFetch<SummaryData>(`/admin/reports/summary${summaryParams.size ? `?${summaryParams.toString()}` : ''}`),
           platformFetch<RtRow[]>('/admin/reports/rt-breakdown'),
-          platformFetch<CitizenRow[]>('/admin/citizens?page=1&limit=100'),
+          platformFetch<DemographicsData>(`/admin/reports/demographics${summaryParams.size ? `?${summaryParams.toString()}` : ''}`),
         ]);
 
         if (!active) return;
         setStats(summaryResponse.data.stats);
         setRtData(rtResponse.data);
-        setAllCitizens(citizenResponse.data);
+        setDemographics(citizenResponse.data);
       } catch (error) {
         console.error(error);
         if (!active) return;
         setStats({ totalWarga: 0, totalKK: 0, totalMutasi: 0, pendingRequests: 0 });
         setRtData([]);
-        setAllCitizens([]);
+        setDemographics({
+          totalCitizens: 0,
+          ageGroups: [
+            { label: '0-17', value: 0 },
+            { label: '18-35', value: 0 },
+            { label: '36-60', value: 0 },
+            { label: '60+', value: 0 },
+          ],
+          gender: { male: 0, female: 0 },
+        });
       }
     }
 
@@ -99,48 +134,59 @@ export default function LaporanPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [appliedRt]);
 
-  const filteredCitizens = allCitizens.filter((citizen) => (rt ? citizen.rt === rt.replace('RT ', '') : true));
-  const ageGroups = [
-    { label: '0-17', value: filteredCitizens.filter((c) => getAgeGroup(c.birthDate) === '0-17').length },
-    { label: '18-35', value: filteredCitizens.filter((c) => getAgeGroup(c.birthDate) === '18-35').length },
-    { label: '36-60', value: filteredCitizens.filter((c) => getAgeGroup(c.birthDate) === '36-60').length },
-    { label: '60+', value: filteredCitizens.filter((c) => getAgeGroup(c.birthDate) === '60+').length },
-  ];
+  const ageGroups = demographics.ageGroups;
   const maxAgeValue = Math.max(...ageGroups.map((g) => g.value), 1);
-  const lakiLaki = filteredCitizens.filter((c) => c.gender === 'MALE').length;
-  const perempuan = filteredCitizens.filter((c) => c.gender === 'FEMALE').length;
+  const lakiLaki = demographics.gender.male;
+  const perempuan = demographics.gender.female;
   const genderTotal = lakiLaki + perempuan || 1;
 
   const handleOpenDetail = async (row: RtRow) => {
     setViewedRT(row);
     setSearchQuery('');
     setCurrentPage(1);
-
-    try {
-      const response = await platformFetch<CitizenRow[]>(`/admin/reports/rt/${row.rt}/citizens`);
-      setRtCitizens(response.data);
-    } catch (error) {
-      console.error(error);
-      setRtCitizens([]);
-    }
   };
+
+  useEffect(() => {
+    if (!viewedRT) return;
+    let active = true;
+    const rtId = viewedRT.rt;
+
+    async function loadRtCitizens() {
+      try {
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(PAGE_SIZE),
+        });
+        if (debouncedSearchQuery) params.set('q', debouncedSearchQuery);
+        const response = await platformFetch<CitizenRow[]>(`/admin/reports/rt/${rtId}/citizens?${params.toString()}`);
+        if (!active) return;
+        setRtCitizens(response.data);
+        setDetailTotalItems(response.meta?.total ?? response.data.length);
+        setDetailTotalPages(response.meta?.totalPages ?? 1);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setRtCitizens([]);
+        setDetailTotalItems(0);
+        setDetailTotalPages(1);
+      }
+    }
+
+    void loadRtCitizens();
+    return () => {
+      active = false;
+    };
+  }, [viewedRT, currentPage, debouncedSearchQuery]);
 
   const handleApplyFilter = () => {
-    if (!bulan || !rt) return;
-    setActiveFilter(`${bulan} ${tahun} - ${rt}`);
+    if (!bulan && !rt) return;
+    setAppliedRt(rt ? rt.replace('RT ', '') : '');
+    setActiveFilter(`${bulan || 'Semua Bulan'} ${tahun}${rt ? ` - ${rt}` : ''}`);
   };
 
-  const ITEMS_PER_PAGE = 10;
-  const filteredPenduduk = rtCitizens.filter(
-    (citizen) =>
-      citizen.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      citizen.nik.includes(searchQuery),
-  );
-  const totalPages = Math.ceil(filteredPenduduk.length / ITEMS_PER_PAGE);
-  const paginatedPenduduk = filteredPenduduk.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const visibleRtData = rt ? rtData.filter((row) => row.rt === rt.replace('RT ', '')) : rtData;
+  const visibleRtData = appliedRt ? rtData.filter((row) => row.rt === appliedRt) : rtData;
 
   return (
     <div className="flex flex-col gap-6">
@@ -261,7 +307,7 @@ export default function LaporanPage() {
             />
             <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-[#2563EB]">
               <span className="text-[11px] text-white/60">dari Total</span>
-              <span className="text-lg font-bold">{filteredCitizens.length} Jiwa</span>
+              <span className="text-lg font-bold">{demographics.totalCitizens} Jiwa</span>
             </div>
           </div>
           <div className="mt-5 flex gap-6 text-sm">
@@ -336,7 +382,6 @@ export default function LaporanPage() {
                 value={searchQuery}
                 onChange={(e: any) => {
                   setSearchQuery(e.target.value);
-                  setCurrentPage(1);
                 }}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-[#3B82F6] focus:bg-white"
               />
@@ -353,8 +398,8 @@ export default function LaporanPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedPenduduk.length > 0 ? (
-                    paginatedPenduduk.map((citizen) => (
+                  {rtCitizens.length > 0 ? (
+                    rtCitizens.map((citizen) => (
                       <tr key={citizen.id} className="border-t border-gray-100 bg-white">
                         <td className="px-4 py-3 font-medium text-[#1E293B]">{citizen.name}</td>
                         <td className="px-4 py-3 text-[#64748B]">{citizen.nik}</td>
@@ -373,10 +418,10 @@ export default function LaporanPage() {
               </table>
             </div>
 
-            {totalPages > 1 ? (
+            {detailTotalPages > 1 ? (
               <div className="flex items-center justify-between border-t border-gray-100 pt-4">
                 <span className="text-xs text-[#64748B]">
-                  Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredPenduduk.length)} dari {filteredPenduduk.length} warga
+                  Menampilkan {rtCitizens.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, detailTotalItems)} dari {detailTotalItems} warga
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
@@ -386,10 +431,10 @@ export default function LaporanPage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="text-sm font-medium text-[#1E293B]">Hal {currentPage} / {totalPages}</span>
+                  <span className="text-sm font-medium text-[#1E293B]">Hal {currentPage} / {detailTotalPages}</span>
                   <Button
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((page) => Math.min(detailTotalPages, page + 1))}
+                    disabled={currentPage === detailTotalPages}
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 disabled:opacity-50 hover:bg-gray-50"
                   >
                     <ChevronRight className="h-4 w-4" />

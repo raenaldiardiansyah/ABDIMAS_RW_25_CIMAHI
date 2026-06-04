@@ -28,6 +28,6 @@ export function getAdminProfile(user?: SessionUser | null): AdminProfile {
     email,
     roleLabel: role,
     initials,
-    avatarClassName: "bg-[#2563EB]",
+    avatarClassName: "bg-primary",
   };
 }

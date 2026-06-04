@@ -8,6 +8,7 @@ import {
   adminUserResponseSchema,
   createAdminUserSchema,
   updateAdminUserSchema,
+  paginationQuerySchema,
 } from "@abdimas/contracts";
 import { account, adminActivityLog, getDb, user } from "@abdimas/db";
 
@@ -191,7 +192,24 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     return ok(c, payload.data);
   })
   .get("/activity-logs", async (c) => {
-    const rows = await getDb().select().from(adminActivityLog).orderBy(desc(adminActivityLog.createdAt)).limit(100);
+    const query = parseQuery(
+      {
+        page: c.req.query("page"),
+        limit: c.req.query("limit"),
+      },
+      paginationQuerySchema,
+    );
+    const db = getDb();
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(adminActivityLog);
+    const rows = await db
+      .select()
+      .from(adminActivityLog)
+      .orderBy(desc(adminActivityLog.createdAt))
+      .limit(query.limit)
+      .offset(getOffset(query.page, query.limit));
+    const meta = buildPageMeta({ page: query.page, limit: query.limit, total: Number(total || 0) });
     return ok(
       c,
       rows.map((row) => ({
@@ -203,5 +221,6 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
         metadata: row.metadata ?? {},
         createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
       })),
+      meta,
     );
   });

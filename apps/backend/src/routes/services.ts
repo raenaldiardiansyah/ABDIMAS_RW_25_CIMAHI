@@ -6,7 +6,7 @@ import { citizen, getDb, historyEntry } from "@abdimas/db";
 
 import { ok } from "../lib/response";
 import { parseJson } from "../lib/validation";
-import { authMiddleware } from "../middleware/auth";
+import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth";
 
 function getAgeFromDate(value: string) {
   const birth = new Date(value);
@@ -19,6 +19,7 @@ function getAgeFromDate(value: string) {
 
 export const servicesRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", authMiddleware)
+  .use("*", verifiedWargaMiddleware)
   .post("/bansos/check", async (c) => {
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, serviceNikCheckSchema);

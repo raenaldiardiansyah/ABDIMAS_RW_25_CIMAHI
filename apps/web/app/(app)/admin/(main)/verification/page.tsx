@@ -1,0 +1,365 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Eye, Search, ShieldCheck, XCircle } from 'lucide-react';
+
+import type { AdminVerificationItem, VerificationStatus } from '@abdimas/contracts';
+
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { platformFetch } from '@/lib/api/platform';
+import { useActionToast } from '@/lib/use-action-toast';
+
+const STATUSES: VerificationStatus[] = ['PENDING', 'VERIFIED', 'REJECTED'];
+
+type VerificationActionResponse = {
+  userId: string;
+  verificationStatus: VerificationStatus;
+  rejectionReason?: string | null;
+  verifiedAt?: string | null;
+  verifiedBy?: string | null;
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function statusBadgeClass(status: VerificationStatus) {
+  if (status === 'VERIFIED') return 'border-[color:var(--admin-success-border)] bg-[color:var(--admin-success-soft)] text-[color:var(--admin-success-foreground)]';
+  if (status === 'REJECTED') return 'border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] text-[color:var(--admin-danger-foreground)]';
+  return 'border-[color:var(--admin-warning-border)] bg-[color:var(--admin-warning-soft)] text-[color:var(--admin-warning-foreground)]';
+}
+
+export default function AdminVerificationPage() {
+  const { runWithToast } = useActionToast();
+  const [status, setStatus] = useState<VerificationStatus>('PENDING');
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [items, setItems] = useState<AdminVerificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<AdminVerificationItem | null>(null);
+  const [rejectingItem, setRejectingItem] = useState<AdminVerificationItem | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), 1000);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ status });
+        if (query) params.set('q', query);
+        const response = await platformFetch<AdminVerificationItem[]>(`/admin/verifications?${params.toString()}`);
+        if (!active) return;
+        setItems(response.data);
+      } catch (error) {
+        console.error(error);
+        if (!active) return;
+        setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [query, status]);
+
+  const counts = useMemo(
+    () => ({
+      pending: items.filter((item) => item.verificationStatus === 'PENDING').length,
+      verified: items.filter((item) => item.verificationStatus === 'VERIFIED').length,
+      rejected: items.filter((item) => item.verificationStatus === 'REJECTED').length,
+    }),
+    [items],
+  );
+
+  const handleApprove = async (item: AdminVerificationItem) => {
+    try {
+      await runWithToast(
+        () => platformFetch<VerificationActionResponse>(`/admin/verifications/${item.userId}/approve`, { method: 'POST' }),
+        {
+          loading: 'Menyetujui verifikasi...',
+          success: 'Verifikasi disetujui',
+          error: 'Gagal menyetujui verifikasi',
+        },
+      );
+      setItems((prev) => prev.filter((entry) => entry.userId !== item.userId));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectingItem || !rejectReason.trim()) return;
+
+    try {
+      await runWithToast(
+        () =>
+          platformFetch<VerificationActionResponse>(`/admin/verifications/${rejectingItem.userId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: rejectReason.trim() }),
+          }),
+        {
+          loading: 'Menolak verifikasi...',
+          success: 'Verifikasi ditolak',
+          error: 'Gagal menolak verifikasi',
+        },
+      );
+      setItems((prev) => prev.filter((entry) => entry.userId !== rejectingItem.userId));
+      setRejectingItem(null);
+      setRejectReason('');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="rounded-3xl bg-gradient-to-r from-[color:var(--admin-gradient-from)] to-[color:var(--admin-gradient-to)] px-6 py-6 text-primary-foreground shadow-lg">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold">Verifikasi Warga</h1>
+            <p className="mt-1 text-sm text-white/80">Kelola antrian verifikasi identitas warga.</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
+              <p className="text-xs text-white/70">Pending</p>
+              <p className="mt-1 text-2xl font-bold">{counts.pending}</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
+              <p className="text-xs text-white/70">Verified</p>
+              <p className="mt-1 text-2xl font-bold">{counts.verified}</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
+              <p className="text-xs text-white/70">Rejected</p>
+              <p className="mt-1 text-2xl font-bold">{counts.rejected}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <Tabs value={status} onValueChange={(value) => setStatus(value as VerificationStatus)}>
+            <TabsList className="h-auto rounded-2xl bg-[color:var(--admin-surface-soft)] p-1">
+              {STATUSES.map((item) => (
+                <TabsTrigger
+                  key={item}
+                  value={item}
+                  className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-[color:var(--admin-surface)] data-[state=active]:text-primary"
+                >
+                  {item}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          <div className="relative w-full lg:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--admin-muted)]" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari username atau email"
+              className="h-11 rounded-2xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] pl-10"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-hidden rounded-2xl border border-[color:var(--admin-border)]">
+          <div className="overflow-x-auto">
+            <Table className="min-w-full">
+              <TableHeader className="bg-[color:var(--admin-surface-muted)]">
+                <TableRow className="border-b-[color:var(--admin-border)] text-left text-xs font-bold uppercase tracking-wide text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-muted)]">
+                  <TableHead className="px-5 py-4">Warga</TableHead>
+                  <TableHead className="px-5 py-4">NIK</TableHead>
+                  <TableHead className="px-5 py-4">Status</TableHead>
+                  <TableHead className="px-5 py-4">Tanggal Daftar</TableHead>
+                  <TableHead className="px-5 py-4">Tanggal Verifikasi</TableHead>
+                  <TableHead className="px-5 py-4">Alasan</TableHead>
+                  <TableHead className="px-5 py-4 text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="bg-[color:var(--admin-surface)]">
+                {items.map((item) => (
+                  <TableRow key={item.userId} className="border-b-[color:var(--admin-border)] hover:bg-[color:var(--admin-surface-soft)]">
+                    <TableCell className="px-5 py-4">
+                      <p className="font-bold text-[color:var(--admin-heading)]">{item.username}</p>
+                      <p className="text-xs text-[color:var(--admin-subtle)]">{item.email}</p>
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm font-medium text-[color:var(--admin-body)]">{item.maskedNik}</TableCell>
+                    <TableCell className="px-5 py-4">
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${statusBadgeClass(item.verificationStatus)}`}>
+                        {item.verificationStatus}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-[color:var(--admin-body)]">{formatDate(item.createdAt)}</TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-[color:var(--admin-body)]">{formatDate(item.verifiedAt)}</TableCell>
+                    <TableCell className="max-w-[220px] px-5 py-4 text-sm text-[color:var(--admin-subtle)]">
+                      <span className="line-clamp-2">{item.rejectionReason || '-'}</span>
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setSelectedItem(item)}
+                          className="h-10 w-10 rounded-xl border-gray-200"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {item.verificationStatus === 'PENDING' ? (
+                          <>
+                            <Button
+                              type="button"
+                              onClick={() => setRejectingItem(item)}
+                              className="rounded-xl border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] px-4 text-[color:var(--admin-danger-foreground)] hover:bg-[color:var(--admin-danger-soft)]/80"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              Tolak
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => void handleApprove(item)}
+                              className="rounded-xl bg-primary px-4 text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Setujui
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!loading && items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="px-6 py-12 text-center text-sm text-[color:var(--admin-subtle)]">
+                      Tidak ada data verifikasi untuk filter ini.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="px-6 py-12 text-center text-sm text-[color:var(--admin-subtle)]">
+                      Memuat data verifikasi...
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+          <DialogContent className="max-w-lg rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[color:var(--admin-heading)]">Detail Verifikasi</DialogTitle>
+            <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
+              Informasi akun dan status verifikasi warga.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedItem ? (
+            <div className="mt-4 grid gap-3">
+              <div className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-4">
+                <p className="text-lg font-bold text-[color:var(--admin-heading)]">{selectedItem.username}</p>
+                <p className="mt-1 text-sm text-[color:var(--admin-subtle)]">{selectedItem.email}</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--admin-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-[color:var(--admin-subtle)]">NIK</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--admin-heading)]">{selectedItem.maskedNik}</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--admin-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-[color:var(--admin-subtle)]">Status</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--admin-heading)]">{selectedItem.verificationStatus}</p>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--admin-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-[color:var(--admin-subtle)]">Alasan Penolakan</p>
+                <p className="mt-1 text-sm text-[color:var(--admin-heading)]">{selectedItem.rejectionReason || '-'}</p>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!rejectingItem}
+        onOpenChange={(open) => {
+          if (open) return;
+          setRejectingItem(null);
+          setRejectReason('');
+        }}
+      >
+        <DialogContent className="max-w-lg rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[color:var(--admin-heading)]">Tolak Verifikasi</DialogTitle>
+            <DialogDescription className="text-sm text-[color:var(--admin-subtle)]">
+              Alasan penolakan wajib diisi agar warga mendapat feedback yang jelas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-3">
+            <div className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface-muted)] p-4">
+              <p className="font-bold text-[color:var(--admin-heading)]">{rejectingItem?.username}</p>
+              <p className="mt-1 text-xs text-[color:var(--admin-subtle)]">{rejectingItem?.email}</p>
+            </div>
+            <Textarea
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="Contoh: Foto KTP tidak jelas atau data NIK tidak sesuai."
+              className="min-h-[120px] rounded-2xl border-[color:var(--admin-border)]"
+            />
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setRejectingItem(null);
+                  setRejectReason('');
+                }}
+                className="rounded-xl"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleReject()}
+                disabled={!rejectReason.trim()}
+                className="rounded-xl bg-[color:var(--status-error)] text-white hover:bg-[color:var(--admin-danger-foreground)]"
+              >
+                Tolak Verifikasi
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

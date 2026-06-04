@@ -83,9 +83,9 @@ export default function AdminCalendar() {
   const todayEvents = eventsByDate.get(todayIso) ?? [];
 
   return (
-    <div className="sticky top-6 flex h-full flex-col overflow-hidden rounded-[24px] border border-gray-100 bg-white shadow-lg">
+    <div className="sticky top-6 flex h-full flex-col overflow-hidden rounded-[24px] border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] shadow-lg">
       {/* Header — Blue gradient */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#2563EB] to-[#3B82F6] px-6 py-5 text-center text-white">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--admin-gradient-from)] to-[color:var(--admin-gradient-to)] px-6 py-5 text-center text-primary-foreground">
         <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/[0.08]" />
         <CalendarDays className="mx-auto mb-2 h-7 w-7 opacity-90" />
         <h3 className="text-lg font-bold tracking-wide">{capitalizedMonth}</h3>
@@ -94,10 +94,10 @@ export default function AdminCalendar() {
 
       {/* Calendar grid */}
       <div className="px-4 pt-4">
-        <div className="rounded-2xl bg-[#F8FAFC] p-3">
+        <div className="rounded-2xl bg-[color:var(--admin-surface-muted)] p-3">
           <div className="grid grid-cols-7 gap-1">
             {HARI.map((hari) => (
-              <div key={hari} className="py-1 text-center text-[11px] font-bold text-[#94A3B8]">
+              <div key={hari} className="py-1 text-center text-[11px] font-bold text-[color:var(--admin-muted)]">
                 {hari}
               </div>
             ))}
@@ -116,20 +116,20 @@ export default function AdminCalendar() {
                   className={cn(
                     'relative flex aspect-square flex-col items-center justify-center rounded-lg transition-all',
                     isToday
-                      ? 'bg-[#2563EB] text-white shadow-md shadow-blue-200'
-                      : 'text-[#334155] hover:bg-gray-100',
+                      ? 'bg-primary text-primary-foreground shadow-md shadow-[color:color-mix(in_srgb,var(--primary),transparent_70%)]'
+                      : 'text-[color:var(--admin-body)] hover:bg-[color:var(--admin-surface-soft)]',
                   )}
                 >
                   <span
                     className={cn(
                       'text-[12px] font-semibold',
-                      !isToday && hasEvents && 'text-[#2563EB]',
+                      !isToday && hasEvents && 'text-primary',
                     )}
                   >
                     {cell.day}
                   </span>
                   {hasEvents && !isToday ? (
-                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[#3B82F6]" />
+                    <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[color:var(--admin-gradient-to)]" />
                   ) : null}
                 </div>
               );
@@ -140,20 +140,20 @@ export default function AdminCalendar() {
 
       {/* Agenda Section */}
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
-        <h4 className="mb-3 text-sm font-bold text-[#334155]">Agenda Hari Ini</h4>
+        <h4 className="mb-3 text-sm font-bold text-[color:var(--admin-body)]">Agenda Hari Ini</h4>
         {todayEvents.length > 0 ? (
           <div className="flex flex-col gap-2.5">
             {todayEvents.map((ev) => (
               <div
                 key={ev.id}
-                className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+                className="flex gap-3 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] p-3 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--admin-primary-soft)] text-primary">
                   <CalendarDays className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-bold text-[#1E293B]">{ev.title}</p>
-                  <p className="mt-0.5 text-[11px] font-medium text-[#94A3B8]">
+                  <p className="text-[13px] font-bold text-[color:var(--admin-heading)]">{ev.title}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-[color:var(--admin-muted)]">
                     {ev.startTime ?? '-'} • {ev.location}
                   </p>
                 </div>
@@ -161,8 +161,8 @@ export default function AdminCalendar() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 px-4 py-4 text-center">
-            <p className="text-xs font-medium text-[#94A3B8]">
+          <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[color:var(--admin-border)] px-4 py-4 text-center">
+            <p className="text-xs font-medium text-[color:var(--admin-muted)]">
               Tidak ada kegiatan terjadwal hari ini.
             </p>
           </div>
