@@ -413,6 +413,7 @@ export default function WargaHomePage() {
               tone="primary"
               onClick={() => setActiveSheet('bansos')}
               delay={50}
+              patternId={1}
             />
 
             <div className="grid grid-cols-2 gap-3">
@@ -425,6 +426,7 @@ export default function WargaHomePage() {
                 tone="primary"
                 onClick={() => setActiveSheet('pemilu')}
                 delay={100}
+                patternId={2}
               />
 
               <FeatureCard
@@ -436,6 +438,7 @@ export default function WargaHomePage() {
                 tone="primary"
                 onClick={() => setActiveSheet('aspirasi')}
                 delay={150}
+                patternId={3}
               />
             </div>
           </>
@@ -538,13 +541,23 @@ export default function WargaHomePage() {
             </RadioGroup>
           </div>
 
-          <Button
-            onClick={handleBansosSubmit}
-            disabled={isBansosSubmitDisabled || submitting === 'bansos'}
-            className="h-12 rounded-xl font-semibold"
-          >
-            {submitting === 'bansos' ? 'Memproses...' : 'Konfirmasi'}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={closeSheet}
+              disabled={submitting === 'bansos'}
+              className="h-12 flex-1 rounded-xl font-semibold"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleBansosSubmit}
+              disabled={isBansosSubmitDisabled || submitting === 'bansos'}
+              className="h-12 flex-1 rounded-xl font-semibold"
+            >
+              {submitting === 'bansos' ? 'Memproses...' : 'Konfirmasi'}
+            </Button>
+          </div>
         </div>
       </SlideUpSheet>
 
@@ -572,13 +585,23 @@ export default function WargaHomePage() {
             onChange={setPemiluTgl}
           />
 
-          <Button
-            onClick={handlePemiluSubmit}
-            disabled={isPemiluSubmitDisabled || submitting === 'pemilu'}
-            className="mt-2 h-12 rounded-xl font-semibold"
-          >
-            {submitting === 'pemilu' ? 'Memproses...' : 'Konfirmasi'}
-          </Button>
+          <div className="mt-2 flex gap-3">
+            <Button
+              variant="outline"
+              onClick={closeSheet}
+              disabled={submitting === 'pemilu'}
+              className="h-12 flex-1 rounded-xl font-semibold"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handlePemiluSubmit}
+              disabled={isPemiluSubmitDisabled || submitting === 'pemilu'}
+              className="h-12 flex-1 rounded-xl font-semibold"
+            >
+              {submitting === 'pemilu' ? 'Memproses...' : 'Konfirmasi'}
+            </Button>
+          </div>
         </div>
       </SlideUpSheet>
 
@@ -614,13 +637,23 @@ export default function WargaHomePage() {
             onChange={setAspirasiFile}
           />
 
-          <Button
-            onClick={handleAspirasiSubmit}
-            disabled={aspirasiJenis.length === 0 || !aspirasiUraian.trim() || submitting === 'aspirasi'}
-            className="mt-2 h-12 rounded-xl font-semibold"
-          >
-            {submitting === 'aspirasi' ? 'Mengirim...' : 'Konfirmasi'}
-          </Button>
+          <div className="mt-2 flex gap-3">
+            <Button
+              variant="outline"
+              onClick={closeSheet}
+              disabled={submitting === 'aspirasi'}
+              className="h-12 flex-1 rounded-xl font-semibold"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleAspirasiSubmit}
+              disabled={aspirasiJenis.length === 0 || !aspirasiUraian.trim() || submitting === 'aspirasi'}
+              className="h-12 flex-1 rounded-xl font-semibold"
+            >
+              {submitting === 'aspirasi' ? 'Mengirim...' : 'Konfirmasi'}
+            </Button>
+          </div>
         </div>
       </SlideUpSheet>
 

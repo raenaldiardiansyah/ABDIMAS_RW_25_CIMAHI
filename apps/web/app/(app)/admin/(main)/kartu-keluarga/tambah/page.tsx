@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -284,7 +284,7 @@ export default function TambahKartuKeluargaPage() {
       <div className="relative overflow-hidden rounded-[12px] bg-[#EEF2FF] p-6">
         <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#3B82F6]/[0.05]" />
         <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-[#3B82F6]/[0.08]" />
-        
+
         <div className="relative z-10">
           <h1 className="text-2xl font-bold text-[#3B82F6]">Tambah Kartu Keluarga Baru</h1>
           <p className="mt-1 text-sm text-[#3B82F6]/80">
@@ -386,7 +386,7 @@ export default function TambahKartuKeluargaPage() {
         {/* Informasi Utama */}
         <div className="rounded-[12px] bg-[#FFFFFF] px-[24px] py-[20px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <h2 className="mb-6 text-[18px] font-bold text-[#1E293B]">Informasi Utama</h2>
-          
+
           <div className="grid gap-6 md:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">
@@ -433,26 +433,26 @@ export default function TambahKartuKeluargaPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">RT</Label>
-                {selectedCitizen ? (
-                  <Input
-                    value={form.rt ? `RT ${form.rt}` : '}
-                    readOnly
-                    className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-4 text-[#1E293B]"
-                  />
-                ) : (
-                  <Select value={form.rt} onValueChange={(val: any) => handleFieldChange('rt', val)}>
-                    <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100">
-                      <SelectValue placeholder="Pilih RT" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['01', '02', '03'].map((rt) => (
-                        <SelectItem key={rt} value={rt}>
-                          RT {rt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+              {selectedCitizen ? (
+                <Input
+                  value={form.rt ? `RT ${form.rt}` : ''}
+                  readOnly
+                  className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-4 text-[#1E293B]"
+                />
+              ) : (
+                <Select value={form.rt} onValueChange={(val: any) => handleFieldChange('rt', val)}>
+                  <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100">
+                    <SelectValue placeholder="Pilih RT" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['01', '02', '03'].map((rt) => (
+                      <SelectItem key={rt} value={rt}>
+                        RT {rt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">RW</Label>

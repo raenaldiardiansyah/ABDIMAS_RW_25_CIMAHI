@@ -78,6 +78,15 @@ function tipeIcon(tipe: HistoryItem['tipe']) {
   return MessageSquareText;
 }
 
+type HistoryApiItem = {
+  id: string;
+  type: 'BANSOS_CHECK' | 'PEMILU_CHECK' | 'ASPIRATION' | 'REQUEST' | 'MUTATION';
+  title: string;
+  description: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
 function DetailContent({ item }: { item: HistoryItem }) {
   const rows: Array<{ label: string; value: string }> = [];
   let notes = '-';
@@ -137,25 +146,27 @@ function DetailContent({ item }: { item: HistoryItem }) {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-input bg-background px-3 py-2.5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+      {/* Keterangan — biru muda */}
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-blue-500">
           {item.tipe === 'permohonan' ? 'Ringkasan' : 'Keterangan'}
         </p>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-sm leading-relaxed text-blue-700">
           {notes}
         </p>
       </div>
 
       {item.tipe === 'aspirasi' ? (
-        <div className="rounded-2xl border border-input bg-background px-3 py-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        /* Tanggapan Admin — hijau muda */
+        <div className="rounded-2xl border border-green-200 bg-green-50 px-3 py-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-green-600">
             Tanggapan Admin
           </p>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-sm leading-relaxed text-green-700">
             {(item.detail as AspirasiResult).tanggapanAdmin || 'Belum ada tanggapan admin.'}
           </p>
           {(item.detail as AspirasiResult).ditanggapiOleh ? (
-            <p className="mt-2 text-xs font-medium text-foreground">
+            <p className="mt-2 text-xs font-medium text-green-800">
               {(item.detail as AspirasiResult).ditanggapiOleh}
               {(item.detail as AspirasiResult).tanggalTanggapan
                 ? ` • ${new Date((item.detail as AspirasiResult).tanggalTanggapan as string).toLocaleDateString('id-ID')}`
@@ -164,7 +175,7 @@ function DetailContent({ item }: { item: HistoryItem }) {
           ) : null}
         </div>
       ) : null}
-      
+
       {item.tipe === 'permohonan' && item.detail && (item.detail as PermohonanResult).status === 'REJECTED' && (item.detail as PermohonanResult).alasanPenolakan ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-600">Alasan Penolakan</p>
@@ -194,14 +205,7 @@ export default function HistoryClient({
   useEffect(() => {
     let mounted = true;
 
-    const mapHistoryItem = (item: {
-      id: string;
-      type: 'BANSOS_CHECK' | 'PEMILU_CHECK' | 'ASPIRATION' | 'REQUEST' | 'MUTATION';
-      title: string;
-      description: string;
-      metadata: Record<string, unknown>;
-      createdAt: string;
-    }): HistoryItem => {
+    const mapHistoryItem = (item: HistoryApiItem): HistoryItem => {
       const createdDate = new Date(item.createdAt).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'long',
@@ -249,7 +253,7 @@ export default function HistoryClient({
           },
         };
       }
-      
+
       if (item.type === 'REQUEST' || item.type === 'MUTATION') {
         const reqType = item.type === 'MUTATION' ? (item.metadata.type === 'MUTATION_IN' ? 'MUTATION_IN' : 'MUTATION_OUT') : 'HOUSEHOLD_CREATE';
         const reqStatus = String(item.metadata.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -308,16 +312,7 @@ export default function HistoryClient({
       };
     };
 
-    platformFetch<
-      Array<{
-        id: string;
-        type: 'BANSOS_CHECK' | 'PEMILU_CHECK' | 'ASPIRATION' | 'REQUEST' | 'MUTATION';
-        title: string;
-        description: string;
-        metadata: Record<string, unknown>;
-        createdAt: string;
-      }>
-    >('/history?page=1&limit=20')
+    platformFetch<HistoryApiItem[]>('/history?page=1&limit=20')
       .then(({ data }) => {
         if (!mounted) return;
         const mapped = data.map(mapHistoryItem);
@@ -334,18 +329,9 @@ export default function HistoryClient({
   }, []);
 
   useAutoRefresh(async () => {
-    const response = await platformFetch<
-      Array<{
-        id: string;
-        type: 'BANSOS_CHECK' | 'PEMILU_CHECK' | 'ASPIRATION' | 'REQUEST' | 'MUTATION';
-        title: string;
-        description: string;
-        metadata: Record<string, unknown>;
-        createdAt: string;
-      }>
-    >('/history?page=1&limit=20');
+    const response = await platformFetch<HistoryApiItem[]>('/history?page=1&limit=20');
 
-    const mapped = response.data.map((item) => {
+    const mapped = response.data.map((item: HistoryApiItem) => {
       const createdDate = new Date(item.createdAt).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'long',
@@ -393,7 +379,7 @@ export default function HistoryClient({
           },
         };
       }
-      
+
       if (item.type === 'REQUEST' || item.type === 'MUTATION') {
         const reqType = item.type === 'MUTATION' ? (item.metadata.type === 'MUTATION_IN' ? 'MUTATION_IN' : 'MUTATION_OUT') : 'HOUSEHOLD_CREATE';
         const reqStatus = String(item.metadata.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -402,7 +388,7 @@ export default function HistoryClient({
           tipe: 'permohonan' as const,
           tanggal: createdDate,
           status: reqStatus === 'APPROVED' ? 'Disetujui' : reqStatus === 'REJECTED' ? 'Ditolak' : 'Menunggu',
-          statusColor: reqStatus === 'APPROVED' ? 'green' : reqStatus === 'REJECTED' ? 'red' : 'amber',
+          statusColor: reqStatus === 'APPROVED' ? 'green' as const : reqStatus === 'REJECTED' ? 'red' as const : 'amber' as const,
           judul: item.title,
           deskripsi: item.description,
           detail: {
@@ -489,7 +475,7 @@ export default function HistoryClient({
 
       <WargaPageBody className="flex flex-col gap-5">
         <TabBar
-          tabs={TABS.map((label) => ({ label }))}
+          tabs={[...TABS]}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           className="sticky top-0 z-10 mx-auto w-fit max-w-full rounded-2xl bg-white/80 px-2 py-2 shadow-sm backdrop-blur-md"
@@ -513,14 +499,13 @@ export default function HistoryClient({
             filteredItems.map((item) => (
               <HistoryCard
                 key={item.id}
-                icon={tipeIcon(item.tipe)}
-                title={item.judul}
-                description={item.deskripsi}
-                date={item.tanggal}
+                judul={item.judul}
+                deskripsi={item.deskripsi}
+                tanggal={item.tanggal}
                 status={item.status}
                 statusColor={item.statusColor}
                 isExpanded={expandedId === item.id}
-                onToggle={() =>
+                onClick={() =>
                   setExpandedId(expandedId === item.id ? null : item.id)
                 }
               >

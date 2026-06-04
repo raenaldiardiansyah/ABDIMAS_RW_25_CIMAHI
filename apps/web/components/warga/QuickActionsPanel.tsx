@@ -170,7 +170,7 @@ export default function QuickActionsPanel({
       </CardHeader>
 
       <CardContent className="px-4 pb-6 pt-2">
-        <div className="grid grid-cols-4 gap-x-2 gap-y-6">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-6">
           {QUICK_ACTIONS.map((item) => {
             const Icon = item.icon;
             const isSoon = 'soon' in item && item.soon;

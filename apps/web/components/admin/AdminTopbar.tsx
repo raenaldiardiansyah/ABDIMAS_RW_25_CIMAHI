@@ -444,8 +444,15 @@ export default function AdminTopbar() {
                 Informasi
               </h4>
               <div className="space-y-1 text-xs text-[color:var(--admin-subtle)]">
-                <p><strong>Versi:</strong> 1.0.0</p>
-                <p><strong>Dikembangkan oleh:</strong> Tim ABDIMAS — Telkom University</p>
+                <p><strong>Versi:</strong> 1.0.0 (Build 2026.04)</p>
+                <div>
+                  <p><strong>Dikembangkan oleh:</strong> Tim ABDIMAS — Telkom University</p>
+                  <ol className="list-decimal list-inside ml-2 mt-1 space-y-0.5">
+                    <li>Raenaldi Ardiansyah Sidik - Front End Developer</li>
+                    <li>Faiq Haqqani - UI/UX Designer</li>
+                    <li>Muhammad Riyadhul Jinan Nasution - Back End Developer</li>
+                  </ol>
+                </div>
                 <p><strong>Untuk:</strong> RW 025, Kota Cimahi, Jawa Barat</p>
               </div>
             </div>
