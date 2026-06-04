@@ -7,6 +7,15 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 const { Pool } = pg;
 
+function normalizeDatabaseUrl(databaseUrl) {
+  const url = new URL(databaseUrl);
+  const sslMode = url.searchParams.get("sslmode");
+  if (sslMode === "prefer" || sslMode === "require" || sslMode === "verify-ca") {
+    url.searchParams.set("sslmode", "verify-full");
+  }
+  return url.toString();
+}
+
 function readEnvValue(name) {
   const candidates = [
     path.resolve(process.cwd(), ".env"),
@@ -31,7 +40,7 @@ async function main() {
     throw new Error("Missing DATABASE_URL env var");
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool({ connectionString: normalizeDatabaseUrl(databaseUrl) });
   const db = drizzle(pool);
 
   try {

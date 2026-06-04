@@ -119,6 +119,8 @@ export default function WargaHomePage() {
   const [bansosHousePhotoFile, setBansosHousePhotoFile] = useState<File | null>(null);
   const [bansosIncomeProofFile, setBansosIncomeProofFile] = useState<File | null>(null);
   const [bansosPrograms, setBansosPrograms] = useState<BansosProgramCard[]>([]);
+  const [bansosProgramsLoading, setBansosProgramsLoading] = useState(false);
+  const [bansosProgramsError, setBansosProgramsError] = useState<string | null>(null);
   const [bansosResult, setBansosResult] = useState<BansosResult | null>(null);
 
   const [pemiluNik, setPemiluNik] = useState('');
@@ -138,11 +140,18 @@ export default function WargaHomePage() {
 
     async function loadPrograms() {
       try {
+        setBansosProgramsLoading(true);
+        setBansosProgramsError(null);
         const response = await platformFetch<BansosProgramCard[]>('/bansos/programs?page=1&limit=20');
         if (!active) return;
         setBansosPrograms(response.data);
       } catch (error) {
+        if (!active) return;
         console.error(error);
+        setBansosPrograms([]);
+        setBansosProgramsError(error instanceof Error ? error.message : 'Gagal memuat program bansos.');
+      } finally {
+        if (active) setBansosProgramsLoading(false);
       }
     }
 
@@ -710,21 +719,7 @@ export default function WargaHomePage() {
               onValueChange={setBansosProgram}
               className="grid gap-2"
             >
-              {(bansosPrograms.length > 0
-                ? bansosPrograms
-                : BANSOS_PROGRAMS.map((program) => ({
-                    id: program.id,
-                    title: program.name,
-                    assistanceType: program.id,
-                    startDate: new Date().toISOString().slice(0, 10),
-                    endDate: new Date().toISOString().slice(0, 10),
-                    startTime: '08:00',
-                    endTime: '15:00',
-                    fundingSource: '-',
-                    generalRequirements: [],
-                    allowedRtScope: [],
-                    userApplication: null,
-                  }))).map((program) => {
+              {bansosPrograms.map((program) => {
                 const isSelected = bansosProgram === program.id;
 
                 return (
@@ -768,6 +763,15 @@ export default function WargaHomePage() {
                 );
               })}
             </RadioGroup>
+            {bansosProgramsLoading ? (
+              <p className="text-xs text-muted-foreground">Memuat program bansos...</p>
+            ) : null}
+            {!bansosProgramsLoading && bansosProgramsError ? (
+              <p className="text-xs text-destructive">{bansosProgramsError}</p>
+            ) : null}
+            {!bansosProgramsLoading && !bansosProgramsError && bansosPrograms.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Belum ada program bansos dari admin.</p>
+            ) : null}
           </div>
 
           <FormInput
