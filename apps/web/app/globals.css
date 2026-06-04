@@ -254,6 +254,32 @@
 }
 
 @theme inline {
+  --color-admin-background: var(--admin-background);
+  --color-admin-foreground: var(--admin-foreground);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-surface-muted: var(--admin-surface-muted);
+  --color-admin-surface-soft: var(--admin-surface-soft);
+  --color-admin-border: var(--admin-border);
+  --color-admin-heading: var(--admin-heading);
+  --color-admin-body: var(--admin-body);
+  --color-admin-subtle: var(--admin-subtle);
+  --color-admin-muted: var(--admin-muted);
+  --color-admin-primary: var(--admin-primary);
+  --color-admin-primary-strong: var(--admin-primary-strong);
+  --color-admin-primary-soft: var(--admin-primary-soft);
+  --color-admin-primary-soft-foreground: var(--admin-primary-soft-foreground);
+  --color-admin-primary-soft-border: var(--admin-primary-soft-border);
+  --color-admin-gradient-from: var(--admin-gradient-from);
+  --color-admin-gradient-to: var(--admin-gradient-to);
+  --color-admin-success-soft: var(--admin-success-soft);
+  --color-admin-success-foreground: var(--admin-success-foreground);
+  --color-admin-success-border: var(--admin-success-border);
+  --color-admin-warning-soft: var(--admin-warning-soft);
+  --color-admin-warning-foreground: var(--admin-warning-foreground);
+  --color-admin-warning-border: var(--admin-warning-border);
+  --color-admin-danger-soft: var(--admin-danger-soft);
+  --color-admin-danger-foreground: var(--admin-danger-foreground);
+  --color-admin-danger-border: var(--admin-danger-border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);

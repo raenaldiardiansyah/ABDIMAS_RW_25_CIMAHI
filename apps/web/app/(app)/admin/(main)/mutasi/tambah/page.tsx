@@ -267,17 +267,15 @@ export default function TambahMutasiPage() {
   return (
     <div className="flex flex-col gap-5">
       {/* ── Header ── */}
-      <div className="flex items-center gap-4 text-[color:var(--admin-primary)]">
-        <Button
+      <div className="flex items-center justify-between">
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           onClick={() => setShowExitModal(true)}
-          className="h-10 w-10 rounded-full bg-[color:var(--admin-primary)] text-primary-foreground shadow-sm hover:bg-[color:var(--admin-primary-strong)]"
+          className="flex items-center gap-2 text-[16px] font-[600] text-[#2563EB] transition hover:opacity-80 bg-transparent border-none outline-none"
         >
-          <ChevronLeft className="h-6 w-6" />
-        </Button>
-        <span className="cursor-pointer text-xl font-bold" onClick={() => setShowExitModal(true)}>Keluar Halaman</span>
+          <ChevronLeft className="h-5 w-5" />
+          Keluar Halaman
+        </button>
       </div>
 
       {/* ── Title & Stepper ── */}
@@ -299,12 +297,12 @@ export default function TambahMutasiPage() {
             const isCurrentOrCompleted = isActive || isCompleted;
 
             const circleStyle = isCurrentOrCompleted
-              ? 'border-[1.5px] border-[color:var(--admin-primary)] bg-white/90 text-[color:var(--admin-primary)]'
-              : 'border-[1.5px] border-[color:var(--admin-primary-soft-border)] bg-white/70 text-[color:var(--admin-subtle)]';
+              ? 'bg-transparent text-[#2563EB] border-[1.5px] border-[#2563EB]'
+              : 'bg-[#EEF0FD] text-[#7C8FE8] border-[1.5px] border-[#C5CFFB]';
 
             const labelStyle = isCurrentOrCompleted
-              ? 'font-[600] text-[color:var(--admin-primary)]'
-              : 'font-[400] text-[color:var(--admin-subtle)]';
+              ? 'text-[#2563EB] font-[600]'
+              : 'text-[#7C8FE8] font-[400]';
 
             return (
               <div key={step.id} className={`flex items-center ${idx < STEPS.length - 1 ? 'flex-1' : ''}`}>
@@ -319,7 +317,7 @@ export default function TambahMutasiPage() {
                 {idx < STEPS.length - 1 && (
                   <div
                     className={`mx-4 h-[1px] flex-1 rounded-full transition-colors ${
-                      isCompleted ? 'bg-[color:var(--admin-primary)]' : 'bg-[color:var(--admin-primary-soft-border)]'
+                      isCompleted ? 'bg-[#2563EB]' : 'bg-[#C5CFFB]'
                     }`}
                   />
                 )}

@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
     try {
       const stored = localStorage.getItem('dismissed_activities');
       if (stored) setHiddenActivities(JSON.parse(stored));
-    } catch {}
+    } catch { }
   }, []);
 
   const dismissActivity = (id: string) => {
@@ -318,7 +318,7 @@ export default function AdminDashboardPage() {
               const isExpanded = expandedCategory === group.label;
               const hasItems = group.items.length > 0;
               const rowBg = ROW_COLORS[i % 2];
-              
+
               const currentPage = categoryPages[group.label] || 1;
               const totalPages = Math.max(1, Math.ceil(group.items.length / 5));
               const currentPg = Math.min(currentPage, totalPages);
@@ -330,24 +330,26 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => setExpandedCategory(isExpanded ? null : group.label)}
-                    className="flex w-full items-center justify-between px-4 py-3"
+                    className={`flex w-full items-center justify-between px-4 py-3 transition-colors ${isExpanded ? 'bg-[#EEF2FF]' : ''}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-[#DBEAFE] bg-white text-[#2563EB] shadow-sm">
+                      <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-sm transition-colors ${
+                        isExpanded ? 'bg-[#2563EB] border-[#2563EB] text-white' : 'bg-white border-[#DBEAFE] text-[#2563EB]'
+                      }`}>
                         <group.icon className="h-4 w-4" />
                         {/* Red Dot if there are activities */}
                         {hasItems && (
                           <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
                         )}
                       </div>
-                      <p className="text-sm font-bold text-[#2563EB]">{group.label}</p>
+                      <p className={`text-sm font-bold transition-colors ${isExpanded ? 'text-[#1D4ED8]' : 'text-[#2563EB]'}`}>{group.label}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-medium text-[#9CA3AF]">
                         {hasItems ? `${group.items.length} aktivitas` : 'Tidak ada'}
                       </span>
                       <ChevronDown
-                        className={`h-5 w-5 text-[#9CA3AF] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-180 text-[#1D4ED8]' : 'text-[#2563EB]'}`}
                       />
                     </div>
                   </button>
@@ -363,7 +365,7 @@ export default function AdminDashboardPage() {
                               className="group/link flex items-center justify-between py-3 border-b border-[#E5E7EB] last:border-b-0"
                             >
                               <div className="min-w-0 flex-1 pr-4">
-                                <Link 
+                                <Link
                                   href={group.href}
                                   onClick={() => dismissActivity(item.id)}
                                   className="text-xs font-semibold text-[#1F2937] line-clamp-1"
@@ -386,7 +388,7 @@ export default function AdminDashboardPage() {
                               </Button>
                             </div>
                           ))}
-                          
+
                           {/* Pagination inside group */}
                           {totalPages > 1 && (
                             <div className="mt-2 flex items-center justify-between border-t border-[#E5E7EB] pt-2">
@@ -441,8 +443,8 @@ export default function AdminDashboardPage() {
               >
                 {/* Decorative circle */}
                 <div className="pointer-events-none absolute -right-3 -top-3 h-14 w-14 rounded-full bg-white/[0.08]" />
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 transition-colors group-hover:bg-white/30">
-                  <action.icon className="h-5 w-5 text-white" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 transition-colors duration-300 group-hover:bg-white">
+                  <action.icon className="h-5 w-5 text-white transition-colors duration-300 group-hover:text-[#3B82F6]" />
                 </div>
                 <div className="relative z-10">
                   <p className="text-sm font-bold leading-tight">{action.label}</p>

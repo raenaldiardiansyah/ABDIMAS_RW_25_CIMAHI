@@ -62,13 +62,35 @@ export default function AdminCalendar() {
 
   const firstDay = start.getDay();
   const totalDays = end.getDate();
-  const cells: Array<{ iso: string; day: number } | null> = [];
+  const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+  const cells: Array<{ iso: string; day: number; isCurrentMonth: boolean }> = [];
 
-  for (let i = 0; i < firstDay; i++) cells.push(null);
+  // Previous month
+  for (let i = 0; i < firstDay; i++) {
+    const day = prevMonthEnd - firstDay + i + 1;
+    cells.push({
+      iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth() - 1, day)),
+      day,
+      isCurrentMonth: false,
+    });
+  }
+
+  // Current month
   for (let day = 1; day <= totalDays; day++) {
     cells.push({
       iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth(), day)),
       day,
+      isCurrentMonth: true,
+    });
+  }
+
+  // Next month (fill up to the end of the week)
+  const remaining = (7 - (cells.length % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    cells.push({
+      iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth() + 1, i)),
+      day: i,
+      isCurrentMonth: false,
     });
   }
 
@@ -97,7 +119,13 @@ export default function AdminCalendar() {
         <div className="rounded-2xl bg-[color:var(--admin-surface-muted)] p-3">
           <div className="grid grid-cols-7 gap-1">
             {HARI.map((hari) => (
-              <div key={hari} className="py-1 text-center text-[11px] font-bold text-[color:var(--admin-muted)]">
+              <div 
+                key={hari} 
+                className={cn(
+                  "py-1 text-center text-[11px] font-bold",
+                  hari === 'Min' ? "text-red-500" : "text-[color:var(--admin-muted)]"
+                )}
+              >
                 {hari}
               </div>
             ))}
@@ -105,10 +133,9 @@ export default function AdminCalendar() {
 
           <div className="mt-1.5 grid grid-cols-7 gap-1">
             {cells.map((cell, idx) => {
-              if (!cell) return <div key={`empty-${idx}`} className="aspect-square" />;
-
               const isToday = cell.iso === todayIso;
               const hasEvents = eventsByDate.has(cell.iso);
+              const isSunday = idx % 7 === 0;
 
               return (
                 <div
@@ -116,19 +143,22 @@ export default function AdminCalendar() {
                   className={cn(
                     'relative flex aspect-square flex-col items-center justify-center rounded-lg transition-all',
                     isToday
-                      ? 'bg-primary text-primary-foreground shadow-md shadow-[color:color-mix(in_srgb,var(--primary),transparent_70%)]'
-                      : 'text-[color:var(--admin-body)] hover:bg-[color:var(--admin-surface-soft)]',
+                      ? 'border border-[#3B82F6] bg-[#EFF6FF] text-[#3B82F6] shadow-sm'
+                      : 'hover:bg-[color:var(--admin-surface-soft)]',
+                    !isToday && !cell.isCurrentMonth && 'text-[color:var(--admin-muted)] opacity-50',
+                    !isToday && cell.isCurrentMonth && 'text-[color:var(--admin-body)]'
                   )}
                 >
                   <span
                     className={cn(
                       'text-[12px] font-semibold',
                       !isToday && hasEvents && 'text-primary',
+                      !isToday && isSunday && 'text-red-500'
                     )}
                   >
                     {cell.day}
                   </span>
-                  {hasEvents && !isToday ? (
+                  {hasEvents && (!isToday || !cell.isCurrentMonth) ? (
                     <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[color:var(--admin-gradient-to)]" />
                   ) : null}
                 </div>

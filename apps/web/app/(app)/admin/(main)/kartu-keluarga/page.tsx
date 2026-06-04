@@ -275,7 +275,7 @@ export default function KartuKeluargaPage() {
           </tbody>
         </table>
 
-        <div className="flex items-center justify-between border-t-0 bg-[#3B82F6] px-5 py-3 text-white">
+        <div className="flex items-center justify-between border-t border-gray-100 bg-white/60 backdrop-blur-xl px-5 py-3 text-[#64748B]">
           <span className="text-sm">
             Menampilkan {filteredKK.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} kartu keluarga
           </span>
@@ -285,17 +285,17 @@ export default function KartuKeluargaPage() {
               size="icon"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-sm text-[#1E293B] transition hover:bg-gray-100 disabled:opacity-50"
             >
               &lt;
             </Button>
-            <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
+            <span className="text-sm font-medium text-[#1E293B]">Halaman {currentPage} / {totalPages}</span>
             <Button
               variant="ghost"
               size="icon"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 hover:text-white disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-sm text-[#1E293B] transition hover:bg-gray-100 disabled:opacity-50"
             >
               &gt;
             </Button>

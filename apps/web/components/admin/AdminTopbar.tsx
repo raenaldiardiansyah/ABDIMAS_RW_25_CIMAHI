@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Bell,
@@ -33,6 +33,7 @@ import {
 import { authClient } from '@/lib/auth-client';
 import { getAdminProfile, type AdminProfile } from '@/lib/admin-profile';
 import { AdminMobileSidebar } from './AdminSidebar';
+import { platformFetch } from '@/lib/api/platform';
 
 const TITLE_MAP: Record<string, string> = {
   '/admin': '',
@@ -45,7 +46,8 @@ const TITLE_MAP: Record<string, string> = {
   '/admin/data-penduduk/tambah': 'Data Penduduk RW > Tambah Warga',
   '/admin/mutasi/tambah': 'Riwayat Mutasi Penduduk > Tambah Mutasi',
   '/admin/kegiatan': 'Kegiatan RW',
-  '/admin/kelola-admin': 'Kelola Admin',
+  '/admin/hak-akses': 'Kelola Hak Akses',
+  '/admin/hak-akses/tambah': 'Kelola Hak Akses > Tambah Pengguna',
   '/admin/settings': 'Pengaturan',
 };
 
@@ -53,25 +55,92 @@ type NotifStatus = 'default' | 'granted' | 'denied' | 'unsupported';
 
 export default function AdminTopbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  
   const [profile, setProfile] = useState<AdminProfile>(() => getAdminProfile());
   const [notifStatus, setNotifStatus] = useState<NotifStatus>('default');
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Listen for open help dialog from other components
+  useEffect(() => {
+    const handler = () => setHelpOpen(true);
+    document.addEventListener('open-admin-help', handler);
+    return () => document.removeEventListener('open-admin-help', handler);
+  }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Fetch search results
+  useEffect(() => {
+    let active = true;
+    if (!debouncedQuery) {
+      setSearchResults([]);
+      return;
+    }
+
+    async function doSearch() {
+      setIsSearching(true);
+      try {
+        const res = await platformFetch<any>(`/admin/citizens?q=${encodeURIComponent(debouncedQuery)}&limit=5`);
+        if (!active) return;
+        setSearchResults(res.data || []);
+      } catch (e) {
+        if (active) setSearchResults([]);
+      } finally {
+        if (active) setIsSearching(false);
+      }
+    }
+    void doSearch();
+
+    return () => { active = false; };
+  }, [debouncedQuery]);
 
   const isDashboard = pathname === '/admin';
   const isKKDetail = pathname.startsWith('/admin/kartu-keluarga/');
 
   const title = TITLE_MAP[pathname] || '';
 
-  // Check notification permission on mount
+  // Check notification permission on mount and when updated
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (!('Notification' in window)) {
-      setNotifStatus('unsupported');
-      return;
-    }
+    const checkPermission = () => {
+      if (!('Notification' in window)) {
+        setNotifStatus('unsupported');
+        return;
+      }
+      setNotifStatus(Notification.permission as NotifStatus);
+    };
 
-    setNotifStatus(Notification.permission as NotifStatus);
+    checkPermission();
+
+    window.addEventListener('notif-updated', checkPermission);
+    return () => window.removeEventListener('notif-updated', checkPermission);
   }, []);
 
   useEffect(() => {
@@ -117,6 +186,7 @@ export default function AdminTopbar() {
     try {
       const permission = await Notification.requestPermission();
       setNotifStatus(permission as NotifStatus);
+      window.dispatchEvent(new CustomEvent('notif-updated'));
 
       if (permission === 'granted') {
         new Notification('Portal RW 25', {
@@ -138,12 +208,61 @@ export default function AdminTopbar() {
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <AdminMobileSidebar />
           {isDashboard ? (
-            <div className="relative w-full max-w-xl">
+            <div className="relative w-full max-w-xl" ref={searchContainerRef}>
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--admin-subtle)]" />
               <Input
-                placeholder="Cari data warga, mutasi, atau permohonan"
-                className="h-10 rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] pl-9 text-sm text-[color:var(--admin-heading)] shadow-sm"
+                placeholder="Cari data warga (nama atau NIK)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim()) setShowDropdown(true);
+                }}
+                className="h-10 w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] pl-9 text-sm text-[color:var(--admin-heading)] shadow-sm"
               />
+              
+              {/* Autocomplete Dropdown Bubble */}
+              {showDropdown && debouncedQuery && (
+                <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[color:var(--admin-border)] bg-white p-2 shadow-lg z-50 overflow-hidden">
+                  {isSearching ? (
+                    <div className="p-3 text-center text-sm text-[color:var(--admin-subtle)]">Mencari...</div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="flex flex-col">
+                      <div className="px-3 pb-2 pt-1 text-xs font-semibold text-[color:var(--admin-subtle)] uppercase tracking-wide">
+                        Hasil Pencarian Warga
+                      </div>
+                      {searchResults.map((user) => (
+                        <button
+                          key={user.id}
+                          onClick={() => {
+                            setShowDropdown(false);
+                            router.push(`/admin/data-penduduk/${user.id}`);
+                          }}
+                          className="flex flex-col items-start rounded-xl px-3 py-2 text-left hover:bg-[color:var(--admin-surface-soft)] transition"
+                        >
+                          <span className="font-semibold text-sm text-[color:var(--admin-heading)]">{user.name}</span>
+                          <span className="text-xs text-[color:var(--admin-subtle)]">NIK: {user.nik}</span>
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          router.push(`/admin/data-penduduk`);
+                        }}
+                        className="mt-1 rounded-xl bg-[#EFF6FF] px-3 py-2 text-sm font-semibold text-[#2563EB] hover:bg-[#DBEAFE] text-center transition"
+                      >
+                        Lihat seluruh data penduduk
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center text-sm text-[color:var(--admin-subtle)]">
+                      Warga tidak ditemukan.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <Breadcrumb>
@@ -160,6 +279,7 @@ export default function AdminTopbar() {
                     'Kartu Keluarga': '/admin/kartu-keluarga',
                     'Data Penduduk RW': '/admin/data-penduduk',
                     'Riwayat Mutasi Penduduk': '/admin/mutasi',
+                    'Kelola Hak Akses': '/admin/hak-akses',
                   };
 
                   return parts.map((part, index) => {

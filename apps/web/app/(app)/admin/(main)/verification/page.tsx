@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { platformFetch } from '@/lib/api/platform';
 import { useActionToast } from '@/lib/use-action-toast';
+import { cn } from '@/lib/utils';
 
 const STATUSES: VerificationStatus[] = ['PENDING', 'VERIFIED', 'REJECTED'];
 
@@ -138,8 +139,13 @@ export default function AdminVerificationPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-3xl bg-gradient-to-r from-[color:var(--admin-gradient-from)] to-[color:var(--admin-gradient-to)] px-6 py-6 text-primary-foreground shadow-lg">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[color:var(--admin-gradient-from)] to-[color:var(--admin-gradient-to)] px-6 py-6 text-primary-foreground shadow-lg">
+        {/* Decorative circles */}
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/[0.08]" />
+        <div className="pointer-events-none absolute right-16 top-6 h-24 w-24 rounded-full bg-white/[0.12]" />
+        <div className="pointer-events-none absolute -bottom-5 right-40 h-16 w-16 rounded-full bg-white/[0.08]" />
+
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
               <ShieldCheck className="h-6 w-6" />
@@ -173,7 +179,7 @@ export default function AdminVerificationPage() {
                 <TabsTrigger
                   key={item}
                   value={item}
-                  className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-[color:var(--admin-surface)] data-[state=active]:text-primary"
+                  className="rounded-xl px-4 py-2 text-xs font-bold transition-all data-[state=active]:border data-[state=active]:border-[#3B82F6] data-[state=active]:bg-[#EFF6FF] data-[state=active]:text-[#3B82F6] data-[state=active]:shadow-sm"
                 >
                   {item}
                 </TabsTrigger>
@@ -195,20 +201,26 @@ export default function AdminVerificationPage() {
         <div className="mt-5 overflow-hidden rounded-2xl border border-[color:var(--admin-border)]">
           <div className="overflow-x-auto">
             <Table className="min-w-full">
-              <TableHeader className="bg-[color:var(--admin-surface-muted)]">
-                <TableRow className="border-b-[color:var(--admin-border)] text-left text-xs font-bold uppercase tracking-wide text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-muted)]">
-                  <TableHead className="px-5 py-4">Warga</TableHead>
-                  <TableHead className="px-5 py-4">NIK</TableHead>
-                  <TableHead className="px-5 py-4">Status</TableHead>
-                  <TableHead className="px-5 py-4">Tanggal Daftar</TableHead>
-                  <TableHead className="px-5 py-4">Tanggal Verifikasi</TableHead>
-                  <TableHead className="px-5 py-4">Alasan</TableHead>
-                  <TableHead className="px-5 py-4 text-right">Aksi</TableHead>
+              <TableHeader className="relative overflow-hidden bg-[#3B82F6]">
+                <TableRow className="border-b-[#3B82F6] text-left text-xs font-bold uppercase tracking-wide text-white hover:bg-[#3B82F6]">
+                  <TableHead className="px-5 py-4 text-white">
+                    <div className="pointer-events-none absolute -left-4 -top-4 h-16 w-16 rounded-full bg-white/[0.08]" />
+                    <span className="relative z-10">Warga</span>
+                  </TableHead>
+                  <TableHead className="relative z-10 px-5 py-4 text-white">NIK</TableHead>
+                  <TableHead className="relative z-10 px-5 py-4 text-white">Status</TableHead>
+                  <TableHead className="relative z-10 px-5 py-4 text-white">Tanggal Daftar</TableHead>
+                  <TableHead className="relative z-10 px-5 py-4 text-white">Tanggal Verifikasi</TableHead>
+                  <TableHead className="relative z-10 px-5 py-4 text-white">Alasan</TableHead>
+                  <TableHead className="px-5 py-4 text-right text-white">
+                    <div className="pointer-events-none absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/[0.08]" />
+                    <span className="relative z-10">Aksi</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="bg-[color:var(--admin-surface)]">
-                {items.map((item) => (
-                  <TableRow key={item.userId} className="border-b-[color:var(--admin-border)] hover:bg-[color:var(--admin-surface-soft)]">
+                {items.map((item, index) => (
+                  <TableRow key={item.userId} className={cn("border-b-[color:var(--admin-border)] hover:bg-[#F1F5F9] transition-colors", index % 2 === 0 ? "bg-white" : "bg-[#F8FAFC]")}>
                     <TableCell className="px-5 py-4">
                       <p className="font-bold text-[color:var(--admin-heading)]">{item.username}</p>
                       <p className="text-xs text-[color:var(--admin-subtle)]">{item.email}</p>

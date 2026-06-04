@@ -121,9 +121,10 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
       .where(where);
 
     const ageGroups = [
-      { label: "0-17" as const, value: 0 },
+      { label: "0-12" as const, value: 0 },
+      { label: "13-17" as const, value: 0 },
       { label: "18-35" as const, value: 0 },
-      { label: "36-60" as const, value: 0 },
+      { label: "36-59" as const, value: 0 },
       { label: "60+" as const, value: 0 },
     ];
     let male = 0;
@@ -132,10 +133,11 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
 
     for (const row of rows) {
       const age = currentYear - new Date(row.birthDate).getFullYear();
-      if (age <= 17) ageGroups[0].value += 1;
-      else if (age <= 35) ageGroups[1].value += 1;
-      else if (age <= 60) ageGroups[2].value += 1;
-      else ageGroups[3].value += 1;
+      if (age <= 12) ageGroups[0].value += 1;
+      else if (age <= 17) ageGroups[1].value += 1;
+      else if (age <= 35) ageGroups[2].value += 1;
+      else if (age <= 59) ageGroups[3].value += 1;
+      else ageGroups[4].value += 1;
 
       if (row.gender === "L") male += 1;
       if (row.gender === "P") female += 1;

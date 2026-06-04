@@ -10,8 +10,8 @@ import {
   Search,
   SlidersHorizontal,
   Eye,
-  ArrowRight,
-  ArrowLeft,
+  LogIn,
+  LogOut,
   Download,
 } from 'lucide-react';
 
@@ -182,7 +182,7 @@ export default function MutasiPage() {
           <div className="pointer-events-none absolute right-12 top-2 h-16 w-16 rounded-full bg-white/[0.12]" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ArrowRight className="h-4 w-4" />
+              <LogIn className="h-4 w-4" />
               <span className="text-xs text-white/80">Mutasi Masuk</span>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function MutasiPage() {
           <div className="pointer-events-none absolute right-12 top-2 h-16 w-16 rounded-full bg-[#3B82F6]/[0.08]" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4 text-[#3B82F6]" />
+              <LogOut className="h-4 w-4 text-[#3B82F6]" />
               <span className="text-xs font-semibold text-[#3B82F6]">Mutasi Keluar</span>
             </div>
           </div>
@@ -339,14 +339,14 @@ export default function MutasiPage() {
           </tbody>
         </table>
 
-        <div className="flex items-center justify-between bg-[#3B82F6] px-5 py-3 text-white">
+        <div className="flex items-center justify-between border-t border-gray-100 bg-white/60 backdrop-blur-xl px-5 py-3 text-[#64748B]">
             <span className="text-sm">Menampilkan {filteredRows.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} laporan</span>
             <div className="flex items-center gap-2">
-            <button disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 disabled:opacity-50">
+            <button disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-sm text-[#1E293B] transition hover:bg-gray-100 disabled:opacity-50">
               &lt;
             </button>
-            <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
-            <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-sm transition hover:bg-white/30 disabled:opacity-50">
+            <span className="text-sm font-medium text-[#1E293B]">Halaman {currentPage} / {totalPages}</span>
+            <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white/80 text-sm text-[#1E293B] transition hover:bg-gray-100 disabled:opacity-50">
               &gt;
             </button>
           </div>

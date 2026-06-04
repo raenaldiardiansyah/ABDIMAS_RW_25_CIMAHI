@@ -148,7 +148,7 @@ export default function KegiatanPage() {
               className={cn(
                 'rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-all',
                 filterKategori === cat
-                  ? 'bg-primary text-primary-foreground shadow-md'
+                  ? 'border border-[#3B82F6] bg-[#EFF6FF] text-[#3B82F6] shadow-sm'
                   : 'bg-muted text-[color:var(--admin-subtle)] hover:bg-[color:var(--admin-surface-soft)]',
               )}
             >

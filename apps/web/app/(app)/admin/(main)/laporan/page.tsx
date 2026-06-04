@@ -48,7 +48,7 @@ type CitizenRow = {
 
 type DemographicsData = {
   totalCitizens: number;
-  ageGroups: Array<{ label: '0-17' | '18-35' | '36-60' | '60+'; value: number }>;
+  ageGroups: Array<{ label: '0-12' | '13-17' | '18-35' | '36-59' | '60+'; value: number }>;
   gender: {
     male: number;
     female: number;
@@ -70,9 +70,10 @@ export default function LaporanPage() {
   const [demographics, setDemographics] = useState<DemographicsData>({
     totalCitizens: 0,
     ageGroups: [
-      { label: '0-17', value: 0 },
+      { label: '0-12', value: 0 },
+      { label: '13-17', value: 0 },
       { label: '18-35', value: 0 },
-      { label: '36-60', value: 0 },
+      { label: '36-59', value: 0 },
       { label: '60+', value: 0 },
     ],
     gender: { male: 0, female: 0 },
@@ -119,9 +120,10 @@ export default function LaporanPage() {
         setDemographics({
           totalCitizens: 0,
           ageGroups: [
-            { label: '0-17', value: 0 },
+            { label: '0-12', value: 0 },
+            { label: '13-17', value: 0 },
             { label: '18-35', value: 0 },
-            { label: '36-60', value: 0 },
+            { label: '36-59', value: 0 },
             { label: '60+', value: 0 },
           ],
           gender: { male: 0, female: 0 },
@@ -187,6 +189,11 @@ export default function LaporanPage() {
   };
 
   const visibleRtData = appliedRt ? rtData.filter((row) => row.rt === appliedRt) : rtData;
+
+  const totalKK = visibleRtData.reduce((acc, row) => acc + row.kk, 0);
+  const totalWarga = visibleRtData.reduce((acc, row) => acc + row.warga, 0);
+  const totalMutasi = visibleRtData.reduce((acc, row) => acc + row.mutasi, 0);
+  const totalProduktif = visibleRtData.reduce((acc, row) => acc + row.produktif, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -262,20 +269,32 @@ export default function LaporanPage() {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
-          <Users className="mb-2 h-5 w-5 text-white/60" />
-          <p className="text-xs text-white/70">Total warga</p>
-          <p className="mt-1 text-2xl font-bold">{stats.totalWarga} <span className="text-sm font-medium">Jiwa</span></p>
+        <div className="relative overflow-hidden rounded-2xl bg-[#2563EB] p-5 text-white">
+          <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/[0.06]" />
+          <div className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/[0.04]" />
+          <div className="relative z-10">
+            <Users className="mb-2 h-5 w-5 text-white/60" />
+            <p className="text-xs text-white/70">Total warga</p>
+            <p className="mt-1 text-2xl font-bold">{stats.totalWarga} <span className="text-sm font-medium">Jiwa</span></p>
+          </div>
         </div>
-        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
-          <FileText className="mb-2 h-5 w-5 text-white/60" />
-          <p className="text-xs text-white/70">Total KK</p>
-          <p className="mt-1 text-2xl font-bold">{stats.totalKK} <span className="text-sm font-medium">Kartu Keluarga</span></p>
+        <div className="relative overflow-hidden rounded-2xl bg-[#2563EB] p-5 text-white">
+          <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/[0.06]" />
+          <div className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/[0.04]" />
+          <div className="relative z-10">
+            <FileText className="mb-2 h-5 w-5 text-white/60" />
+            <p className="text-xs text-white/70">Total KK</p>
+            <p className="mt-1 text-2xl font-bold">{stats.totalKK} <span className="text-sm font-medium">Kartu Keluarga</span></p>
+          </div>
         </div>
-        <div className="rounded-2xl bg-[#2563EB] p-5 text-white">
-          <RefreshCw className="mb-2 h-5 w-5 text-white/60" />
-          <p className="text-xs text-white/70">Total Mutasi</p>
-          <p className="mt-1 text-2xl font-bold">{stats.totalMutasi} <span className="text-sm font-medium">Laporan</span></p>
+        <div className="relative overflow-hidden rounded-2xl bg-[#2563EB] p-5 text-white">
+          <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/[0.06]" />
+          <div className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/[0.04]" />
+          <div className="relative z-10">
+            <RefreshCw className="mb-2 h-5 w-5 text-white/60" />
+            <p className="text-xs text-white/70">Total Mutasi</p>
+            <p className="mt-1 text-2xl font-bold">{stats.totalMutasi} <span className="text-sm font-medium">Laporan</span></p>
+          </div>
         </div>
       </div>
 
@@ -283,41 +302,55 @@ export default function LaporanPage() {
         <div className="rounded-2xl border border-gray-100 bg-white p-6">
           <h3 className="mb-6 text-base font-bold text-[#1E293B]">Distribusi Kelompok Umur</h3>
           <div className="flex items-end justify-between gap-4" style={{ height: 'clamp(150px, 25vh, 200px)' }}>
-            {ageGroups.map((group) => (
-              <div key={group.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
-                <span className="rounded-full bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-semibold text-[#3B82F6]">{group.value} Jiwa</span>
-                <div
-                  className="w-full rounded-t-lg bg-[#60A5FA] transition-all duration-500 ease-out"
-                  style={{ height: `${(group.value / maxAgeValue) * 100}%`, minHeight: '16px' }}
-                />
-                <span className="text-xs font-medium text-[#64748B]">{group.label}</span>
-              </div>
-            ))}
+            {ageGroups.map((group) => {
+              const isHighest = group.value === maxAgeValue && maxAgeValue > 0;
+              return (
+                <div key={group.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${isHighest ? 'bg-[#2563EB] text-white shadow-sm' : 'bg-[#EFF6FF] text-[#3B82F6]'}`}>
+                    {group.value} Jiwa
+                  </span>
+                  <div
+                    className={`w-full rounded-t-lg transition-all duration-500 ease-out ${
+                      isHighest
+                        ? 'bg-gradient-to-t from-[#3B82F6] to-[#2563EB] shadow-[0_-4px_10px_rgba(37,99,235,0.2)]'
+                        : 'bg-[#93C5FD] opacity-80'
+                    }`}
+                    style={{ height: `${(group.value / maxAgeValue) * 100}%`, minHeight: '16px' }}
+                  />
+                  <span className={`text-xs transition-colors ${isHighest ? 'font-bold text-[#2563EB]' : 'font-medium text-[#64748B]'}`}>{group.label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-2xl bg-[#2563EB] p-6 text-white">
-          <h3 className="mb-6 self-start text-base font-bold">Komposisi Gender</h3>
-          <div className="relative">
-            <div
-              className="h-44 w-44 rounded-full"
-              style={{
-                background: `conic-gradient(#93C5FD 0% ${(lakiLaki / genderTotal) * 100}%, #DBEAFE ${(lakiLaki / genderTotal) * 100}% 100%)`,
-              }}
-            />
-            <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-[#2563EB]">
-              <span className="text-[11px] text-white/60">dari Total</span>
-              <span className="text-lg font-bold">{demographics.totalCitizens} Jiwa</span>
+        <div className="relative overflow-hidden flex flex-col items-center justify-center rounded-2xl bg-[#2563EB] p-6 text-white">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/[0.06]" />
+          <div className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-white/[0.06]" />
+          
+          <div className="relative z-10 flex w-full flex-col items-center">
+            <h3 className="mb-6 self-start text-base font-bold">Komposisi Gender</h3>
+            <div className="relative">
+              <div
+                className="h-44 w-44 rounded-full"
+                style={{
+                  background: `conic-gradient(#86EFAC 0% ${(lakiLaki / genderTotal) * 100}%, #F9A8D4 ${(lakiLaki / genderTotal) * 100}% 100%)`,
+                }}
+              />
+              <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-[#2563EB]">
+                <span className="text-[11px] text-white/60">dari Total</span>
+                <span className="text-lg font-bold">{demographics.totalCitizens} Jiwa</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-5 flex gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[#93C5FD]" />
-              <span>Laki-Laki <span className="font-bold">{Math.round((lakiLaki / genderTotal) * 100)}%</span> ({lakiLaki} Jiwa)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[#DBEAFE]" />
-              <span>Perempuan <span className="font-bold">{Math.round((perempuan / genderTotal) * 100)}%</span> ({perempuan} Jiwa)</span>
+            <div className="mt-5 flex gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#86EFAC]" />
+                <span>Laki-Laki <span className="font-bold">{Math.round((lakiLaki / genderTotal) * 100)}%</span> ({lakiLaki} Jiwa)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#F9A8D4]" />
+                <span>Perempuan <span className="font-bold">{Math.round((perempuan / genderTotal) * 100)}%</span> ({perempuan} Jiwa)</span>
+              </div>
             </div>
           </div>
         </div>
@@ -325,30 +358,30 @@ export default function LaporanPage() {
 
       <div>
         <h3 className="mb-4 text-base font-bold text-[#1E293B]">Rekapitulasi Per RT</h3>
-        <div className="overflow-x-auto overflow-hidden rounded-2xl border border-gray-100">
+        <div className="overflow-x-auto overflow-hidden rounded-2xl border border-gray-100 bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#3B82F6] text-white">
-                <th className="px-5 py-3.5 text-left font-semibold">Wilayah</th>
-                <th className="px-5 py-3.5 text-left font-semibold">Kepala Keluarga</th>
-                <th className="px-5 py-3.5 text-left font-semibold">Total warga</th>
-                <th className="px-5 py-3.5 text-left font-semibold">Total Mutasi</th>
-                <th className="px-5 py-3.5 text-left font-semibold">Usia Produktif</th>
-                <th className="px-5 py-3.5 text-left font-semibold" />
+              <tr className="bg-[#F8FAFC] text-[#2563EB]">
+                <th className="px-5 py-4 text-left font-semibold">Wilayah</th>
+                <th className="px-5 py-4 text-left font-semibold">Kepala Keluarga</th>
+                <th className="px-5 py-4 text-left font-semibold">Total warga</th>
+                <th className="px-5 py-4 text-left font-semibold">Total Mutasi</th>
+                <th className="px-5 py-4 text-left font-semibold">Usia Produktif</th>
+                <th className="px-5 py-4 text-left font-semibold" />
               </tr>
             </thead>
             <tbody>
-              {visibleRtData.map((row, i) => (
-                <tr key={`${row.rt}-${row.rw}`} className={i % 2 === 0 ? 'bg-white' : 'bg-[#F5F7FF]'}>
+              {visibleRtData.map((row) => (
+                <tr key={`${row.rt}-${row.rw}`} className="border-b border-gray-100 bg-white">
                   <td className="px-5 py-4">
-                    <p className="font-bold text-[#3B82F6]">RT {row.rt}</p>
-                    <p className="text-xs text-[#94A3B8]">RW {row.rw}</p>
+                    <p className="font-bold text-[#1E293B]">RT {row.rt}</p>
+                    <p className="text-xs font-medium text-[#94A3B8]">RW {row.rw}</p>
                   </td>
-                  <td className="px-5 py-4 text-[#1E293B]">{row.kk}</td>
-                  <td className="px-5 py-4 text-[#1E293B]">{row.warga}</td>
-                  <td className="px-5 py-4 text-[#1E293B]">{row.mutasi}</td>
+                  <td className="px-5 py-4 font-semibold text-[#1E293B]">{row.kk}</td>
+                  <td className="px-5 py-4 font-semibold text-[#1E293B]">{row.warga}</td>
+                  <td className="px-5 py-4 font-semibold text-[#1E293B]">{row.mutasi}</td>
                   <td className="px-5 py-4">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-[#64748B]">{row.produktif}</span>
+                    <span className="rounded-full bg-[#E0E7FF] px-3 py-1 text-xs font-bold text-[#4F46E5]">{row.produktif} Jiwa</span>
                   </td>
                   <td className="px-5 py-4 text-right">
                     <Button
@@ -361,6 +394,18 @@ export default function LaporanPage() {
                   </td>
                 </tr>
               ))}
+              <tr className="bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white shadow-inner">
+                <td className="px-5 py-4 text-sm font-semibold">
+                  Total <span className="font-bold">RW 05</span>
+                </td>
+                <td className="px-5 py-4 font-bold">{totalKK}</td>
+                <td className="px-5 py-4 font-bold">{totalWarga}</td>
+                <td className="px-5 py-4 font-bold">{totalMutasi}</td>
+                <td className="px-5 py-4 font-bold">
+                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white">{totalProduktif} Jiwa</span>
+                </td>
+                <td className="px-5 py-4 text-right"></td>
+              </tr>
             </tbody>
           </table>
         </div>

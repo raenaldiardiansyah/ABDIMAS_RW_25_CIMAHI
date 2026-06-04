@@ -58,10 +58,10 @@ export default function AdminSettingsPage() {
   const [profile, setProfile] = useState<AdminProfile>(() => getAdminProfile());
   
   const [isDark, setIsDark] = useState(false);
-  const [notifikasi, setNotifikasi] = useState(true);
+  const [notifStatus, setNotifStatus] = useState<string>('default');
   const [bahasa, setBahasa] = useState('Indonesia');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [activeDialog, setActiveDialog] = useState<'bahasa' | 'tentang' | 'security' | null>(null);
+  const [activeDialog, setActiveDialog] = useState<'bahasa' | 'security' | null>(null);
 
   const t = DICT['Indonesia'];
 
@@ -76,10 +76,40 @@ export default function AdminSettingsPage() {
 
     void loadSession();
 
+    const checkPermission = () => {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setNotifStatus(Notification.permission);
+      }
+    };
+
+    checkPermission();
+
+    window.addEventListener('notif-updated', checkPermission);
+
     return () => {
       active = false;
+      window.removeEventListener('notif-updated', checkPermission);
     };
   }, []);
+
+  const handleToggleNotif = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      toast({ title: 'Tidak Didukung', description: 'Browser Anda tidak mendukung notifikasi.' });
+      return;
+    }
+    if (notifStatus === 'granted') {
+      toast({ title: 'Notifikasi Aktif', description: 'Notifikasi sudah diaktifkan. Anda hanya bisa mematikannya dari pengaturan browser.' });
+    } else if (notifStatus === 'denied') {
+      toast({ title: 'Notifikasi Diblokir', description: 'Anda memblokir notifikasi. Silakan ubah di pengaturan browser (ikon gembok 🔒).', variant: 'destructive' });
+    } else {
+      const p = await Notification.requestPermission();
+      setNotifStatus(p);
+      window.dispatchEvent(new CustomEvent('notif-updated'));
+      if (p === 'granted') {
+        new Notification('Portal RW 25', { body: 'Notifikasi berhasil diaktifkan!', icon: '/favicon.ico' });
+      }
+    }
+  };
 
   const handleLogout = async () => {
     await authClient.signOut().catch(() => null);
@@ -88,8 +118,8 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 max-w-3xl mx-auto py-6 w-full">
-      <div className="flex items-center gap-5 rounded-[28px] border border-[#D8DEE8] bg-white p-6 shadow-sm">
+    <div className="flex flex-col gap-5 py-6 w-full">
+      <div className="flex items-center gap-4 rounded-[28px] border border-[#D8DEE8] bg-white p-5 shadow-sm">
         <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${profile.avatarClassName} text-2xl font-bold text-white shadow-md`}>
           {profile.initials}
         </div>
@@ -102,15 +132,15 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {/* Tampilan */}
         <div>
-          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-3 ml-1">
+          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-2 ml-1">
             {t.appearance}
           </h3>
           <div className="overflow-hidden rounded-[28px] border border-[#D8DEE8] bg-white shadow-sm">
             {/* Dark Mode */}
-            <div className="flex items-center justify-between px-6 py-5">
+            <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8F3F0]">
                   {isDark ? <Moon className="h-6 w-6 text-[#1F7A6B]" /> : <Sun className="h-6 w-6 text-[#C26D52]" />}
@@ -132,11 +162,11 @@ export default function AdminSettingsPage() {
               </Button>
             </div>
             
-            <div className="mx-6 h-px bg-[#EEF2F6]" />
+            <div className="mx-5 h-px bg-[#EEF2F6]" />
 
             {/* Bahasa */}
             <div 
-              className="flex items-center justify-between px-6 py-5 cursor-pointer hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => setActiveDialog('bahasa')}
             >
               <div className="flex items-center gap-4">
@@ -155,36 +185,38 @@ export default function AdminSettingsPage() {
 
         {/* Notifikasi & Privasi */}
         <div>
-          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-3 ml-1">
+          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-2 ml-1">
             {t.notifPrivacy}
           </h3>
           <div className="overflow-hidden rounded-[28px] border border-[#D8DEE8] bg-white shadow-sm">
-            <div className="flex items-center justify-between px-6 py-5">
+            <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF1F8]">
                   <Bell className="h-6 w-6 text-[#2C5F75]" />
                 </div>
                 <div>
                   <p className="text-base font-bold text-[#18212F]">{t.notif}</p>
-                  <p className="text-sm font-medium text-[#667085]">{notifikasi ? t.active : t.inactive}</p>
+                  <p className="text-sm font-medium text-[#667085]">
+                    {notifStatus === 'granted' ? t.active : notifStatus === 'denied' ? 'Diblokir' : t.inactive}
+                  </p>
                 </div>
               </div>
               <Button
-                onClick={() => setNotifikasi(!notifikasi)}
+                onClick={handleToggleNotif}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
-                  notifikasi ? 'bg-[#2C5F75]' : 'bg-[#D0D5DD]'
+                  notifStatus === 'granted' ? 'bg-[#2C5F75]' : 'bg-[#D0D5DD]'
                 }`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${
-                  notifikasi ? 'left-[28px]' : 'left-1'
+                  notifStatus === 'granted' ? 'left-[28px]' : 'left-1'
                 }`} />
               </Button>
             </div>
             
-            <div className="mx-6 h-px bg-[#EEF2F6]" />
+            <div className="mx-5 h-px bg-[#EEF2F6]" />
 
             <div 
-              className="flex items-center justify-between px-6 py-5 cursor-pointer hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => setActiveDialog('security')}
             >
               <div className="flex items-center gap-4">
@@ -203,11 +235,11 @@ export default function AdminSettingsPage() {
 
         {/* Tentang */}
         <div>
-          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-3 ml-1">
+          <h3 className="text-sm font-bold text-[#667085] uppercase tracking-wider mb-2 ml-1">
             {t.about}
           </h3>
           <div className="overflow-hidden rounded-[28px] border border-[#D8DEE8] bg-white shadow-sm">
-            <div className="flex items-center justify-between px-6 py-5">
+            <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F6ECE6]">
                   <Smartphone className="h-6 w-6 text-[#A44A3F]" />
@@ -219,11 +251,11 @@ export default function AdminSettingsPage() {
               </div>
             </div>
             
-            <div className="mx-6 h-px bg-[#EEF2F6]" />
+            <div className="mx-5 h-px bg-[#EEF2F6]" />
 
             <div 
-              className="flex items-center justify-between px-6 py-5 cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => setActiveDialog('tentang')}
+              className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => document.dispatchEvent(new CustomEvent('open-admin-help'))}
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
@@ -242,7 +274,7 @@ export default function AdminSettingsPage() {
         {/* Logout */}
         <Button
           onClick={() => setShowLogoutConfirm(true)}
-          className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-red-100 bg-red-50 py-5 font-bold text-red-600 transition hover:bg-red-100 active:scale-[0.98]"
+          className="mt-2 flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-red-100 bg-red-50 py-4 font-bold text-red-600 transition hover:bg-red-100 active:scale-[0.98]"
         >
           <LogOut className="h-6 w-6" />
           <span className="text-lg">{t.logout}</span>
@@ -283,12 +315,10 @@ export default function AdminSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-bold text-[#18212F]">
               {activeDialog === 'bahasa' && 'Pilih Bahasa'}
-              {activeDialog === 'tentang' && 'Tentang Aplikasi'}
               {activeDialog === 'security' && 'Fitur Segera Hadir'}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium text-[#667085]">
               {activeDialog === 'bahasa' && 'Pilih bahasa antarmuka sistem.'}
-              {activeDialog === 'tentang' && 'Sistem Informasi Admin RW 25 Kota Cimahi.'}
               {activeDialog === 'security' && 'Pengaturan keamanan sedang dalam tahap pengembangan akhir.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

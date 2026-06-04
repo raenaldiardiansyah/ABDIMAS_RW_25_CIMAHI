@@ -41,7 +41,7 @@ export const reportDemographicsSchema = z.object({
   totalCitizens: z.number().int().min(0),
   ageGroups: z.array(
     z.object({
-      label: z.enum(["0-17", "18-35", "36-60", "60+"]),
+      label: z.enum(["0-12", "13-17", "18-35", "36-59", "60+"]),
       value: z.number().int().min(0),
     }),
   ),

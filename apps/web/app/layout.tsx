@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     "Layanan digital warga RW 25 Cimahi: cek bansos, kelayakan pemilu, aspirasi, dan jadwal kegiatan.",
   manifest: "/manifest.webmanifest",
   themeColor: "#2563eb",
+  colorScheme: "light",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -49,7 +49,7 @@ const ACTION_NAV: NavItem[] = [
 ];
 
 const SYSTEM_NAV: NavItem[] = [
-  { href: '/admin/kelola-admin', label: 'Kelola Admin', icon: IdCard },
+  { href: '/admin/hak-akses', label: 'Kelola Hak Akses', icon: IdCard },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
