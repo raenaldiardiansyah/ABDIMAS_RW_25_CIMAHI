@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ClipboardList,
   FileInput,
+  Flag,
   IdCard,
   LayoutDashboard,
   LogOut,
@@ -18,6 +19,7 @@ import {
   TrendingUp,
   UserPlus,
   Book,
+  HandCoins,
   Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -41,6 +43,8 @@ const MAIN_NAV: NavItem[] = [
   { href: '/admin/kartu-keluarga', label: 'Kartu Keluarga', icon: ClipboardList },
   { href: '/admin/kegiatan', label: 'Kegiatan RW', icon: Calendar },
   { href: '/admin/mutasi', label: 'Mutasi Penduduk', icon: RefreshCw },
+  { href: '/admin/bansos', label: 'Bansos', icon: HandCoins },
+  { href: '/admin/pemilu', label: 'Pemilu', icon: Flag },
 ];
 
 const ACTION_NAV: NavItem[] = [

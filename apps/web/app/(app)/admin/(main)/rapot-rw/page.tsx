@@ -286,8 +286,6 @@ export default function RapotPage() {
           <option value="01">RT 01</option>
           <option value="02">RT 02</option>
           <option value="03">RT 03</option>
-          <option value="04">RT 04</option>
-          <option value="05">RT 05</option>
         </select>
         <Button
           onClick={handleApplyFilter}

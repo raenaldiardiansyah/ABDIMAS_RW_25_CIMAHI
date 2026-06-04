@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertCircle,
+  ArrowRight,
   CheckCircle2,
   Gift,
   LockKeyhole,
@@ -43,13 +44,7 @@ import FormFileUpload from '@/components/warga/FormFileUpload';
 import CommentCarousel from '@/components/warga/CommentCarousel';
 import QuickActionsPanel from '@/components/warga/QuickActionsPanel';
 
-import {
-  BANSOS_AKTIF,
-  BANSOS_DIVERIFIKASI,
-  BANSOS_TIDAK_LAYAK,
-  PEMILU_TERDAFTAR,
-  PEMILU_TIDAK_TERDAFTAR,
-} from '@/constants/mockData';
+import { formatBansosPeriod } from '@/lib/bansos';
 
 import type {
   BansosResult,
@@ -83,6 +78,27 @@ const BANSOS_PROGRAMS = [
   },
 ];
 
+type BansosProgramCard = {
+  id: string;
+  title: string;
+  assistanceType: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  fundingSource: string;
+  generalRequirements: string[];
+  allowedRtScope: string[];
+  userApplication?: {
+    requestId: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    applicantName: string;
+    incomeAmount: string | null;
+    notes: string | null;
+    createdAt: string;
+  } | null;
+};
+
 export default function WargaHomePage() {
   const { isDark, toggleDark } = useTheme();
   const identity = useIdentity();
@@ -97,11 +113,18 @@ export default function WargaHomePage() {
   const [bansosNik, setBansosNik] = useState('');
   const [bansosNama, setBansosNama] = useState('');
   const [bansosProgram, setBansosProgram] = useState('');
+  const [bansosIncome, setBansosIncome] = useState('');
+  const [bansosNotes, setBansosNotes] = useState('');
+  const [bansosCertificateFile, setBansosCertificateFile] = useState<File | null>(null);
+  const [bansosHousePhotoFile, setBansosHousePhotoFile] = useState<File | null>(null);
+  const [bansosIncomeProofFile, setBansosIncomeProofFile] = useState<File | null>(null);
+  const [bansosPrograms, setBansosPrograms] = useState<BansosProgramCard[]>([]);
   const [bansosResult, setBansosResult] = useState<BansosResult | null>(null);
 
   const [pemiluNik, setPemiluNik] = useState('');
   const [pemiluTgl, setPemiluTgl] = useState('');
   const [pemiluResult, setPemiluResult] = useState<PemiluResult | null>(null);
+  const [usingOwnPemiluData, setUsingOwnPemiluData] = useState(false);
 
   const [aspirasiJenis, setAspirasiJenis] = useState<string[]>([]);
   const [aspirasiUraian, setAspirasiUraian] = useState('');
@@ -110,45 +133,73 @@ export default function WargaHomePage() {
   const [submitting, setSubmitting] = useState<null | 'bansos' | 'pemilu' | 'aspirasi'>(null);
   const [aspirationRefreshKey, setAspirationRefreshKey] = useState(0);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadPrograms() {
+      try {
+        const response = await platformFetch<BansosProgramCard[]>('/bansos/programs?page=1&limit=20');
+        if (!active) return;
+        setBansosPrograms(response.data);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (!isRestricted) void loadPrograms();
+
+    return () => {
+      active = false;
+    };
+  }, [isRestricted]);
+
+  const selectedBansosProgram = useMemo(
+    () => bansosPrograms.find((program) => program.id === bansosProgram) ?? null,
+    [bansosProgram, bansosPrograms],
+  );
+
   const handleBansosSubmit = async () => {
     setSubmitting('bansos');
     try {
       setBlockedMessage(null);
-      const { data } = await platformFetch<{
-        eligible: boolean;
-        message: string;
-        checkedAt: string;
-      }>('/services/bansos/check', {
+      const formData = new FormData();
+      formData.set('programId', bansosProgram);
+      formData.set('incomeAmount', bansosIncome);
+      formData.set('notes', bansosNotes);
+      if (bansosCertificateFile) formData.set('povertyCertificate', bansosCertificateFile);
+      if (bansosHousePhotoFile) formData.set('housePhoto', bansosHousePhotoFile);
+      if (bansosIncomeProofFile) formData.set('incomeProof', bansosIncomeProofFile);
+
+      const { data } = await platformFetch<{ payload: Record<string, unknown> }>('/requests/bansos', {
         method: 'POST',
-        body: JSON.stringify({ nik: bansosNik }),
+        body: formData,
       });
 
-      const result: BansosResult = data.eligible
-        ? {
-            ...BANSOS_AKTIF,
-            nama: bansosNama,
-            nik: bansosNik,
-            program: (bansosProgram || 'PKH') as BansosResult['program'],
-            keterangan: data.message,
-          }
-        : {
-            ...BANSOS_TIDAK_LAYAK,
-            nama: bansosNama,
-            nik: bansosNik,
-            program: (bansosProgram || 'Bantuan Tunai') as BansosResult['program'],
-            keterangan: data.message,
-          };
+      const result: BansosResult = {
+        status: 'diverifikasi',
+        nama: String((data.payload?.applicantName as string | undefined) ?? bansosNama),
+        nik: String((data.payload?.applicantNik as string | undefined) ?? bansosNik),
+        program: ((selectedBansosProgram?.title || 'PKH') as BansosResult['program']),
+        keterangan: 'Pengajuan bansos berhasil dikirim dan sedang menunggu review admin.',
+      };
 
       setBansosResult(result);
+      setBansosIncome('');
+      setBansosNotes('');
+      setBansosCertificateFile(null);
+      setBansosHousePhotoFile(null);
+      setBansosIncomeProofFile(null);
+      const programResponse = await platformFetch<BansosProgramCard[]>('/bansos/programs?page=1&limit=20');
+      setBansosPrograms(programResponse.data);
       setActiveSheet(null);
       setPopup({
-        variant: data.eligible ? 'success' : 'error',
-        judul: data.eligible ? 'Anda Layak Menerima Bansos' : 'Tidak Memenuhi Kriteria',
+        variant: 'warning',
+        judul: 'Pengajuan Bansos Terkirim',
       });
       toast({
-        title: data.eligible ? 'Cek bansos berhasil' : 'Cek bansos selesai',
-        description: data.message,
-        variant: data.eligible ? 'success' : 'destructive',
+        title: 'Pengajuan bansos berhasil',
+        description: 'Berkas warga sudah masuk ke inbox admin untuk ditinjau.',
+        variant: 'success',
       });
     } catch (error) {
       if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
@@ -163,10 +214,10 @@ export default function WargaHomePage() {
           variant: 'destructive',
         });
       } else {
-        const message = error instanceof Error ? error.message : 'Gagal memeriksa status bansos.';
+        const message = error instanceof Error ? error.message : 'Gagal mengirim pengajuan bansos.';
         setBlockedMessage(message);
         toast({
-          title: 'Gagal memeriksa bansos',
+          title: 'Gagal mengirim bansos',
           description: message,
           variant: 'destructive',
         });
@@ -192,13 +243,13 @@ export default function WargaHomePage() {
 
       const result: PemiluResult = data.registered
         ? {
-            ...PEMILU_TERDAFTAR,
+            status: 'terdaftar',
             nik: pemiluNik,
-            tps: data.tps || PEMILU_TERDAFTAR.tps,
+            tps: data.tps || '-',
             keterangan: data.message,
           }
         : {
-            ...PEMILU_TIDAK_TERDAFTAR,
+            status: 'tidak_terdaftar',
             nik: pemiluNik,
             keterangan: data.message,
           };
@@ -237,6 +288,83 @@ export default function WargaHomePage() {
       }
     } finally {
       setSubmitting(null);
+    }
+  };
+
+  const handlePemiluSelfCheck = async () => {
+    setSubmitting('pemilu');
+    setUsingOwnPemiluData(true);
+    try {
+      setBlockedMessage(null);
+      const { data } = await platformFetch<{
+        eventId: string;
+        title: string;
+        electionDate: string;
+        startTime: string | null;
+        endTime: string | null;
+        tpsLabel: string;
+        tpsLocation: string;
+        assignedRt: string;
+      } | null>('/pemilu/assignment');
+
+      if (!data) {
+        setPemiluResult({
+          status: 'tidak_terdaftar',
+          nama: identity.userName,
+          keterangan: 'Belum ada pemilu aktif untuk data RT Anda atau TPS belum ditetapkan admin.',
+        });
+        setActiveSheet(null);
+        setPopup({
+          variant: 'error',
+          judul: 'Belum Ada TPS Aktif',
+        });
+        return;
+      }
+
+      setPemiluResult({
+        status: 'terdaftar',
+        nama: identity.userName,
+        electionTitle: data.title,
+        electionDate: data.electionDate,
+        assignedRt: data.assignedRt,
+        tps: data.tpsLabel,
+        tpsLocation: data.tpsLocation,
+        keterangan: `Anda terdaftar di ${data.tpsLabel}.`,
+      });
+      setActiveSheet(null);
+      setPopup({
+        variant: 'success',
+        judul: 'TPS Ditemukan',
+      });
+      toast({
+        title: 'Data pemilu ditemukan',
+        description: `TPS Anda: ${data.tpsLabel} - ${data.tpsLocation}`,
+        variant: 'success',
+      });
+    } catch (error) {
+      if (error instanceof PlatformApiError && error.code === 'VERIFICATION_REQUIRED') {
+        const message =
+          error.verificationStatus === 'REJECTED' && error.rejectionReason
+            ? `Verifikasi ditolak: ${error.rejectionReason}`
+            : 'Fitur ini menunggu verifikasi admin RW/RT.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Akses ditolak',
+          description: message,
+          variant: 'destructive',
+        });
+      } else {
+        const message = error instanceof Error ? error.message : 'Gagal memeriksa data pemilu.';
+        setBlockedMessage(message);
+        toast({
+          title: 'Gagal memeriksa pemilu',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setSubmitting(null);
+      setUsingOwnPemiluData(false);
     }
   };
 
@@ -303,7 +431,13 @@ export default function WargaHomePage() {
   };
 
   const isBansosSubmitDisabled =
-    bansosNik.length !== 16 || !bansosNama.trim() || !bansosProgram;
+    bansosNik.length !== 16 ||
+    !bansosNama.trim() ||
+    !bansosProgram ||
+    !bansosIncome.trim() ||
+    !bansosCertificateFile ||
+    !bansosHousePhotoFile ||
+    !bansosIncomeProofFile;
   const isPemiluSubmitDisabled = pemiluNik.length !== 16 || !pemiluTgl;
 
   return (
@@ -419,8 +553,8 @@ export default function WargaHomePage() {
           <>
             <FeatureCard
               icon={Gift}
-              judul="Cek Status Bansos"
-              deskripsi="Verifikasi kelayakan dan status bantuan sosial Anda berdasarkan data DTKS."
+              judul="Ajukan Bansos"
+              deskripsi="Kirim pengajuan bansos lengkap dengan SKTM, foto rumah, dan bukti gaji."
               badge="Bantuan Sosial"
               variant="large"
               tone="primary"
@@ -451,6 +585,77 @@ export default function WargaHomePage() {
                 delay={150}
               />
             </div>
+
+            {bansosPrograms.length > 0 ? (
+              <section className="mt-2 flex flex-col gap-3">
+                <div>
+                  <h2 className="text-sm font-bold text-foreground">Program Bansos Warga</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Nama warga akan tampil pada kartu program yang sudah diajukan.</p>
+                </div>
+                <div className="grid gap-3">
+                  {bansosPrograms.map((program) => (
+                    <Card key={program.id} className="rounded-3xl border border-input bg-card shadow-sm">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge className="rounded-full bg-primary/10 text-primary shadow-none">{program.assistanceType}</Badge>
+                              {program.userApplication ? (
+                                <Badge
+                                  className={cn(
+                                    'rounded-full shadow-none',
+                                    program.userApplication.status === 'APPROVED'
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : program.userApplication.status === 'REJECTED'
+                                        ? 'bg-red-50 text-red-700'
+                                        : 'bg-amber-50 text-amber-700',
+                                  )}
+                                >
+                                  {program.userApplication.status === 'APPROVED'
+                                    ? 'Disetujui'
+                                    : program.userApplication.status === 'REJECTED'
+                                      ? 'Ditolak'
+                                      : 'Menunggu'}
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <h3 className="mt-3 text-base font-bold text-foreground">{program.title}</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">{formatBansosPeriod(program)} • {program.fundingSource}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full"
+                            onClick={() => {
+                              setBansosProgram(program.id);
+                              setActiveSheet('bansos');
+                            }}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl bg-muted/30 p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Cakupan RT</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">{program.allowedRtScope.map((rt) => `RT ${rt}`).join(', ')}</p>
+                        </div>
+
+                        {program.userApplication ? (
+                          <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-3">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Atas Nama Warga</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{program.userApplication.applicantName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Pengajuan {new Date(program.userApplication.createdAt).toLocaleDateString('id-ID')}
+                            </p>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </>
         )}
 
@@ -460,10 +665,10 @@ export default function WargaHomePage() {
       <SlideUpSheet
         isOpen={activeSheet === 'bansos'}
         onClose={closeSheet}
-        title="Cek Status Bansos"
-        deskripsi="Masukkan data Anda untuk memeriksa kelayakan penerima bantuan sosial."
+        title="Ajukan Bansos"
+        deskripsi="Lengkapi data dan unggah dokumen warga untuk pengajuan bansos."
       >
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 overflow-y-auto">
           <div className="space-y-2">
             <Label htmlFor="bansos-nik">NIK (16 Digit)</Label>
             <Input
@@ -505,8 +710,22 @@ export default function WargaHomePage() {
               onValueChange={setBansosProgram}
               className="grid gap-2"
             >
-              {BANSOS_PROGRAMS.map((program) => {
-                const isSelected = bansosProgram === program.name;
+              {(bansosPrograms.length > 0
+                ? bansosPrograms
+                : BANSOS_PROGRAMS.map((program) => ({
+                    id: program.id,
+                    title: program.name,
+                    assistanceType: program.id,
+                    startDate: new Date().toISOString().slice(0, 10),
+                    endDate: new Date().toISOString().slice(0, 10),
+                    startTime: '08:00',
+                    endTime: '15:00',
+                    fundingSource: '-',
+                    generalRequirements: [],
+                    allowedRtScope: [],
+                    userApplication: null,
+                  }))).map((program) => {
+                const isSelected = bansosProgram === program.id;
 
                 return (
                   <Label
@@ -521,7 +740,7 @@ export default function WargaHomePage() {
                   >
                     <RadioGroupItem
                       id={program.id}
-                      value={program.name}
+                      value={program.id}
                       className={cn(
                         isSelected ? 'border-primary-foreground/60 text-primary-foreground' : undefined,
                       )}
@@ -534,7 +753,7 @@ export default function WargaHomePage() {
                           isSelected ? 'text-primary-foreground' : 'text-foreground'
                         )}
                       >
-                        {program.name}
+                        {program.title}
                       </p>
                       <p
                         className={cn(
@@ -542,7 +761,7 @@ export default function WargaHomePage() {
                           isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'
                         )}
                       >
-                        {program.desc}
+                        {program.assistanceType} • {formatBansosPeriod(program)}
                       </p>
                     </div>
                   </Label>
@@ -551,12 +770,48 @@ export default function WargaHomePage() {
             </RadioGroup>
           </div>
 
+          <FormInput
+            label="Nominal Gaji / Penghasilan"
+            placeholder="Contoh: Rp1.500.000 / bulan"
+            value={bansosIncome}
+            onChange={(e) => setBansosIncome(e.target.value)}
+          />
+
+          <FormTextarea
+            label="Catatan Tambahan"
+            value={bansosNotes}
+            onChange={setBansosNotes}
+            placeholder="Tambahkan kondisi keluarga atau alasan pengajuan."
+            maxLength={255}
+          />
+
+          <FormFileUpload
+            label="Surat Keterangan Tidak Mampu"
+            file={bansosCertificateFile}
+            onChange={setBansosCertificateFile}
+            accept=".jpg,.jpeg,.png,.pdf"
+          />
+
+          <FormFileUpload
+            label="Foto Rumah"
+            file={bansosHousePhotoFile}
+            onChange={setBansosHousePhotoFile}
+            accept=".jpg,.jpeg,.png,.webp"
+          />
+
+          <FormFileUpload
+            label="Bukti Gaji"
+            file={bansosIncomeProofFile}
+            onChange={setBansosIncomeProofFile}
+            accept=".jpg,.jpeg,.png,.pdf"
+          />
+
           <Button
             onClick={handleBansosSubmit}
             disabled={isBansosSubmitDisabled || submitting === 'bansos'}
             className="h-12 rounded-xl font-semibold"
           >
-            {submitting === 'bansos' ? 'Memproses...' : 'Konfirmasi'}
+            {submitting === 'bansos' ? 'Mengirim...' : 'Kirim Pengajuan'}
           </Button>
         </div>
       </SlideUpSheet>
@@ -568,6 +823,24 @@ export default function WargaHomePage() {
         deskripsi="Periksa apakah Anda sudah terdaftar di Daftar Pemilih Tetap (DPT)."
       >
         <div className="flex flex-col gap-4">
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-sm font-semibold text-foreground">Gunakan data akun aktif</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sistem akan mengecek pemilu aktif dan TPS Anda langsung dari data warga terverifikasi.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePemiluSelfCheck}
+              disabled={submitting === 'pemilu'}
+              className="mt-3 h-11 w-full rounded-xl"
+            >
+              {usingOwnPemiluData ? 'Memeriksa data saya...' : 'Cek Dengan Data Saya'}
+            </Button>
+          </div>
+
+          <Separator />
+
           <FormInput
             label="NIK (16 Digit)"
             placeholder="Masukkan NIK Anda"
@@ -660,22 +933,15 @@ export default function WargaHomePage() {
           }
         >
           <div className="mb-1 mt-2 text-left">
-            {bansosResult.status === 'aktif' && (
+            {bansosResult.status === 'diverifikasi' && (
               <div className="flex flex-col gap-0.5 text-sm">
-                <InfoRow label="Nama Penerima" value={bansosResult.nama} />
+                <InfoRow label="Nama Warga" value={bansosResult.nama} />
                 <InfoRow label="Program" value={bansosResult.program} />
-                <InfoRow label="DTKS Tahun" value={bansosResult.dtks || '-'} />
-                <InfoRow label="Status" value="Aktif" />
+                <InfoRow label="Status" value="Menunggu Review Admin" />
               </div>
             )}
 
-            {bansosResult.status === 'diverifikasi' && (
-              <p className="text-center text-muted-foreground">
-                {bansosResult.keterangan}
-              </p>
-            )}
-
-            {bansosResult.status === 'tidak_layak' && (
+            {bansosResult.status !== 'diverifikasi' && (
               <p className="text-center text-muted-foreground">
                 {bansosResult.keterangan}
               </p>
@@ -711,23 +977,20 @@ export default function WargaHomePage() {
               <div className="flex flex-col gap-0.5 text-sm">
                 <InfoRow label="Nama" value={pemiluResult.nama || '-'} />
                 <InfoRow
-                  label="DPT Tahun"
-                  value={pemiluResult.dptTahun || '-'}
+                  label="Pemilu Aktif"
+                  value={pemiluResult.electionTitle || '-'}
                 />
                 <InfoRow label="NIK" value={pemiluResult.nik || '-'} />
                 <InfoRow
-                  label="Jenis Kelamin"
-                  value={
-                    pemiluResult.jenisKelamin === 'L'
-                      ? 'Laki-laki'
-                      : 'Perempuan'
-                  }
+                  label="Tanggal Pemilu"
+                  value={pemiluResult.electionDate ? new Date(pemiluResult.electionDate).toLocaleDateString('id-ID') : '-'}
                 />
                 <InfoRow
-                  label="No. Urut DPT"
-                  value={pemiluResult.noUrut || '-'}
+                  label="TPS"
+                  value={pemiluResult.tps || '-'}
                 />
-                <InfoRow label="Lokasi TPS" value={pemiluResult.tps || '-'} />
+                <InfoRow label="Lokasi TPS" value={pemiluResult.tpsLocation || '-'} />
+                <InfoRow label="RT Terdaftar" value={pemiluResult.assignedRt ? `RT ${pemiluResult.assignedRt}` : '-'} />
                 <InfoRow label="Status" value="Aktif" />
               </div>
             )}

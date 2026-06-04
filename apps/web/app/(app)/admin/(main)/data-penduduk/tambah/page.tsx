@@ -6,7 +6,6 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronLeft,
-  Info,
   MapPin,
   Plus,
   Save,
@@ -19,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { platformFetch } from '@/lib/api/platform';
+import { RT_OPTIONS } from '@/lib/rt-options';
 import { useActionToast } from '@/lib/use-action-toast';
 
 const STEPS = [
@@ -75,8 +75,6 @@ const HUBUNGAN_OPTIONS = [
   'Lainnya',
 ];
 const MEMBER_RELATION_OPTIONS = HUBUNGAN_OPTIONS.filter((item) => item !== 'Kepala Keluarga');
-const RT_OPTIONS = Array.from({ length: 5 }, (_, index) => String(index + 1).padStart(2, '0'));
-
 type PersonForm = {
   nik: string;
   birthDate: string;
@@ -558,9 +556,6 @@ export default function TambahDataPendudukPage() {
 
         <div className="relative z-10">
           <h1 className="text-2xl font-bold text-[#3B82F6]">Tambah Data Penduduk Baru</h1>
-          <p className="mt-1 text-sm text-[#3B82F6]/80">
-            Satu submit akan langsung menyimpan data penduduk dan, jika dipilih, data kartu keluarga baru beserta anggotanya.
-          </p>
         </div>
 
         <div className="relative z-10 mt-8 flex w-full items-center justify-between">
@@ -594,16 +589,6 @@ export default function TambahDataPendudukPage() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      <div className="mt-6 flex items-center gap-3 rounded-[12px] border border-blue-100 bg-[#EEF2FF] px-6 py-4">
-        <CheckCircle2 className="h-5 w-5 text-[#3B82F6]" />
-        <div>
-          <p className="text-sm font-bold text-[#3B82F6]">Periksa kembali sebelum menyimpan.</p>
-          <p className="text-sm text-[#3B82F6]/80">
-            Jika memilih Kepala Keluarga, nomor KK dan anggota keluarga akan tersimpan sekaligus pada submit akhir.
-          </p>
         </div>
       </div>
 
@@ -893,16 +878,6 @@ export default function TambahDataPendudukPage() {
         {step === 4 && (
           <div>
             <h2 className="mb-4 text-xl font-bold text-[#1E293B]">Konfirmasi Data</h2>
-
-            <div className="mb-6 flex items-start gap-3 rounded-xl bg-[#F0F5FF] p-4">
-              <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#2563EB]" />
-              <div>
-                <p className="text-sm font-semibold text-[#1E293B]">Periksa kembali sebelum menyimpan.</p>
-                <p className="text-sm text-[#6B7280]">
-                  Submit akhir akan menyimpan seluruh data yang tampil di bawah ini ke database.
-                </p>
-              </div>
-            </div>
 
             <div className="mb-6">
               <div className="mb-3 flex items-center gap-2">

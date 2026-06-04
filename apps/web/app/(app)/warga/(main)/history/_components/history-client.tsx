@@ -280,7 +280,7 @@ export default function HistoryClient({
     >('/history?page=1&limit=20')
       .then(({ data }) => {
         if (!mounted) return;
-        const mapped = data.map(mapHistoryItem);
+        const mapped: HistoryItem[] = data.map(mapHistoryItem);
         setItems(mapped);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
       })
@@ -305,7 +305,7 @@ export default function HistoryClient({
       }>
     >('/history?page=1&limit=20');
 
-    const mapped = response.data.map((item) => {
+    const mapped: HistoryItem[] = response.data.map((item) => {
       const createdDate = new Date(item.createdAt).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'long',

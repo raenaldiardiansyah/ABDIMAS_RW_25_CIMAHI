@@ -214,8 +214,6 @@ export default function KartuKeluargaPage() {
               <SelectItem value="01">RT 01</SelectItem>
               <SelectItem value="02">RT 02</SelectItem>
               <SelectItem value="03">RT 03</SelectItem>
-              <SelectItem value="04">RT 04</SelectItem>
-              <SelectItem value="05">RT 05</SelectItem>
             </SelectContent>
           </Select>
         </div>

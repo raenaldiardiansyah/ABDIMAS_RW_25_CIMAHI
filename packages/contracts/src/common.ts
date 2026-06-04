@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+export const rtScopeCodeOptions = ["01", "02", "03"] as const;
+export const rtScopeCodeSchema = z.enum(rtScopeCodeOptions);
+export const halfHourTimeSchema = z.string().regex(/^([01]\d|2[0-3]):(00|30)$/, "Time must use 30-minute slots");
+
 export const apiErrorCodeSchema = z.enum([
   "UNAUTHORIZED",
   "FORBIDDEN",

@@ -189,8 +189,8 @@ export const RT_DATA: RekapRT[] = [
   { rt: 'RT 01', rw: 'RW 05', kk: '8', warga: '22', mutasi: '7', produktif: '14 Jiwa' },
   { rt: 'RT 02', rw: 'RW 05', kk: '12', warga: '29', mutasi: '2', produktif: '20 Jiwa' },
   { rt: 'RT 03', rw: 'RW 05', kk: '42', warga: '57', mutasi: '0', produktif: '33 Jiwa' },
-  { rt: 'RT 04', rw: 'RW 05', kk: '15', warga: '41', mutasi: '3', produktif: '25 Jiwa' },
-  { rt: 'RT 05', rw: 'RW 05', kk: '20', warga: '65', mutasi: '5', produktif: '40 Jiwa' },
+  { rt: 'RT 02', rw: 'RW 05', kk: '15', warga: '41', mutasi: '3', produktif: '25 Jiwa' },
+  { rt: 'RT 03', rw: 'RW 05', kk: '20', warga: '65', mutasi: '5', produktif: '40 Jiwa' },
 ];
 
 /* ── Permohonan ────────────────────────────────────────────── */

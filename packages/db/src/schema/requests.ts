@@ -8,6 +8,7 @@ export const serviceRequestTypeEnum = pgEnum("service_request_type", [
   "HOUSEHOLD_CREATE",
   "MUTATION_IN",
   "MUTATION_OUT",
+  "BANSOS_APPLICATION",
 ]);
 export const serviceRequestStatusEnum = pgEnum("service_request_status", [
   "PENDING",

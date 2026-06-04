@@ -40,13 +40,17 @@ export interface PemiluResult {
   noUrut?: string;
   jenisKelamin?: 'L' | 'P';
   tps?: string;
+  tpsLocation?: string;
+  electionTitle?: string;
+  electionDate?: string;
+  assignedRt?: string;
   keterangan?: string;
 }
 
 /** Jenis laporan aspirasi */
 export type JenisAspirasi = 'masukan' | 'keluhan';
 export type StatusAspirasi = 'SUBMITTED' | 'REVIEWED' | 'RESOLVED';
-export type JenisPermohonan = 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
+export type JenisPermohonan = 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT' | 'BANSOS_APPLICATION';
 export type StatusPermohonan = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /** Hasil pengiriman aspirasi */

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/page-header";
+import { RT_OPTIONS } from "@/lib/rt-options";
 
 const usernameSchema = z
   .string()
@@ -200,7 +201,6 @@ const PEKERJAAN_OPTIONS = [
   "Lainnya",
 ];
 const GOLONGAN_DARAH_OPTIONS = ["", "A", "B", "AB", "O", "Tidak Tahu"];
-const RT_OPTIONS = Array.from({ length: 25 }, (_, index) => String(index + 1).padStart(3, "0"));
 const FAMILY_RELATIONSHIP_OPTIONS = [
   "Kepala Keluarga",
   "Istri",

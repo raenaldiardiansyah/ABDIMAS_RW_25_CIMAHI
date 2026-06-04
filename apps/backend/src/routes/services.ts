@@ -5,6 +5,7 @@ import { bansosCheckResponseSchema, pemiluCheckResponseSchema, serviceNikCheckSc
 import { citizen, getDb, historyEntry } from "@abdimas/db";
 
 import { ok } from "../lib/response.js";
+import { resolveCitizenPemiluAssignment } from "./pemilu.js";
 import { parseJson } from "../lib/validation.js";
 import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth.js";
 
@@ -60,9 +61,12 @@ export const servicesRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       .limit(1);
     const registered = !!citizenRow && getAgeFromDate(citizenRow.birthDate) >= 17;
     const checkedAt = new Date().toISOString();
-    const tps = registered && citizenRow ? `TPS ${citizenRow.rt.padStart(3, "0")}` : undefined;
+    const assignment = registered ? await resolveCitizenPemiluAssignment(sessionUser.id) : null;
+    const tps = assignment ? `${assignment.tpsLabel} - ${assignment.tpsLocation}` : registered && citizenRow ? `TPS ${citizenRow.rt.padStart(3, "0")}` : undefined;
     const message = registered
-      ? "Data pemilih ditemukan."
+      ? assignment
+        ? `Data pemilih ditemukan. Anda terdaftar di ${assignment.tpsLabel}.`
+        : "Data pemilih ditemukan."
       : "Data pemilih tidak ditemukan atau belum memenuhi umur pemilih.";
 
     await getDb().insert(historyEntry).values({

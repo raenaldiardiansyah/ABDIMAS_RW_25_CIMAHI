@@ -11,3 +11,5 @@ export * from "./aspirations";
 export * from "./history";
 export * from "./admin-logs";
 export * from "./preferences";
+export * from "./bansos-programs";
+export * from "./pemilu-events";

@@ -69,10 +69,19 @@ export function validateUpload(file: File) {
   }
 }
 
-export function buildObjectKeyForFile(input: { mutationId: string; kind: string; file: File }) {
+export function buildObjectKeyForEntity(input: { entityType: string; entityId: string; kind: string; file: File }) {
   const safeExt = SAFE_EXTENSIONS_BY_CONTENT_TYPE[input.file.type] ?? "";
   const randomSuffix = randomUUID();
-  return `mutations/${input.mutationId}/${input.kind.toLowerCase()}-${Date.now()}-${randomSuffix}${safeExt}`;
+  return `${input.entityType.toLowerCase()}/${input.entityId}/${input.kind.toLowerCase()}-${Date.now()}-${randomSuffix}${safeExt}`;
+}
+
+export function buildObjectKeyForFile(input: { mutationId: string; kind: string; file: File }) {
+  return buildObjectKeyForEntity({
+    entityType: "mutations",
+    entityId: input.mutationId,
+    kind: input.kind,
+    file: input.file,
+  });
 }
 
 export async function uploadObject(input: {

@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
-type RequestType = 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
+type RequestType = 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT' | 'BANSOS_APPLICATION';
 type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 type RequestItem = {
@@ -41,6 +41,7 @@ type MutationForm = {
 function requestTypeLabel(type: RequestType) {
   if (type === 'HOUSEHOLD_CREATE') return 'Pembuatan Kartu Keluarga';
   if (type === 'MUTATION_IN') return 'Mutasi Masuk';
+  if (type === 'BANSOS_APPLICATION') return 'Permohonan Bansos';
   return 'Mutasi Keluar';
 }
 
@@ -60,6 +61,12 @@ function requestSummary(item: RequestItem) {
   if (item.type === 'HOUSEHOLD_CREATE') {
     const household = item.payload.household as Record<string, unknown> | undefined;
     return household?.address ? String(household.address) : 'Permohonan pembuatan kartu keluarga baru.';
+  }
+
+  if (item.type === 'BANSOS_APPLICATION') {
+    return typeof item.payload.title === 'string'
+      ? `Pengajuan bansos ${item.payload.title}`
+      : 'Permohonan bansos warga.';
   }
 
   const address =

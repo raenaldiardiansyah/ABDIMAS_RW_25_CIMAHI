@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { createApiSuccessSchema, paginationQuerySchema } from "./common";
 
-export const requestTypeSchema = z.enum(["HOUSEHOLD_CREATE", "MUTATION_IN", "MUTATION_OUT"]);
+export const requestTypeSchema = z.enum(["HOUSEHOLD_CREATE", "MUTATION_IN", "MUTATION_OUT", "BANSOS_APPLICATION"]);
 export const requestStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"]);
 export const wargaMutationRequestTypeSchema = z.enum(["MUTATION_IN", "MUTATION_OUT"]);
 

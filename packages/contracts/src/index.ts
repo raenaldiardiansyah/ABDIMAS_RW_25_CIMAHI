@@ -13,6 +13,8 @@ export * from "./reports";
 export * from "./admin-users";
 export * from "./preferences";
 export * from "./aspirations";
+export * from "./bansos";
+export * from "./pemilu";
 
 export function maskNikFromParts(first4?: string | null, last4?: string | null) {
   if (!first4 || !last4) return "****";

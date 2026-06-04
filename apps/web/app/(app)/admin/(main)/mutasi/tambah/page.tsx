@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FormFileUpload from '@/components/warga/FormFileUpload';
 import { platformFetch } from '@/lib/api/platform';
+import { RT_OPTIONS } from '@/lib/rt-options';
 import { useActionToast } from '@/lib/use-action-toast';
 
 /* ── Constants ── */
@@ -49,7 +50,6 @@ const PEKERJAAN_OPTIONS = [
   'Lainnya',
 ];
 
-const RT_OPTIONS = Array.from({ length: 5 }, (_, i) => String(i + 1).padStart(2, '0'));
 const ALASAN_PINDAH_OPTIONS = ['Pekerjaan', 'Pendidikan', 'Keluarga', 'Perumahan', 'Lainnya'];
 
 /* ── Types ── */

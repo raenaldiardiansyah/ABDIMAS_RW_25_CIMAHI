@@ -33,16 +33,17 @@ function resolveHeadCitizenFromLegacyRequest(payload: Record<string, unknown>) {
   };
 }
 
-function requestTitle(type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT") {
+function requestTitle(type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT" | "BANSOS_APPLICATION") {
   if (type === "HOUSEHOLD_CREATE") return "Permohonan Kartu Keluarga";
   if (type === "MUTATION_IN") return "Permohonan Mutasi Masuk";
+  if (type === "BANSOS_APPLICATION") return "Permohonan Bansos";
   return "Permohonan Mutasi Keluar";
 }
 
 async function createRequestHistoryStatusEntry(input: {
   userId: string;
   requestId: string;
-  type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT";
+  type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT" | "BANSOS_APPLICATION";
   status: "APPROVED" | "REJECTED";
   rejectionReason?: string | null;
 }) {

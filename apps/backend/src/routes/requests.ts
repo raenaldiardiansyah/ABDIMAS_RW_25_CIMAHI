@@ -16,16 +16,31 @@ import { buildPageMeta, getOffset } from "../lib/pagination.js";
 import { createRateLimitMiddleware } from "../lib/rate-limit.js";
 import { ok } from "../lib/response.js";
 import { toIso } from "../lib/serialize.js";
+import { buildObjectUrl } from "../lib/storage.js";
 import { parseJson, parseParams, parseQuery } from "../lib/validation.js";
 import { adminMiddleware } from "../middleware/auth.js";
 import { approveRequestService, rejectRequestService } from "../services/requests.js";
 
-function mapRequest(row: typeof serviceRequest.$inferSelect) {
+async function mapRequest(row: typeof serviceRequest.$inferSelect) {
+  const payload = { ...(row.payload ?? {}) } as Record<string, unknown>;
+  if (row.type === "BANSOS_APPLICATION" && Array.isArray(payload.attachments)) {
+    payload.attachments = await Promise.all(
+      payload.attachments.map(async (item) => {
+        if (!item || typeof item !== "object") return item;
+        const attachment = item as Record<string, unknown>;
+        if (typeof attachment.storageKey !== "string") return attachment;
+        return {
+          ...attachment,
+          url: await buildObjectUrl(attachment.storageKey, { signedOnly: true }).catch(() => null),
+        };
+      }),
+    );
+  }
   return {
     id: row.id,
     type: row.type,
     status: row.status,
-    payload: row.payload ?? {},
+    payload,
     requestedBy: row.requestedBy,
     reviewedBy: row.reviewedBy ?? null,
     reviewedAt: toIso(row.reviewedAt),
@@ -86,7 +101,8 @@ export const requestsRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       .offset(getOffset(query.page, query.limit));
 
     const meta = buildPageMeta({ page: query.page, limit: query.limit, total: Number(total || 0) });
-    const payload = { success: true as const, data: rows.map(mapRequest), meta };
+    const mappedRows = await Promise.all(rows.map(mapRequest));
+    const payload = { success: true as const, data: mappedRows, meta };
     serviceRequestListResponseSchema.parse(payload);
     return ok(c, payload.data, meta);
   })
@@ -98,7 +114,7 @@ export const requestsRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       .where(eq(serviceRequest.id, id))
       .limit(1);
     if (!row[0]) throw notFound("Request not found");
-    const payload = { success: true as const, data: mapRequest(row[0]) };
+    const payload = { success: true as const, data: await mapRequest(row[0]) };
     serviceRequestResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
@@ -106,7 +122,7 @@ export const requestsRoutes = new Hono<{ Variables: { sessionUser: { id: string;
     const { id: requestId } = parseParams(c.req.param(), idParamSchema);
     const sessionUser = c.get("sessionUser");
     const updated = await approveRequestService({ adminId: sessionUser.id, requestId });
-    const payload = { success: true as const, data: mapRequest(updated) };
+    const payload = { success: true as const, data: await mapRequest(updated) };
     serviceRequestResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
@@ -116,7 +132,7 @@ export const requestsRoutes = new Hono<{ Variables: { sessionUser: { id: string;
     const body = await parseJson(c.req.raw, requestDecisionSchema);
     const updated = await rejectRequestService({ adminId: sessionUser.id, requestId, reason: body.reason });
 
-    const payload = { success: true as const, data: mapRequest(updated) };
+    const payload = { success: true as const, data: await mapRequest(updated) };
     serviceRequestResponseSchema.parse(payload);
     return ok(c, payload.data);
   });
