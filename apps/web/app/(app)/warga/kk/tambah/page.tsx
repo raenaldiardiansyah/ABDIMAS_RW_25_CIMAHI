@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CheckCircle2, Search, X } from 'lucide-react';
+import { ChevronLeft, Save, CheckCircle2, Search, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,15 +42,9 @@ type CitizenOption = {
   noKK: string | null;
 };
 
-function normalizeAreaCode(value: string) {
-  const digits = value.trim().replace(/\D/g, '').slice(0, 3);
-  if (!digits) return '';
-  return digits.length === 1 ? digits.padStart(2, '0') : digits;
-}
-
 export default function TambahKartuKeluargaPage() {
   const router = useRouter();
-  const { runWithToast } = useActionToast();
+  const { runWithToast, toast } = useActionToast();
 
   const INITIAL_FORM: FormState = {
     kkNumber: '',
@@ -58,7 +52,7 @@ export default function TambahKartuKeluargaPage() {
     headCitizenName: '',
     address: '',
     rt: '',
-    rw: '',
+    rw: '25', // default RW 25 based on instructions
     kelurahan: '',
     kecamatan: '',
     issueDate: '',
@@ -70,37 +64,58 @@ export default function TambahKartuKeluargaPage() {
   const [debouncedCitizenQuery, setDebouncedCitizenQuery] = useState('');
   const [citizenOptions, setCitizenOptions] = useState<CitizenOption[]>([]);
   const [loadingCitizens, setLoadingCitizens] = useState(false);
-  const [selectedCitizen, setSelectedCitizen] = useState<CitizenOption | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [hasDraft, setHasDraft] = useState(false);
+  const [showDraftModal, setShowDraftModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('draft_tambah_kk');
+    if (saved) {
+      setHasDraft(true);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedCitizenQuery(citizenQuery.trim()), 400);
     return () => clearTimeout(timer);
   }, [citizenQuery]);
 
-  const handleFieldChange = (field: keyof FormState, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const handleSaveDraft = () => {
+    localStorage.setItem('draft_tambah_kk', JSON.stringify({ form }));
+    setHasDraft(true);
+    toast({
+      title: 'Draft tersimpan',
+      description: 'Draft kartu keluarga berhasil disimpan di browser ini.',
+      variant: 'success',
+    });
   };
 
-  const syncHeadCitizen = (citizen: CitizenOption) => {
-    const normalizedRt = normalizeAreaCode(citizen.rt);
-    const normalizedRw = normalizeAreaCode(citizen.rw);
+  const handleLoadDraft = () => {
+    try {
+      const saved = localStorage.getItem('draft_tambah_kk');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.form) setForm(parsed.form);
+      }
+      setShowDraftModal(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-    setSelectedCitizen(citizen);
-    setCitizenQuery(`${citizen.name} - ${citizen.nik}`);
-    setCitizenOptions([]);
-    setForm((prev) => ({
-      ...prev,
-      headCitizenId: citizen.id,
-      headCitizenName: citizen.name,
-      address: citizen.address?.trim() || prev.address,
-      rt: normalizedRt || prev.rt,
-      rw: normalizedRw || prev.rw,
-    }));
+  const handleDeleteDraft = () => {
+    localStorage.removeItem('draft_tambah_kk');
+    setHasDraft(false);
+    setShowDraftModal(false);
+    setForm(INITIAL_FORM);
+  };
+
+  const handleFieldChange = (field: keyof FormState, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   useEffect(() => {
@@ -136,47 +151,26 @@ export default function TambahKartuKeluargaPage() {
     };
   }, [debouncedCitizenQuery]);
 
-  useEffect(() => {
-    if (!form.headCitizenId || selectedCitizen?.id === form.headCitizenId) return;
-
-    let active = true;
-
-    async function loadSelectedCitizen() {
-      try {
-        const response = await platformFetch<CitizenOption>(`/admin/citizens/${form.headCitizenId}`);
-        if (!active || !response.data) return;
-        syncHeadCitizen(response.data);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    void loadSelectedCitizen();
-    return () => {
-      active = false;
-    };
-  }, [form.headCitizenId, selectedCitizen?.id]);
-
-  const handleCitizenSelect = async (citizen: CitizenOption) => {
-    try {
-      const response = await platformFetch<CitizenOption>(`/admin/citizens/${citizen.id}`);
-      syncHeadCitizen(response.data ?? citizen);
-    } catch (err) {
-      console.error(err);
-      syncHeadCitizen(citizen);
-    }
+  const handleCitizenSelect = (citizen: CitizenOption) => {
+    setCitizenQuery(`${citizen.name} - ${citizen.nik}`);
+    setCitizenOptions([]);
+    setForm((prev) => ({
+      ...prev,
+      headCitizenId: citizen.id,
+      headCitizenName: citizen.name,
+      address: citizen.address || prev.address,
+      rt: citizen.rt || prev.rt,
+      rw: citizen.rw || prev.rw,
+    }));
   };
 
   const clearSelectedCitizen = () => {
-    setSelectedCitizen(null);
     setCitizenQuery('');
     setCitizenOptions([]);
     setForm((prev) => ({
       ...prev,
       headCitizenId: '',
       headCitizenName: '',
-      rt: '',
-      rw: '',
     }));
   };
 
@@ -185,44 +179,15 @@ export default function TambahKartuKeluargaPage() {
     setError('');
 
     // Basic Validation
-    const kkNumber = form.kkNumber.trim();
-    const headCitizenName = form.headCitizenName.trim();
-    const address = form.address.trim();
-    const kelurahan = form.kelurahan.trim();
-    const kecamatan = form.kecamatan.trim();
-
-    let resolvedRt = normalizeAreaCode(form.rt);
-    let resolvedRw = normalizeAreaCode(form.rw);
-
-    if (form.headCitizenId) {
-      try {
-        const response = await platformFetch<CitizenOption>(`/admin/citizens/${form.headCitizenId}`);
-        const citizen = response.data;
-        if (citizen) {
-          resolvedRt = normalizeAreaCode(citizen.rt);
-          resolvedRw = normalizeAreaCode(citizen.rw);
-          setSelectedCitizen(citizen);
-          setForm((prev) => ({
-            ...prev,
-            headCitizenName: citizen.name,
-            rt: resolvedRt,
-            rw: resolvedRw,
-          }));
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    if (kkNumber.length !== 16) {
+    if (!form.kkNumber || form.kkNumber.length < 16) {
       setError('Nomor Kartu Keluarga harus minimal 16 digit');
       return;
     }
-    if (!form.headCitizenId && !headCitizenName) {
+    if (!form.headCitizenName) {
       setError('Nama Kepala Keluarga wajib diisi');
       return;
     }
-    if (!address || !resolvedRt || !resolvedRw || !kelurahan || !kecamatan) {
+    if (!form.address || !form.rt || !form.rw || !form.kelurahan || !form.kecamatan) {
       setError('Semua field alamat dan wilayah wajib diisi');
       return;
     }
@@ -235,19 +200,17 @@ export default function TambahKartuKeluargaPage() {
       // The extra fields (kelurahan, kecamatan, issueDate, reason) might not be in schema,
       // but we send them if we want, they will be ignored or we can append to address if needed.
       // For now, we'll construct the address to include them.
-      const fullAddress = `${address}, Kelurahan ${kelurahan}, Kecamatan ${kecamatan}`;
+      const fullAddress = `${form.address}, Kelurahan ${form.kelurahan}, Kecamatan ${form.kecamatan}`;
 
       await runWithToast(
         () =>
-          platformFetch('/admin/households', {
+          platformFetch('/user-requests/household-create', {
             method: 'POST',
             body: JSON.stringify({
-              kkNumber,
-              ...(form.headCitizenId ? { headCitizenId: form.headCitizenId } : { headCitizenName }),
+              kkNumber: form.kkNumber,
               address: fullAddress,
-              rt: resolvedRt,
-              rw: resolvedRw,
-              status: 'ACTIVE',
+              rt: form.rt,
+              rw: form.rw,
             }),
           }),
         {
@@ -257,7 +220,7 @@ export default function TambahKartuKeluargaPage() {
         },
       );
 
-      router.push('/admin/kartu-keluarga');
+      router.push('/warga/kk');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Terjadi kesalahan saat menyimpan Kartu Keluarga');
@@ -267,37 +230,57 @@ export default function TambahKartuKeluargaPage() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-6 pb-24">
-      {/* â”€â”€ Header â”€â”€ */}
-      <div className="flex items-center">
+    <div className="flex w-full flex-col gap-6 p-4 md:p-6 pb-24">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setShowExitModal(true)}
-          className="flex items-center gap-2 text-[16px] font-[600] text-[#2563EB] transition hover:opacity-80 bg-transparent border-none outline-none"
+          className="flex items-center gap-1 text-sm md:text-base font-semibold text-violet-600 transition hover:opacity-80 bg-transparent border-none outline-none"
         >
           <ChevronLeft className="h-5 w-5" />
-          Keluar Halaman
+          <span className="hidden sm:inline">Keluar Halaman</span>
+          <span className="sm:hidden">Keluar</span>
         </button>
+        <Button
+          onClick={() => {
+            if (hasDraft) {
+              setShowDraftModal(true);
+              return;
+            }
+            toast({
+              title: 'Belum ada draft',
+              description: 'Simpan draft terlebih dahulu untuk membukanya kembali.',
+              variant: 'destructive',
+            });
+          }}
+          variant="outline"
+          className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 md:px-5 py-2 md:py-2.5 text-xs md:text-sm font-semibold text-[#1E293B] transition hover:bg-gray-50"
+        >
+          <Save className="h-4 w-4 text-[#8B5CF6]" />
+          <span className="hidden sm:inline">Draft</span>
+          {hasDraft && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-red-500" />}
+        </Button>
       </div>
 
-      {/* â”€â”€ Title Card â”€â”€ */}
-      <div className="relative overflow-hidden rounded-[12px] bg-[#EEF2FF] p-6">
-        <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#3B82F6]/[0.05]" />
-        <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-[#3B82F6]/[0.08]" />
+      {/* ── Title Card ── */}
+      <div className="relative overflow-hidden rounded-[12px] bg-[#F5F3FF] p-4 md:p-6">
+        <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#8B5CF6]/[0.05]" />
+        <div className="pointer-events-none absolute right-12 top-2 h-24 w-24 rounded-full bg-[#8B5CF6]/[0.08]" />
         
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold text-[#3B82F6]">Tambah Kartu Keluarga Baru</h1>
-          <p className="mt-1 text-sm text-[#3B82F6]/80">
+          <h1 className="text-xl md:text-2xl font-bold text-[#8B5CF6]">Tambah Kartu Keluarga Baru</h1>
+          <p className="mt-1 text-xs md:text-sm text-[#8B5CF6]/80">
             Isi semua field wajib bertanda bintang merah. Data akan tersimpan ke modul Kartu Keluarga.
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 rounded-[12px] bg-[#EEF2FF] px-6 py-4 border border-blue-100">
-        <CheckCircle2 className="h-5 w-5 text-[#3B82F6]" />
+      <div className="flex items-start md:items-center gap-3 rounded-[12px] bg-[#F5F3FF] px-4 md:px-6 py-4 border border-violet-100">
+        <CheckCircle2 className="h-5 w-5 text-[#8B5CF6] shrink-0 mt-0.5 md:mt-0" />
         <div>
-          <p className="text-sm font-bold text-[#3B82F6]">Periksa kembali sebelum menyimpan.</p>
-          <p className="text-sm text-[#3B82F6]/80">Pastikan semua data sudah benar. Kamu masih bisa kembali ke langkah sebelumnya untuk koreksi data</p>
+          <p className="text-sm font-bold text-[#8B5CF6]">Periksa kembali sebelum menyimpan.</p>
+          <p className="text-xs md:text-sm text-[#8B5CF6]/80">Pastikan semua data sudah benar. Kamu masih bisa kembali ke langkah sebelumnya untuk koreksi data</p>
         </div>
       </div>
 
@@ -307,84 +290,12 @@ export default function TambahKartuKeluargaPage() {
         </div>
       )}
 
-      {/* â”€â”€ Form Content â”€â”€ */}
+      {/* ── Form Content ── */}
       <form id="kk-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="rounded-[12px] bg-[#FFFFFF] px-[24px] py-[20px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-[18px] font-bold text-[#1E293B]">Assign dari Data Penduduk</h2>
-                <p className="mt-1 text-sm text-[#64748B]">Pilih warga yang sudah ada untuk dijadikan kepala keluarga.</p>
-              </div>
-              <Link href="/admin/data-penduduk" className="text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]">
-                Buka Data Penduduk
-              </Link>
-            </div>
 
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#3B82F6]" />
-              <Input
-                value={citizenQuery}
-                onChange={(e: any) => {
-                  setCitizenQuery(e.target.value);
-                  if (form.headCitizenId || selectedCitizen) {
-                    setSelectedCitizen(null);
-                    setForm((prev) => ({ ...prev, headCitizenId: '' }));
-                  }
-                }}
-                placeholder="Cari nama atau NIK warga"
-                className="h-11 rounded-xl border border-gray-200 px-11 pr-12"
-              />
-              {form.headCitizenId ? (
-                <button
-                  type="button"
-                  onClick={clearSelectedCitizen}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[#64748B] hover:bg-gray-100"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-
-            {selectedCitizen ? (
-              <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
-                <p className="font-bold text-[#1E293B]">{form.headCitizenName}</p>
-                <p className="mt-2 text-sm text-[#64748B]">Data warga dipakai sebagai kepala keluarga untuk KK baru ini.</p>
-              </div>
-            ) : null}
-
-            {!form.headCitizenId && debouncedCitizenQuery ? (
-              <div className="rounded-xl border border-gray-200 bg-white">
-                {loadingCitizens ? (
-                  <div className="px-4 py-3 text-sm text-[#64748B]">Mencari data penduduk...</div>
-                ) : citizenOptions.length > 0 ? (
-                  citizenOptions.map((citizen) => (
-                    <button
-                      key={citizen.id}
-                      type="button"
-                      onClick={() => handleCitizenSelect(citizen)}
-                      className="flex w-full items-start justify-between gap-4 border-b border-gray-100 px-4 py-3 text-left last:border-b-0 hover:bg-[#F8FAFC]"
-                    >
-                      <div>
-                        <p className="font-semibold text-[#1E293B]">{citizen.name}</p>
-                        <p className="text-xs text-[#2563EB]">{citizen.nik}</p>
-                      </div>
-                      <div className="text-right text-xs text-[#64748B]">
-                        <p>RT {citizen.rt} / RW {citizen.rw}</p>
-                        <p>{citizen.noKK ? `KK: ${citizen.noKK}` : 'Belum punya KK'}</p>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-4 py-3 text-sm text-[#64748B]">Tidak ada warga tersedia. Warga yang sudah punya KK tidak ditampilkan.</div>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
 
         {/* Informasi Utama */}
-        <div className="rounded-[12px] bg-[#FFFFFF] px-[24px] py-[20px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="rounded-[12px] bg-[#FFFFFF] px-4 md:px-6 py-4 md:py-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <h2 className="mb-6 text-[18px] font-bold text-[#1E293B]">Informasi Utama</h2>
           
           <div className="grid gap-6 md:grid-cols-2">
@@ -408,7 +319,6 @@ export default function TambahKartuKeluargaPage() {
                 value={form.headCitizenName}
                 onChange={(e: any) => handleFieldChange('headCitizenName', e.target.value)}
                 placeholder="Sesuai KTP"
-                disabled={!!form.headCitizenId}
                 className="h-11 rounded-xl border border-gray-200 px-4"
               />
             </div>
@@ -427,40 +337,35 @@ export default function TambahKartuKeluargaPage() {
         </div>
 
         {/* Detail Wilayah dan Administrasi */}
-        <div className="rounded-[12px] bg-[#FFFFFF] px-[24px] py-[20px]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="rounded-[12px] bg-[#FFFFFF] px-4 md:px-6 py-4 md:py-5" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <h2 className="mb-6 text-[18px] font-bold text-[#1E293B]">Detail Wilayah dan Administrasi</h2>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">RT</Label>
-                {selectedCitizen ? (
-                  <Input
-                    value={form.rt ? `RT ${form.rt}` : '}
-                    readOnly
-                    className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-4 text-[#1E293B]"
-                  />
-                ) : (
-                  <Select value={form.rt} onValueChange={(val: any) => handleFieldChange('rt', val)}>
-                    <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100">
-                      <SelectValue placeholder="Pilih RT" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['01', '02', '03'].map((rt) => (
-                        <SelectItem key={rt} value={rt}>
-                          RT {rt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+              <Select value={form.rt} onValueChange={(val: any) => handleFieldChange('rt', val)}>
+                <SelectTrigger className="[&>svg]:text-[#7C3AED] [&>svg]:opacity-100 h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-100">
+                  <SelectValue placeholder="Pilih RT" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['01', '02', '03'].map((rt) => (
+                    <SelectItem key={rt} value={rt} className="focus:bg-violet-50 focus:text-violet-600">
+                      RT {rt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">RW</Label>
-              <Input
-                value={form.rw ? `RW ${form.rw}` : ''}
-                readOnly
-                className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-4 text-[#1E293B]"
-              />
+              <Select value={form.rw} onValueChange={(val: any) => handleFieldChange('rw', val)} disabled>
+                <SelectTrigger className="[&>svg]:text-[#7C3AED] [&>svg]:opacity-100 h-11 appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm text-[#1E293B] outline-none opacity-100 [&>svg]:hidden">
+                  <SelectValue placeholder="RW 25" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">RW 25</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label className="mb-1.5 block text-sm font-semibold text-[#1E293B]">
@@ -499,7 +404,7 @@ export default function TambahKartuKeluargaPage() {
                 Alasan Pembuatan<span className="text-red-500">*</span>
               </Label>
               <Select value={form.reason} onValueChange={(val: any) => handleFieldChange('reason', val)}>
-                <SelectTrigger className="h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-blue-100">
+                <SelectTrigger className="[&>svg]:text-[#7C3AED] [&>svg]:opacity-100 h-11 appearance-none rounded-xl border border-gray-200 bg-white px-4 text-sm text-[#1E293B] outline-none transition focus:border-[#7C3AED] focus:ring-2 focus:ring-violet-100">
                   <SelectValue placeholder="Baru" />
                 </SelectTrigger>
                 <SelectContent>
@@ -513,28 +418,79 @@ export default function TambahKartuKeluargaPage() {
           </div>
         </div>
 
-        {/* â”€â”€ Action Buttons â”€â”€ */}
-        <div className="mt-4 flex justify-end gap-3 pb-8">
+        {/* ── Action Buttons ── */}
+        <div className="mt-4 flex flex-col-reverse md:flex-row justify-end gap-3 pb-8">
+          <Button
+            type="button"
+            onClick={handleSaveDraft}
+            variant="outline"
+            className="flex w-full md:w-auto items-center justify-center gap-2 rounded-xl border border-[#7C3AED] bg-white px-8 py-4 md:py-6 text-sm md:text-base font-semibold text-[#7C3AED] transition hover:bg-violet-50 shadow-sm"
+          >
+            <Save className="h-5 w-5" />
+            Simpan Draft
+          </Button>
           <Button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 rounded-xl bg-[#2563EB] px-8 py-6 text-base font-bold text-white shadow-sm transition hover:bg-[#1D4ED8]"
+            className="flex w-full md:w-auto items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-8 py-4 md:py-6 text-sm md:text-base font-bold text-white shadow-sm transition hover:bg-[#6D28D9]"
           >
             {loading ? 'Menyimpan...' : 'Simpan Kartu Keluarga'}
           </Button>
         </div>
       </form>
 
-      {/* â”€â”€ Exit Modal â”€â”€ */}
+      {/* ── Draft Modal ── */}
+      <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
+        <DialogContent className="max-w-sm rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-[#1E293B]">Draft Tersimpan</DialogTitle>
+            <DialogDescription className="text-sm text-[#64748B]">
+              Anda memiliki draft formulir yang belum selesai. Ingin memuat ulang atau menghapusnya?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex flex-col gap-3">
+            <Button
+              onClick={handleLoadDraft}
+              className="w-full rounded-xl bg-[#7C3AED] py-3 text-sm font-bold text-white transition hover:bg-[#6D28D9]"
+            >
+              Muat Draft
+            </Button>
+            <Button
+              onClick={handleDeleteDraft}
+              className="w-full rounded-xl border border-red-100 bg-red-50 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100"
+            >
+              Hapus Draft
+            </Button>
+            <Button
+              onClick={() => setShowDraftModal(false)}
+              className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
+            >
+              Tutup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Exit Modal ── */}
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
         <DialogContent className="max-w-sm rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-[#1E293B]">Keluar Halaman?</DialogTitle>
             <DialogDescription className="text-sm text-[#64748B]">
-              Anda memiliki data yang belum disimpan. Yakin ingin keluar dari halaman ini?
+              Anda memiliki data yang belum disimpan. Apakah Anda ingin menyimpannya sebagai draft sebelum keluar?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
+            <Button
+              onClick={() => {
+                handleSaveDraft();
+                setShowExitModal(false);
+                router.back();
+              }}
+              className="w-full rounded-xl bg-[#7C3AED] py-3 text-sm font-bold text-white transition hover:bg-[#6D28D9]"
+            >
+              Simpan Draft & Keluar
+            </Button>
             <Button
               onClick={() => {
                 setShowExitModal(false);
@@ -558,4 +514,3 @@ export default function TambahKartuKeluargaPage() {
     </div>
   );
 }
-

@@ -18,7 +18,7 @@ export default function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
           <TabsTrigger
             key={tab}
             value={tab}
-            className="flex-1 rounded-xl px-3 py-2.5 text-[13px] font-bold text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-white"
+            className="flex-1 rounded-xl border border-transparent px-3 py-2.5 text-[13px] font-bold text-muted-foreground transition-all data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary"
           >
             {tab}
           </TabsTrigger>

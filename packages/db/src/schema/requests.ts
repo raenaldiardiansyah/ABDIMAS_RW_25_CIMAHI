@@ -6,6 +6,7 @@ import { user } from "./auth";
 
 export const serviceRequestTypeEnum = pgEnum("service_request_type", [
   "HOUSEHOLD_CREATE",
+  "MEMBER_CREATE",
   "MUTATION_IN",
   "MUTATION_OUT",
 ]);

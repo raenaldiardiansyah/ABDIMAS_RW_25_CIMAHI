@@ -33,8 +33,9 @@ function resolveHeadCitizenFromLegacyRequest(payload: Record<string, unknown>) {
   };
 }
 
-function requestTitle(type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT") {
+function requestTitle(type: "HOUSEHOLD_CREATE" | "MEMBER_CREATE" | "MUTATION_IN" | "MUTATION_OUT") {
   if (type === "HOUSEHOLD_CREATE") return "Permohonan Kartu Keluarga";
+  if (type === "MEMBER_CREATE") return "Permohonan Tambah Anggota";
   if (type === "MUTATION_IN") return "Permohonan Mutasi Masuk";
   return "Permohonan Mutasi Keluar";
 }
@@ -42,7 +43,7 @@ function requestTitle(type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT")
 async function createRequestHistoryStatusEntry(input: {
   userId: string;
   requestId: string;
-  type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT";
+  type: "HOUSEHOLD_CREATE" | "MEMBER_CREATE" | "MUTATION_IN" | "MUTATION_OUT";
   status: "APPROVED" | "REJECTED";
   rejectionReason?: string | null;
 }) {
@@ -89,6 +90,54 @@ export async function approveRequestService(input: { adminId: string; requestId:
         rw: String(householdPayload.rw),
         status: String(householdPayload.status ?? "ACTIVE"),
       },
+    });
+  }
+
+  if (row.type === "MEMBER_CREATE") {
+    const payload = row.payload as Record<string, unknown>;
+    const citizenPayload = payload.citizen as Record<string, unknown> | undefined;
+    const householdId = payload.householdId as string | undefined;
+    const relationship = payload.relationship as string | undefined;
+
+    if (!citizenPayload || !householdId || !relationship) {
+      throw validationError("Invalid member create request payload");
+    }
+
+    const { addHouseholdMemberService } = await import("./households.js");
+    const { citizen, household } = await import("@abdimas/db");
+    
+    // Ambil data KK untuk copy alamat
+    const [hh] = await db.select().from(household).where(eq(household.id, householdId)).limit(1);
+
+    const [duplicateNik] = await db.select({ id: citizen.id }).from(citizen).where(eq(citizen.nik, String(citizenPayload.nik))).limit(1);
+    
+    let citizenId = duplicateNik?.id;
+
+    if (!citizenId) {
+      const [createdCitizen] = await db.insert(citizen).values({
+        nik: String(citizenPayload.nik),
+        name: String(citizenPayload.name),
+        birthPlace: String(citizenPayload.birthPlace || "-"),
+        birthDate: String(citizenPayload.birthDate || new Date().toISOString().slice(0, 10)),
+        gender: String(citizenPayload.gender) as "L" | "P",
+        religion: String(citizenPayload.religion || "-"),
+        maritalStatus: String(citizenPayload.maritalStatus || "-"),
+        education: String(citizenPayload.education || "-"),
+        occupation: "Belum/Tidak Bekerja",
+        address: hh?.address || "-",
+        rt: hh?.rt || "-",
+        rw: hh?.rw || "-",
+        status: "PENDUDUK_TETAP",
+        isArchived: false,
+      }).returning();
+      citizenId = createdCitizen.id;
+    }
+
+    await addHouseholdMemberService({
+      adminId: input.adminId,
+      householdId,
+      citizenId,
+      relationship,
     });
   }
 

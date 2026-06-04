@@ -10,8 +10,6 @@ import {
   Megaphone,
   ShieldCheck,
   Settings,
-  Moon,
-  Sun,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -27,7 +25,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 
-import { useTheme } from '@/app/(app)/warga/_components/theme-context';
+
 import { useIdentity } from '@/app/(app)/warga/_components/identity-context';
 import { WargaPage, WargaPageBody } from '@/app/(app)/warga/_components/warga-page';
 
@@ -84,7 +82,6 @@ const BANSOS_PROGRAMS = [
 ];
 
 export default function WargaHomePage() {
-  const { isDark, toggleDark } = useTheme();
   const identity = useIdentity();
   const { toast } = useToast();
 
@@ -125,19 +122,19 @@ export default function WargaHomePage() {
 
       const result: BansosResult = data.eligible
         ? {
-            ...BANSOS_AKTIF,
-            nama: bansosNama,
-            nik: bansosNik,
-            program: (bansosProgram || 'PKH') as BansosResult['program'],
-            keterangan: data.message,
-          }
+          ...BANSOS_AKTIF,
+          nama: bansosNama,
+          nik: bansosNik,
+          program: (bansosProgram || 'PKH') as BansosResult['program'],
+          keterangan: data.message,
+        }
         : {
-            ...BANSOS_TIDAK_LAYAK,
-            nama: bansosNama,
-            nik: bansosNik,
-            program: (bansosProgram || 'Bantuan Tunai') as BansosResult['program'],
-            keterangan: data.message,
-          };
+          ...BANSOS_TIDAK_LAYAK,
+          nama: bansosNama,
+          nik: bansosNik,
+          program: (bansosProgram || 'Bantuan Tunai') as BansosResult['program'],
+          keterangan: data.message,
+        };
 
       setBansosResult(result);
       setActiveSheet(null);
@@ -192,16 +189,16 @@ export default function WargaHomePage() {
 
       const result: PemiluResult = data.registered
         ? {
-            ...PEMILU_TERDAFTAR,
-            nik: pemiluNik,
-            tps: data.tps || PEMILU_TERDAFTAR.tps,
-            keterangan: data.message,
-          }
+          ...PEMILU_TERDAFTAR,
+          nik: pemiluNik,
+          tps: data.tps || PEMILU_TERDAFTAR.tps,
+          keterangan: data.message,
+        }
         : {
-            ...PEMILU_TIDAK_TERDAFTAR,
-            nik: pemiluNik,
-            keterangan: data.message,
-          };
+          ...PEMILU_TIDAK_TERDAFTAR,
+          nik: pemiluNik,
+          keterangan: data.message,
+        };
 
       setPemiluResult(result);
       setActiveSheet(null);
@@ -324,16 +321,6 @@ export default function WargaHomePage() {
                 <Settings className="h-4 w-4" />
               </Link>
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={toggleDark}
-              className="h-10 w-10 rounded-xl border-white/20 bg-white/10 text-primary-foreground hover:bg-white/15"
-              aria-label="Ubah tema"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
           </>
         }
         bottomSlot={
@@ -435,7 +422,7 @@ export default function WargaHomePage() {
                 deskripsi="Periksa status pemilih Anda di DPT."
                 badge="Pemilu"
                 variant="compact"
-                tone="sky"
+                tone="primary"
                 onClick={() => setActiveSheet('pemilu')}
                 delay={100}
               />
@@ -446,7 +433,7 @@ export default function WargaHomePage() {
                 deskripsi="Kirim masukan atau keluhan Anda."
                 badge="Laporan"
                 variant="compact"
-                tone="violet"
+                tone="primary"
                 onClick={() => setActiveSheet('aspirasi')}
                 delay={150}
               />

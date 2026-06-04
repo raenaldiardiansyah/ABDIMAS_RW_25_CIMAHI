@@ -20,7 +20,7 @@ const PAGE_SIZE = 20;
 
 type RequestItem = {
   id: string;
-  type: 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
+  type: 'HOUSEHOLD_CREATE' | 'MEMBER_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   payload: Record<string, unknown>;
   rejectionReason: string | null;
@@ -86,8 +86,8 @@ export default function PermohonanPage() {
     intervalMs: 8000,
   });
 
-  const permohonan = requests.filter((item) => item.type === 'HOUSEHOLD_CREATE');
-  const permohonanMutasi = requests.filter((item) => item.type !== 'HOUSEHOLD_CREATE');
+  const permohonan = requests.filter((item) => item.type === 'HOUSEHOLD_CREATE' || item.type === 'MEMBER_CREATE');
+  const permohonanMutasi = requests.filter((item) => item.type !== 'HOUSEHOLD_CREATE' && item.type !== 'MEMBER_CREATE');
 
   const handleApprove = async (id: string) => {
     try {
@@ -168,10 +168,20 @@ export default function PermohonanPage() {
           )
         ) : (
           permohonan.map((item) => {
-            const payload = item.payload as {
-              household?: { address?: string; headCitizenId?: string };
-              members?: Array<{ nama?: string; relationship?: string; nik?: string; citizenId?: string }>;
-            };
+            const isMemberCreate = item.type === 'MEMBER_CREATE';
+            const payload = item.payload as any;
+
+            const title = isMemberCreate 
+              ? (payload.citizen?.name ?? 'Tambah Anggota') 
+              : (payload.members?.[0]?.nama ?? payload.household?.headCitizenId ?? 'Permohonan KK');
+              
+            const subtitle = isMemberCreate 
+              ? 'Permohonan Tambah Anggota' 
+              : 'Pendaftaran Kartu Keluarga Baru';
+              
+            const infoText = isMemberCreate 
+              ? `Status/Hubungan: ${payload.relationship ?? '-'}` 
+              : (payload.household?.address ?? '-');
 
             return (
               <div
@@ -179,19 +189,21 @@ export default function PermohonanPage() {
                 className="flex flex-col gap-5 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md md:flex-row md:items-center md:justify-between"
               >
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EFF6FF]">
-                    <FileInput className="h-6 w-6 text-[#3B82F6]" />
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isMemberCreate ? 'bg-[#F5F3FF]' : 'bg-[#EFF6FF]'}`}>
+                    <FileInput className={`h-6 w-6 ${isMemberCreate ? 'text-[#8B5CF6]' : 'text-[#3B82F6]'}`} />
                   </div>
                   <div>
                     <div className="flex items-center gap-3">
                       <h2 className="text-lg font-bold text-[#1E293B]">
-                        {payload.members?.[0]?.nama ?? payload.household?.headCitizenId ?? 'Permohonan KK'}
+                        {title}
                       </h2>
                       <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-600">
                         Menunggu
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-semibold text-[#3B82F6]">Pendaftaran Kartu Keluarga Baru</p>
+                    <p className={`mt-1 text-sm font-semibold ${isMemberCreate ? 'text-[#8B5CF6]' : 'text-[#3B82F6]'}`}>
+                      {subtitle}
+                    </p>
 
                     <div className="mt-3 flex flex-col gap-1 text-sm text-[#64748B] sm:flex-row sm:items-center sm:gap-4">
                       <p>
@@ -202,7 +214,7 @@ export default function PermohonanPage() {
                         Tanggal: <span className="font-semibold text-[#1E293B]">{formatDate(item.createdAt)}</span>
                       </p>
                     </div>
-                    <p className="mt-2 text-sm text-[#64748B]">{payload.household?.address ?? '-'}</p>
+                    <p className="mt-2 text-sm text-[#64748B]">{infoText}</p>
                   </div>
                 </div>
 
@@ -359,20 +371,32 @@ export default function PermohonanPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            {((viewedAnggota?.payload as { members?: Array<{ nama?: string; relationship?: string; nik?: string; citizenId?: string }> })?.members ?? []).map((anggota, idx) => (
-              <div
-                key={`${anggota.citizenId ?? anggota.nik ?? idx}`}
-                className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4"
-              >
+            {viewedAnggota?.type === 'MEMBER_CREATE' ? (
+              <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4">
                 <div>
-                  <p className="font-bold text-[#1E293B]">{anggota.nama ?? anggota.citizenId ?? '-'}</p>
-                  <p className="text-xs font-semibold text-[#3B82F6]">{anggota.nik ?? '-'}</p>
+                  <p className="font-bold text-[#1E293B]">{(viewedAnggota.payload as any).citizen?.name ?? '-'}</p>
+                  <p className="text-xs font-semibold text-[#3B82F6]">{(viewedAnggota.payload as any).citizen?.nik ?? '-'}</p>
                 </div>
                 <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-gray-600">
-                  {anggota.relationship ?? '-'}
+                  {(viewedAnggota.payload as any).relationship ?? '-'}
                 </span>
               </div>
-            ))}
+            ) : (
+              ((viewedAnggota?.payload as { members?: Array<{ nama?: string; relationship?: string; nik?: string; citizenId?: string }> })?.members ?? []).map((anggota, idx) => (
+                <div
+                  key={`${anggota.citizenId ?? anggota.nik ?? idx}`}
+                  className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4"
+                >
+                  <div>
+                    <p className="font-bold text-[#1E293B]">{anggota.nama ?? anggota.citizenId ?? '-'}</p>
+                    <p className="text-xs font-semibold text-[#3B82F6]">{anggota.nik ?? '-'}</p>
+                  </div>
+                  <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-gray-600">
+                    {anggota.relationship ?? '-'}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

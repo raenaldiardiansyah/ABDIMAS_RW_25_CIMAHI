@@ -69,19 +69,33 @@ function buildMonthGrid(activeMonth: Date) {
 
   const firstDay = start.getDay();
   const totalDays = end.getDate();
+  const prevMonthEnd = new Date(start.getFullYear(), start.getMonth(), 0).getDate();
 
-  const cells: Array<{ iso: string; day: number } | null> = [];
+  const cells: Array<{ iso: string; day: number; isCurrentMonth: boolean }> = [];
 
   for (let i = 0; i < firstDay; i++) {
-    cells.push(null);
+    const day = prevMonthEnd - firstDay + i + 1;
+    cells.push({
+      iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth() - 1, day)),
+      day,
+      isCurrentMonth: false,
+    });
   }
 
   for (let day = 1; day <= totalDays; day++) {
     cells.push({
-      iso: toIsoDateLocal(
-        new Date(start.getFullYear(), start.getMonth(), day)
-      ),
+      iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth(), day)),
       day,
+      isCurrentMonth: true,
+    });
+  }
+
+  const remaining = (7 - (cells.length % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    cells.push({
+      iso: toIsoDateLocal(new Date(start.getFullYear(), start.getMonth() + 1, i)),
+      day: i,
+      isCurrentMonth: false,
     });
   }
 
@@ -191,30 +205,21 @@ export default function JadwalClient() {
         eyebrow="Sistem Informasi Desa"
         description={formatMonthYearId(activeMonth)}
         variant="brand"
-        className="pb-7"
+        className="min-h-0 pb-3 flex flex-col items-center justify-center text-center"
+        contentClassName="items-center justify-center w-full [&>div>div:first-child]:justify-center"
         titleClassName="text-xl"
-        rightSlot={
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="mt-1 rounded-full bg-white text-primary-foreground shadow-sm hover:bg-primary-foreground/15"
-            aria-label="Cari jadwal"
-          >
-            <Search className="size-4" aria-hidden="true" />
-          </Button>
-        }
+
         bottomSlot={
-          <div className="flex items-center gap-4">
-            <div className="flex size-16 items-center justify-center rounded-3xl border border-primary-foreground/15 bg-primary-foreground/10 shadow-sm">
-              <CalendarDays className="size-7 text-primary-foreground" />
+          <div className="flex flex-col items-center gap-2 -mt-1">
+            <div className="flex size-14 items-center justify-center rounded-3xl border border-primary-foreground/15 bg-primary-foreground/10 shadow-sm">
+              <CalendarDays className="size-6 text-primary-foreground" />
             </div>
 
             <div className="min-w-0 flex-1">
               <p className="text-base font-bold leading-tight text-primary-foreground">
                 Agenda Kegiatan Warga
               </p>
-              <p className="mt-1 text-xs text-primary-foreground/75">
+              <p className="text-xs text-primary-foreground/75">
                 Data resmi RW 025
               </p>
             </div>
@@ -248,7 +253,10 @@ export default function JadwalClient() {
                 {HARI.map((hari) => (
                   <div
                     key={hari}
-                    className="py-1.5 text-center text-[10px] font-semibold text-muted-foreground"
+                    className={cn(
+                      'py-1.5 text-center text-[10px] font-semibold',
+                      hari === 'Min' ? 'text-red-500' : 'text-muted-foreground'
+                    )}
                   >
                     {hari}
                   </div>
@@ -257,20 +265,12 @@ export default function JadwalClient() {
 
               <div className="mt-1 grid grid-cols-7 gap-1">
                 {monthCells.map((cell, idx) => {
-                  if (!cell) {
-                    return (
-                      <div
-                        key={`empty-${idx}`}
-                        className="aspect-square rounded-2xl"
-                      />
-                    );
-                  }
-
                   const iso = cell.iso;
                   const isSelected = iso === selectedIso;
                   const isToday = iso === todayIso;
                   const events = eventsByDate.get(iso) ?? [];
                   const hasEvents = events.length > 0;
+                  const isSunday = idx % 7 === 0;
 
                   return (
                     <button
@@ -281,14 +281,18 @@ export default function JadwalClient() {
                         'relative flex aspect-square w-full flex-col items-center justify-center rounded-2xl transition-all duration-200',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         isSelected
-                          ? 'bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/20'
-                          : 'text-foreground hover:bg-background hover:shadow-xs'
+                          ? 'border border-primary bg-primary/10 text-primary shadow-sm'
+                          : 'hover:bg-background hover:shadow-xs',
+                        !isSelected && !cell.isCurrentMonth && 'text-muted-foreground/50',
+                        !isSelected && cell.isCurrentMonth && 'text-foreground'
                       )}
                     >
                       <span
                         className={cn(
                           'text-[13px] font-bold tabular-nums',
-                          !isSelected && isToday && 'text-primary'
+                          !isSelected && isToday && 'text-primary',
+                          !isSelected && !isToday && isSunday && cell.isCurrentMonth && 'text-red-500',
+                          !isSelected && !isToday && isSunday && !cell.isCurrentMonth && 'text-red-500/50'
                         )}
                       >
                         {cell.day}
@@ -302,7 +306,7 @@ export default function JadwalClient() {
                               className={cn(
                                 'size-1.5 rounded-full',
                                 isSelected
-                                  ? 'bg-primary-foreground/80'
+                                  ? 'bg-primary'
                                   : 'bg-primary'
                               )}
                             />

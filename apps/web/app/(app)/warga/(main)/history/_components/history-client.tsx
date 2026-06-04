@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { History, Inbox, ShieldCheck, Vote, MessageSquareText } from 'lucide-react';
+import { History, Inbox, ShieldCheck, Vote, MessageSquareText, FileText } from 'lucide-react';
 
-import type { AspirasiResult, BansosResult, HistoryItem, PemiluResult } from '@/types/warga';
+import type { AspirasiResult, BansosResult, HistoryItem, PemiluResult, PermohonanResult } from '@/types/warga';
 
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import HistoryCard from '@/components/warga/HistoryCard';
 
 const STORAGE_KEY = 'abdimas:warga_history_v1';
 
-const TABS = ['Semua', 'Bansos', 'Pemilu', 'Laporan'] as const;
+const TABS = ['Semua', 'Bansos', 'Pemilu', 'Laporan', 'Permohonan'] as const;
 type TabLabel = (typeof TABS)[number];
 
 function safeParseHistory(raw: string | null): HistoryItem[] {
@@ -64,6 +64,8 @@ function tabToTipe(tab: TabLabel): HistoryItem['tipe'] | 'all' {
       return 'pemilu';
     case 'Laporan':
       return 'aspirasi';
+    case 'Permohonan':
+      return 'permohonan';
     default:
       return 'all';
   }
@@ -72,6 +74,7 @@ function tabToTipe(tab: TabLabel): HistoryItem['tipe'] | 'all' {
 function tipeIcon(tipe: HistoryItem['tipe']) {
   if (tipe === 'bansos') return ShieldCheck;
   if (tipe === 'pemilu') return Vote;
+  if (tipe === 'permohonan') return FileText;
   return MessageSquareText;
 }
 
@@ -97,6 +100,14 @@ function DetailContent({ item }: { item: HistoryItem }) {
       { label: 'Status', value: detail.status || '-' },
     );
     notes = detail.keterangan || '-';
+  } else if (item.tipe === 'permohonan') {
+    const detail = item.detail as PermohonanResult;
+    rows.push(
+      { label: 'Jenis', value: detail.jenis === 'HOUSEHOLD_CREATE' ? 'Pembuatan KK' : detail.jenis === 'MUTATION_IN' ? 'Mutasi Masuk' : detail.jenis === 'MUTATION_OUT' ? 'Mutasi Keluar' : 'Lainnya' },
+      { label: 'Tanggal', value: detail.tanggal || item.tanggal },
+      { label: 'Status', value: detail.status === 'APPROVED' ? 'Disetujui' : detail.status === 'REJECTED' ? 'Ditolak' : 'Menunggu' },
+    );
+    notes = detail.ringkasan || '-';
   } else {
     const detail = item.detail as AspirasiResult;
     rows.push(
@@ -128,7 +139,7 @@ function DetailContent({ item }: { item: HistoryItem }) {
 
       <div className="rounded-2xl border border-input bg-background px-3 py-2.5">
         <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-          Keterangan
+          {item.tipe === 'permohonan' ? 'Ringkasan' : 'Keterangan'}
         </p>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
           {notes}
@@ -151,6 +162,13 @@ function DetailContent({ item }: { item: HistoryItem }) {
                 : ''}
             </p>
           ) : null}
+        </div>
+      ) : null}
+      
+      {item.tipe === 'permohonan' && item.detail && (item.detail as PermohonanResult).status === 'REJECTED' && (item.detail as PermohonanResult).alasanPenolakan ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-600">Alasan Penolakan</p>
+          <p className="mt-1 text-sm leading-relaxed text-red-700">{(item.detail as PermohonanResult).alasanPenolakan}</p>
         </div>
       ) : null}
     </div>
@@ -229,6 +247,28 @@ export default function HistoryClient({
             tps: item.metadata.tps ? String(item.metadata.tps) : undefined,
             keterangan: item.description,
           },
+        };
+      }
+      
+      if (item.type === 'REQUEST' || item.type === 'MUTATION') {
+        const reqType = item.type === 'MUTATION' ? (item.metadata.type === 'MUTATION_IN' ? 'MUTATION_IN' : 'MUTATION_OUT') : 'HOUSEHOLD_CREATE';
+        const reqStatus = String(item.metadata.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED';
+        return {
+          id: item.id,
+          tipe: 'permohonan',
+          tanggal: createdDate,
+          status: reqStatus === 'APPROVED' ? 'Disetujui' : reqStatus === 'REJECTED' ? 'Ditolak' : 'Menunggu',
+          statusColor: reqStatus === 'APPROVED' ? 'green' : reqStatus === 'REJECTED' ? 'red' : 'amber',
+          judul: item.title,
+          deskripsi: item.description,
+          detail: {
+            jenis: reqType as any,
+            tanggal: createdDate,
+            status: reqStatus,
+            ringkasan: item.description,
+            requestId: item.id,
+            alasanPenolakan: typeof item.metadata.rejectionReason === 'string' ? item.metadata.rejectionReason : null,
+          }
         };
       }
 
@@ -353,6 +393,28 @@ export default function HistoryClient({
           },
         };
       }
+      
+      if (item.type === 'REQUEST' || item.type === 'MUTATION') {
+        const reqType = item.type === 'MUTATION' ? (item.metadata.type === 'MUTATION_IN' ? 'MUTATION_IN' : 'MUTATION_OUT') : 'HOUSEHOLD_CREATE';
+        const reqStatus = String(item.metadata.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED';
+        return {
+          id: item.id,
+          tipe: 'permohonan' as const,
+          tanggal: createdDate,
+          status: reqStatus === 'APPROVED' ? 'Disetujui' : reqStatus === 'REJECTED' ? 'Ditolak' : 'Menunggu',
+          statusColor: reqStatus === 'APPROVED' ? 'green' : reqStatus === 'REJECTED' ? 'red' : 'amber',
+          judul: item.title,
+          deskripsi: item.description,
+          detail: {
+            jenis: reqType as any,
+            tanggal: createdDate,
+            status: reqStatus,
+            ringkasan: item.description,
+            requestId: item.id,
+            alasanPenolakan: typeof item.metadata.rejectionReason === 'string' ? item.metadata.rejectionReason : null,
+          }
+        };
+      }
 
       const status = String(item.metadata.status || 'SUBMITTED') as 'SUBMITTED' | 'REVIEWED' | 'RESOLVED';
       const adminReply = typeof item.metadata.adminReply === 'string' ? item.metadata.adminReply : null;
@@ -369,7 +431,12 @@ export default function HistoryClient({
             : status === 'REVIEWED'
               ? 'Ditanggapi'
               : 'Terkirim',
-        statusColor: status === 'RESOLVED' ? 'green' as const : 'amber' as const,
+        statusColor:
+          status === 'RESOLVED'
+            ? 'green' as const
+            : status === 'REVIEWED'
+              ? 'amber' as const
+              : 'amber' as const,
         judul: item.title,
         deskripsi: item.description,
         detail: {
@@ -391,19 +458,18 @@ export default function HistoryClient({
     intervalMs: 10000,
   });
 
-  const filtered = useMemo(() => {
-    const tab = TABS[activeTab] ?? 'Semua';
-    const tipe = tabToTipe(tab);
-    if (tipe === 'all') return items;
-    return items.filter((item) => item.tipe === tipe);
-  }, [activeTab, items]);
+  const filteredItems = useMemo(() => {
+    const selectedTipe = tabToTipe(TABS[activeTab]);
+    if (selectedTipe === 'all') return items;
+    return items.filter((item) => item.tipe === selectedTipe);
+  }, [items, activeTab]);
 
   return (
     <WargaPage>
       <PageHeader
-        title="Riwayat Aktivitas"
-        eyebrow="Portal RW 25 Cimahi"
-        description="Cek bansos, pemilu, dan laporan aspirasi Anda."
+        title="Riwayat"
+        eyebrow="Aktivitas"
+        description="Pantau status pengecekan bansos, pemilu, permohonan, dan tindak lanjut laporan."
         variant="brand"
         className="pb-7"
         titleClassName="text-xl"
@@ -413,77 +479,56 @@ export default function HistoryClient({
             variant="outline"
             size="icon"
             className="mt-1 rounded-2xl border border-white/20 bg-white/10 text-primary-foreground shadow-sm transition-colors hover:bg-white/15"
-            aria-label="Kembali ke beranda"
           >
-            <Link href="/warga">
-              <History className="h-4 w-4" aria-hidden="true" />
+            <Link href="/warga" aria-label="Kembali ke beranda">
+              <History className="h-4 w-4" />
             </Link>
           </Button>
         }
-        bottomSlot={
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-white/14 shadow-lg">
-              <Inbox className="h-7 w-7 text-white" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-bold leading-tight text-white">
-                Pantau status terbaru
-              </p>
-              <p className="mt-1 text-xs text-primary-foreground/75">Riwayat akun warga dari backend.</p>
-            </div>
-          </div>
-        }
       />
 
-      <WargaPageBody className="flex flex-col gap-4">
+      <WargaPageBody className="flex flex-col gap-5">
         <TabBar
-          tabs={[...TABS]}
+          tabs={TABS.map((label) => ({ label }))}
           activeTab={activeTab}
-          onTabChange={(index) => setActiveTab(index)}
+          onTabChange={setActiveTab}
+          className="sticky top-0 z-10 mx-auto w-fit max-w-full rounded-2xl bg-white/80 px-2 py-2 shadow-sm backdrop-blur-md"
         />
 
-        {filtered.length === 0 ? (
-          <Card className="rounded-3xl border border-input bg-muted/30 p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-background shadow-sm">
-                <Inbox className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+        <div className="flex flex-col gap-4">
+          {filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-input p-10 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+                <Inbox className="h-6 w-6 text-muted-foreground/60" />
               </div>
-              <h2 className="mt-4 text-base font-bold">Belum ada riwayat</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Mulai cek bansos, pemilu, atau kirim aspirasi dari beranda.
+              <p className="text-sm font-semibold text-foreground">
+                Belum Ada Riwayat
               </p>
-              <Button asChild className="mt-5 h-11 rounded-2xl px-6 font-semibold">
-                <Link href="/warga">Ke Beranda</Link>
-              </Button>
+              <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                Anda belum melakukan pengecekan atau mengirim laporan untuk
+                kategori ini.
+              </p>
             </div>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map((item) => {
-              const isExpanded = expandedId === item.id;
-              const Icon = tipeIcon(item.tipe);
-              return (
-                <div key={item.id} className={cn('group')}>
-                  <HistoryCard
-                    tanggal={item.tanggal}
-                    judul={item.judul}
-                    deskripsi={item.deskripsi}
-                    status={item.status}
-                    statusColor={item.statusColor}
-                    isExpanded={isExpanded}
-                    onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
-                  >
-                    <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-muted-foreground">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                      <span className="capitalize">{item.tipe}</span>
-                    </div>
-                    <DetailContent item={item} />
-                  </HistoryCard>
-                </div>
-              );
-            })}
-          </div>
-        )}
+          ) : (
+            filteredItems.map((item) => (
+              <HistoryCard
+                key={item.id}
+                icon={tipeIcon(item.tipe)}
+                title={item.judul}
+                description={item.deskripsi}
+                date={item.tanggal}
+                status={item.status}
+                statusColor={item.statusColor}
+                isExpanded={expandedId === item.id}
+                onToggle={() =>
+                  setExpandedId(expandedId === item.id ? null : item.id)
+                }
+              >
+                <DetailContent item={item} />
+              </HistoryCard>
+            ))
+          )}
+        </div>
       </WargaPageBody>
     </WargaPage>
   );

@@ -40,13 +40,19 @@ export default function PageHeader({
     <header
       className={cn(
         "relative overflow-hidden border-b border-input transition-colors duration-300",
-        "min-h-[208px]",
+        "min-h-[160px]",
         isBrand ? "bg-primary text-primary-foreground" : "bg-background text-foreground",
         disableSafeArea ? "px-5 py-4" : "safe-top px-5 pb-4",
         className,
       )}
     >
-      {isBrand ? <div className="batik-primary-overlay" /> : null}
+      {isBrand ? (
+        <>
+          <div className="pointer-events-none absolute -right-10 -top-10 h-64 w-64 rounded-full bg-white/[0.08]" />
+          <div className="pointer-events-none absolute right-16 top-10 h-32 w-32 rounded-full bg-white/[0.12]" />
+          <div className="pointer-events-none absolute -bottom-10 right-40 h-48 w-48 rounded-full bg-white/[0.08]" />
+        </>
+      ) : null}
 
       <div className={cn("relative z-10 flex items-start justify-between gap-3", contentClassName)}>
         <div className="min-w-0 flex-1">

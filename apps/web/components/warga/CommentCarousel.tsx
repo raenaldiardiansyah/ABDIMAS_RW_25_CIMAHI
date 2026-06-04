@@ -62,6 +62,33 @@ export default function CommentCarousel({ refreshKey = 0 }: { refreshKey?: numbe
   const scrollRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<ReplyItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollLeft = scrollRef.current.scrollLeft;
+    const width = scrollRef.current.clientWidth;
+    const index = Math.round(scrollLeft / (width + 12));
+    setActiveIndex(index);
+  };
+
+  const dotsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (dotsRef.current) {
+      const activeDot = dotsRef.current.children[activeIndex] as HTMLElement;
+      if (activeDot) {
+        const containerWidth = dotsRef.current.clientWidth;
+        const dotLeft = activeDot.offsetLeft;
+        const dotWidth = activeDot.clientWidth;
+        
+        dotsRef.current.scrollTo({
+          left: dotLeft - containerWidth / 2 + dotWidth / 2,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [activeIndex]);
 
   useEffect(() => {
     let active = true;
@@ -133,8 +160,12 @@ export default function CommentCarousel({ refreshKey = 0 }: { refreshKey?: numbe
             Belum ada tanggapan admin untuk laporan Anda.
           </div>
         ) : (
-          <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div ref={scrollRef} className="flex w-max gap-3 scroll-smooth">
+          <div className="relative">
+            <div 
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               {visibleItems.map((item) => {
                 const categoryKey = item.category?.toLowerCase() ?? 'masukan';
                 const tone = CATEGORY_TONE[categoryKey] ?? CATEGORY_TONE.masukan;
@@ -142,7 +173,7 @@ export default function CommentCarousel({ refreshKey = 0 }: { refreshKey?: numbe
                 return (
                   <article
                     key={item.id}
-                    className="group relative w-[84%] max-w-82.5 shrink-0 overflow-hidden rounded-3xl bg-muted/30 p-4 shadow-sm transition-all duration-300 hover:bg-muted/45 hover:shadow-md active:scale-[0.98]"
+                    className="group relative w-full shrink-0 snap-center overflow-hidden rounded-3xl bg-muted/30 p-4 shadow-sm transition-all duration-300 hover:bg-muted/45 hover:shadow-md active:scale-[0.98]"
                   >
                     <div
                       className={cn(
@@ -203,6 +234,30 @@ export default function CommentCarousel({ refreshKey = 0 }: { refreshKey?: numbe
                 );
               })}
             </div>
+
+            {visibleItems.length > 1 && (
+              <div className="mt-2 flex justify-center pb-2">
+                <div 
+                  ref={dotsRef}
+                  className="flex items-center gap-1.5 overflow-x-auto max-w-[80px] scroll-smooth px-[32px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mask-edges"
+                  style={{ maskImage: 'linear-gradient(to right, transparent, black 20%, black 80%, transparent)' }}
+                >
+                  {visibleItems.map((_, idx) => {
+                    const distance = Math.abs(activeIndex - idx);
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          'shrink-0 h-1.5 rounded-full transition-all duration-300',
+                          activeIndex === idx ? 'w-4 bg-primary' : 'w-1.5 bg-primary/20',
+                          distance > 2 ? 'opacity-30 scale-75' : 'opacity-100 scale-100'
+                        )}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
