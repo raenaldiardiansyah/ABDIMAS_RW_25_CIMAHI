@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Search } from 'lucide-react';
+import { CalendarDays, ChevronDown, Clock, MapPin, Search } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { platformFetch } from '@/lib/api/platform';
@@ -16,10 +16,22 @@ import { WargaPage, WargaPageBody } from '@/app/(app)/warga/_components/warga-pa
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 const CATEGORY_LABEL: Record<string, string> = {
-  bansos: 'Bansos',
-  administrasi: 'Admin',
+  rapat: 'Rapat',
   sosial: 'Sosial',
+  kesehatan: 'Kesehatan',
+  keamanan: 'Keamanan',
   lainnya: 'Lainnya',
+};
+
+type ActivityEvent = {
+  id: string;
+  tanggal: string;
+  judul: string;
+  waktu: string;
+  lokasi: string;
+  kategori: 'rapat' | 'sosial' | 'kesehatan' | 'keamanan' | 'lainnya';
+  deskripsi: string;
+  diperbaruiPada: string;
 };
 
 function pad2(value: number) {
@@ -53,6 +65,16 @@ function formatFullDateId(isoDate: string) {
     month: 'long',
     year: 'numeric',
   }).format(date);
+}
+
+function formatTimestampId(isoDate: string) {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(isoDate));
 }
 
 function monthStart(date: Date) {
@@ -112,15 +134,8 @@ export default function JadwalClient() {
   const [selectedIso, setSelectedIso] = useState(todayIso);
   const [activeMonth] = useState(() => monthStart(parseIsoDateLocal(todayIso)));
   const [query, setQuery] = useState('');
-  const [events, setEvents] = useState<Array<{
-    id: string;
-    tanggal: string;
-    judul: string;
-    waktu: string;
-    lokasi: string;
-    kategori: 'rapat' | 'sosial' | 'kesehatan' | 'keamanan' | 'lainnya';
-    deskripsi?: string;
-  }>>([]);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
 
   const updatedAtLabel = new Intl.DateTimeFormat('id-ID', {
     day: '2-digit',
@@ -143,6 +158,7 @@ export default function JadwalClient() {
         date: string;
         startTime?: string | null;
         endTime?: string | null;
+        updatedAt: string;
       }>
     >(`/schedule?month=${todayIso.slice(0, 7)}`)
       .then(({ data }) => {
@@ -156,6 +172,7 @@ export default function JadwalClient() {
             lokasi: item.location,
             kategori: item.category,
             deskripsi: item.description,
+            diperbaruiPada: item.updatedAt,
           })),
         );
       })
@@ -276,7 +293,10 @@ export default function JadwalClient() {
                     <button
                       key={iso}
                       type="button"
-                      onClick={() => setSelectedIso(iso)}
+                      onClick={() => {
+                        setSelectedIso(iso);
+                        setExpandedEventId(null);
+                      }}
                       className={cn(
                         'relative flex aspect-square w-full flex-col items-center justify-center rounded-2xl transition-all duration-200',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -357,7 +377,10 @@ export default function JadwalClient() {
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setExpandedEventId(null);
+                }}
                 placeholder="Cari kegiatan, lokasi, atau kategori"
                 className="h-10 rounded-2xl border-border bg-background pl-9 text-xs shadow-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
@@ -369,13 +392,20 @@ export default function JadwalClient() {
               <div className="divide-y divide-border/70">
                 {selectedEvents.map((event) => {
                   const categoryLabel = getCategoryLabel(event.kategori);
+                  const isExpanded = expandedEventId === event.id;
 
                   return (
                     <article
                       key={event.id}
                       className="px-4 py-4 transition-colors hover:bg-muted/30"
                     >
-                      <div className="flex items-start gap-3">
+                      <button
+                        type="button"
+                        aria-expanded={isExpanded}
+                        aria-controls={`agenda-detail-${event.id}`}
+                        onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
+                        className="flex w-full items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
                         <div className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                           <CalendarDays className="size-4" aria-hidden="true" />
                         </div>
@@ -394,7 +424,7 @@ export default function JadwalClient() {
                             </span>
                           </div>
 
-                          <h3 className="line-clamp-1 text-sm font-bold tracking-tight text-foreground">
+                          <h3 className="text-sm font-bold tracking-tight text-foreground">
                             {event.judul}
                           </h3>
 
@@ -402,7 +432,40 @@ export default function JadwalClient() {
                             {event.lokasi}
                           </p>
                         </div>
-                      </div>
+
+                        <ChevronDown
+                          className={cn(
+                            'mt-4 size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                            isExpanded && 'rotate-180 text-primary'
+                          )}
+                          aria-hidden="true"
+                        />
+                      </button>
+
+                      {isExpanded ? (
+                        <div
+                          id={`agenda-detail-${event.id}`}
+                          className="mt-4 rounded-3xl border border-border/70 bg-muted/30 p-4"
+                        >
+                          <p className="text-xs leading-relaxed text-foreground">
+                            {event.deskripsi}
+                          </p>
+
+                          <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-start gap-2">
+                              <Clock className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                              <span>{formatFullDateId(event.tanggal)} • {event.waktu}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <MapPin className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                              <span>{event.lokasi}</span>
+                            </div>
+                            <p className="text-[11px]">
+                              Diperbarui: {formatTimestampId(event.diperbaruiPada)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}

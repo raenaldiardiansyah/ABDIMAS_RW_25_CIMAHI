@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CalendarDays, Flag, MapPin, PlusCircle } from 'lucide-react';
+import { CalendarBlank as CalendarDays, Flag, MapPin, PlusCircle } from '@phosphor-icons/react';
 
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Badge } from '@/components/ui/badge';

@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Inbox, Loader2, RotateCw } from 'lucide-react';
+import { WarningCircle as AlertTriangle, Tray as Inbox, SpinnerGap as Loader2, ArrowClockwise as RotateCw } from '@phosphor-icons/react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

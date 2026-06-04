@@ -4,16 +4,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
-import {
-  Calendar,
-  CheckCircle2,
-  ChevronLeft,
-  FileText,
-  MapPin,
-  Settings,
-  LogIn,
-  LogOut,
-} from 'lucide-react';
+import { CalendarBlank as Calendar, CheckCircle as CheckCircle2, CaretLeft as ChevronLeft, FileText, MapPin, Gear as Settings, SignIn as LogIn, SignOut as LogOut } from '@phosphor-icons/react';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

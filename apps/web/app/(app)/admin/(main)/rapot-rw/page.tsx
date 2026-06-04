@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 import { useEffect, useState } from 'react';
-import { Download, Users, FileText, RefreshCw, Eye, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DownloadSimple as Download, Users, FileText, ArrowClockwise as RefreshCw, Eye, MagnifyingGlass as Search, CaretLeft as ChevronLeft, CaretRight as ChevronRight } from '@phosphor-icons/react';
 
 import {
   Dialog,

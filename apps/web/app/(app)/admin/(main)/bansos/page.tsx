@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Eye, HandCoins, PlusCircle, XCircle } from 'lucide-react';
+import { CheckCircle as CheckCircle2, Eye, HandCoins, PlusCircle, XCircle } from '@phosphor-icons/react';
 
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Badge } from '@/components/ui/badge';
@@ -322,7 +322,7 @@ export default function AdminBansosPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="flex flex-col justify-end gap-3 sm:flex-row">
                         <Button
                           type="button"
                           onClick={() => setViewedApplication(application)}

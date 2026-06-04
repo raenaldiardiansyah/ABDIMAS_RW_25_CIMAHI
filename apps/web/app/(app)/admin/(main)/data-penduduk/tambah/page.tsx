@@ -2,17 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowRight,
-  CheckCircle2,
-  ChevronLeft,
-  MapPin,
-  Plus,
-  Save,
-  Trash2,
-  User,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle as CheckCircle2, CaretLeft as ChevronLeft, MapPin, Plus, FloppyDisk as Save, Trash as Trash2, User, Users } from '@phosphor-icons/react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';

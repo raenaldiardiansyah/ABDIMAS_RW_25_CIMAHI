@@ -3,18 +3,7 @@ import { Button } from '@/components/ui/button';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Moon,
-  Sun,
-  Bell,
-  Globe,
-  ShieldCheck,
-  LogOut,
-  ChevronRight,
-  Info,
-  Smartphone,
-  Check,
-} from 'lucide-react';
+import { Moon, Sun, Bell, Globe, ShieldCheck, SignOut as LogOut, CaretRight as ChevronRight, Info, DeviceMobile as Smartphone, Check } from '@phosphor-icons/react';
 import { useToast } from '@/components/ui/use-toast';
 import {
   AlertDialog,

@@ -1,14 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  MessageSquareText,
-  RefreshCw,
-  Search,
-} from 'lucide-react';
+import { CaretLeft as ChevronLeft, CaretRight as ChevronRight, Eye, ChatText as MessageSquareText, ArrowClockwise as RefreshCw, MagnifyingGlass as Search } from '@phosphor-icons/react';
 
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Button } from '@/components/ui/button';

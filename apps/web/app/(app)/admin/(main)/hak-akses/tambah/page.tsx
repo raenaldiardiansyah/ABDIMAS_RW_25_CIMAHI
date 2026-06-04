@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, ChevronRight, Shield } from 'lucide-react';
+import { ArrowLeft, CheckCircle as CheckCircle2, CaretRight as ChevronRight, Shield } from '@phosphor-icons/react';
 
 import { platformFetch } from '@/lib/api/platform';
 import { cn } from '@/lib/utils';

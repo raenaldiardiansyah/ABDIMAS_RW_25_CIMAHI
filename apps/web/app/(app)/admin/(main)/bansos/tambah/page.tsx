@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { createBansosProgramSchema } from '@abdimas/contracts';
-import { ArrowLeft, PlusCircle } from 'lucide-react';
+import { ArrowLeft, PlusCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 
 import { ActivityTimeRangeField } from '@/components/admin/ActivityTimeRangeField';

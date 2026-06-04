@@ -55,7 +55,7 @@ async function mapRequest(row: typeof serviceRequest.$inferSelect) {
 async function createRequestHistoryEntry(input: {
   userId: string;
   requestId: string;
-  type: "HOUSEHOLD_CREATE" | "MUTATION_IN" | "MUTATION_OUT" | "BANSOS_APPLICATION";
+  type: "HOUSEHOLD_CREATE" | "MEMBER_CREATE" | "MUTATION_IN" | "MUTATION_OUT" | "BANSOS_APPLICATION";
   status: "PENDING" | "APPROVED" | "REJECTED";
   title: string;
   description: string;
@@ -260,13 +260,13 @@ export const userRequestsRoutes = new Hono<{ Variables: { sessionUser: { id: str
     await createRequestHistoryEntry({
       userId: sessionUser.id,
       requestId: createdRow.id,
-      type: "MEMBER_CREATE" as any,
+      type: "MEMBER_CREATE",
       status: "PENDING",
       title: "Permohonan Tambah Anggota",
       description: `Permohonan penambahan anggota keluarga (${body.name}) telah dikirim.`,
     });
 
-    const payload = { success: true as const, data: mapRequest(createdRow) };
+    const payload = { success: true as const, data: await mapRequest(createdRow) };
     serviceRequestResponseSchema.parse(payload);
     return created(c, payload.data);
   })

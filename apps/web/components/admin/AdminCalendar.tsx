@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CalendarDays } from 'lucide-react';
+import { CalendarBlank as CalendarDays } from '@phosphor-icons/react';
 
 import { formatActivityTimeRange } from '@/lib/activity-time';
 import { cn } from '@/lib/utils';

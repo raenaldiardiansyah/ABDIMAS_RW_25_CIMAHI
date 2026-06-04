@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { UserPlus, Pencil, Trash2, FileText, ArrowLeft, Download, UserPlus2 } from 'lucide-react';
+import { UserPlus, PencilSimple as Pencil, Trash as Trash2, FileText, ArrowLeft, DownloadSimple as Download, UserPlus as UserPlus2 } from '@phosphor-icons/react';
 
 import {
   AlertDialog,

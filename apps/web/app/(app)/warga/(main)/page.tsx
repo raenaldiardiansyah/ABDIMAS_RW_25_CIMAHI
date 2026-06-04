@@ -7,9 +7,9 @@ import {
   ArrowRight,
   CheckCircle2,
   Gift,
+  Flag,
   LockKeyhole,
   Megaphone,
-  ShieldCheck,
   Settings,
   Moon,
   Sun,
@@ -25,6 +25,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -49,16 +56,74 @@ import { formatBansosPeriod } from '@/lib/bansos';
 import type {
   BansosResult,
   PemiluResult,
-  StatusBansos,
-  StatusPemilu,
 } from '@/types/warga';
 
-type ActiveSheet = 'bansos' | 'pemilu' | 'aspirasi' | null;
+type ActiveSheet = 'bansos' | 'pemilu' | 'aspirasi' | 'penduduk' | 'mutasi' | 'tambahKk' | null;
 
 type PopupState = {
   variant: 'success' | 'warning' | 'error';
   judul: string;
 } | null;
+
+type PendudukForm = {
+  nik: string;
+  name: string;
+  birthPlace: string;
+  birthDate: string;
+  gender: string;
+  religion: string;
+  maritalStatus: string;
+  education: string;
+  relationship: string;
+};
+
+type MutationForm = {
+  type: 'MUTATION_IN' | 'MUTATION_OUT' | '';
+  mutationDate: string;
+  fromAddress: string;
+  toAddress: string;
+  targetRt: string;
+  phone: string;
+  reason: string;
+};
+
+type HouseholdForm = {
+  kkNumber: string;
+  address: string;
+  rt: string;
+  rw: string;
+};
+
+const INITIAL_PENDUDUK_FORM: PendudukForm = {
+  nik: '',
+  name: '',
+  birthPlace: '',
+  birthDate: '',
+  gender: '',
+  religion: '',
+  maritalStatus: '',
+  education: '',
+  relationship: '',
+};
+
+const INITIAL_MUTATION_FORM: MutationForm = {
+  type: '',
+  mutationDate: '',
+  fromAddress: '',
+  toAddress: '',
+  targetRt: '',
+  phone: '',
+  reason: '',
+};
+
+const INITIAL_HOUSEHOLD_FORM: HouseholdForm = {
+  kkNumber: '',
+  address: '',
+  rt: '',
+  rw: '25',
+};
+
+const RT_OPTIONS = ['01', '02', '03', '04', '05'];
 
 const BANSOS_PROGRAMS = [
   {
@@ -77,6 +142,7 @@ const BANSOS_PROGRAMS = [
     desc: 'BST · Bantuan langsung tunai',
   },
 ];
+void BANSOS_PROGRAMS;
 
 type BansosProgramCard = {
   id: string;
@@ -132,8 +198,14 @@ export default function WargaHomePage() {
   const [aspirasiUraian, setAspirasiUraian] = useState('');
   const [aspirasiFile, setAspirasiFile] = useState<File | null>(null);
   const [submittedAspirasiJenis, setSubmittedAspirasiJenis] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState<null | 'bansos' | 'pemilu' | 'aspirasi'>(null);
+  const [submitting, setSubmitting] = useState<null | 'bansos' | 'pemilu' | 'aspirasi' | 'penduduk' | 'mutasi' | 'tambahKk'>(null);
   const [aspirationRefreshKey, setAspirationRefreshKey] = useState(0);
+  const [pendudukForm, setPendudukForm] = useState<PendudukForm>(INITIAL_PENDUDUK_FORM);
+  const [mutationForm, setMutationForm] = useState<MutationForm>(INITIAL_MUTATION_FORM);
+  const [householdForm, setHouseholdForm] = useState<HouseholdForm>(INITIAL_HOUSEHOLD_FORM);
+  const [pendudukErrors, setPendudukErrors] = useState<Partial<Record<keyof PendudukForm, string>>>({});
+  const [mutationErrors, setMutationErrors] = useState<Partial<Record<keyof MutationForm, string>>>({});
+  const [householdErrors, setHouseholdErrors] = useState<Partial<Record<keyof HouseholdForm, string>>>({});
 
   useEffect(() => {
     let active = true;
@@ -431,6 +503,168 @@ export default function WargaHomePage() {
     }
   };
 
+  const openQuickActionSheet = (sheet: string) => {
+    if (isRestricted && (sheet === 'aspirasi' || sheet === 'penduduk' || sheet === 'mutasi' || sheet === 'tambahKk')) {
+      setBlockedMessage('Akun Anda perlu diverifikasi admin RW/RT sebelum mengirim pengajuan.');
+      toast({
+        title: 'Akses terbatas',
+        description: 'Tunggu verifikasi admin sebelum menggunakan fitur pengajuan.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (sheet === 'aspirasi' || sheet === 'penduduk' || sheet === 'mutasi' || sheet === 'tambahKk') {
+      setBlockedMessage(null);
+      setActiveSheet(sheet);
+    }
+  };
+
+  const updatePendudukForm = (field: keyof PendudukForm, value: string) => {
+    setPendudukForm((prev) => ({ ...prev, [field]: value }));
+    setPendudukErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const updateMutationForm = (field: keyof MutationForm, value: string) => {
+    setMutationForm((prev) => ({ ...prev, [field]: value }));
+    setMutationErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const updateHouseholdForm = (field: keyof HouseholdForm, value: string) => {
+    setHouseholdForm((prev) => ({ ...prev, [field]: value }));
+    setHouseholdErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const validatePendudukForm = () => {
+    const nextErrors: Partial<Record<keyof PendudukForm, string>> = {};
+    if (!/^\d{16}$/.test(pendudukForm.nik)) nextErrors.nik = 'NIK wajib 16 digit angka.';
+    if (pendudukForm.name.trim().length < 2) nextErrors.name = 'Nama wajib diisi minimal 2 karakter.';
+    if (!pendudukForm.gender) nextErrors.gender = 'Jenis kelamin wajib dipilih.';
+    if (!pendudukForm.relationship.trim()) nextErrors.relationship = 'Hubungan keluarga wajib dipilih.';
+    if (!pendudukForm.religion.trim()) nextErrors.religion = 'Agama wajib dipilih.';
+    if (!pendudukForm.maritalStatus.trim()) nextErrors.maritalStatus = 'Status perkawinan wajib dipilih.';
+    if (!pendudukForm.education.trim()) nextErrors.education = 'Pendidikan wajib dipilih.';
+    setPendudukErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validateMutationForm = () => {
+    const nextErrors: Partial<Record<keyof MutationForm, string>> = {};
+    if (!mutationForm.type) nextErrors.type = 'Jenis mutasi wajib dipilih.';
+    if (!mutationForm.mutationDate) nextErrors.mutationDate = 'Tanggal mutasi wajib diisi.';
+    if (mutationForm.type === 'MUTATION_IN' && !mutationForm.toAddress.trim()) nextErrors.toAddress = 'Alamat tujuan wajib diisi untuk mutasi masuk.';
+    if (mutationForm.type === 'MUTATION_OUT' && !mutationForm.fromAddress.trim()) nextErrors.fromAddress = 'Alamat asal wajib diisi untuk mutasi keluar.';
+    if (!mutationForm.targetRt) nextErrors.targetRt = 'RT tujuan wajib dipilih.';
+    if (!mutationForm.phone.trim()) nextErrors.phone = 'Nomor telepon wajib diisi.';
+    if (!mutationForm.reason.trim()) nextErrors.reason = 'Alasan mutasi wajib diisi.';
+    setMutationErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validateHouseholdForm = () => {
+    const nextErrors: Partial<Record<keyof HouseholdForm, string>> = {};
+    if (!/^\d{16}$/.test(householdForm.kkNumber)) nextErrors.kkNumber = 'Nomor KK wajib 16 digit angka.';
+    if (householdForm.address.trim().length < 5) nextErrors.address = 'Alamat wajib diisi minimal 5 karakter.';
+    if (!/^\d{1,3}$/.test(householdForm.rt)) nextErrors.rt = 'RT wajib dipilih.';
+    if (!/^\d{1,3}$/.test(householdForm.rw)) nextErrors.rw = 'RW wajib diisi.';
+    setHouseholdErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handlePendudukSubmit = async () => {
+    if (!validatePendudukForm()) return;
+    setSubmitting('penduduk');
+    try {
+      await platformFetch('/user-requests/member-create', {
+        method: 'POST',
+        body: JSON.stringify({
+          nik: pendudukForm.nik,
+          name: pendudukForm.name.trim(),
+          birthPlace: pendudukForm.birthPlace.trim() || undefined,
+          birthDate: pendudukForm.birthDate || undefined,
+          gender: pendudukForm.gender,
+          religion: pendudukForm.religion,
+          maritalStatus: pendudukForm.maritalStatus,
+          education: pendudukForm.education,
+          relationship: pendudukForm.relationship,
+        }),
+      });
+      setPendudukForm(INITIAL_PENDUDUK_FORM);
+      setActiveSheet(null);
+      setPopup({ variant: 'warning', judul: 'Pengajuan Data Penduduk Terkirim' });
+      toast({
+        title: 'Pengajuan data penduduk terkirim',
+        description: 'Data akan masuk ke admin untuk diverifikasi.',
+        variant: 'success',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal mengirim pengajuan data penduduk.';
+      toast({ title: 'Gagal mengirim pengajuan', description: message, variant: 'destructive' });
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const handleMutationSubmit = async () => {
+    if (!validateMutationForm()) return;
+    setSubmitting('mutasi');
+    try {
+      await platformFetch('/user-requests/mutation', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: mutationForm.type,
+          mutationDate: mutationForm.mutationDate,
+          fromAddress: mutationForm.fromAddress.trim() || undefined,
+          toAddress: mutationForm.toAddress.trim() || undefined,
+          targetRt: mutationForm.targetRt,
+          phone: mutationForm.phone.trim(),
+          reason: mutationForm.reason.trim(),
+        }),
+      });
+      setMutationForm(INITIAL_MUTATION_FORM);
+      setActiveSheet(null);
+      setPopup({ variant: 'warning', judul: 'Pengajuan Mutasi Terkirim' });
+      toast({
+        title: 'Pengajuan mutasi terkirim',
+        description: 'Permohonan mutasi menunggu review admin.',
+        variant: 'success',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal mengirim pengajuan mutasi.';
+      toast({ title: 'Gagal mengirim mutasi', description: message, variant: 'destructive' });
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const handleHouseholdSubmit = async () => {
+    if (!validateHouseholdForm()) return;
+    setSubmitting('tambahKk');
+    try {
+      await platformFetch('/user-requests/household-create', {
+        method: 'POST',
+        body: JSON.stringify({
+          kkNumber: householdForm.kkNumber,
+          address: householdForm.address.trim(),
+          rt: householdForm.rt,
+          rw: householdForm.rw,
+        }),
+      });
+      setHouseholdForm(INITIAL_HOUSEHOLD_FORM);
+      setActiveSheet(null);
+      setPopup({ variant: 'warning', judul: 'Pengajuan KK Terkirim' });
+      toast({
+        title: 'Pengajuan KK terkirim',
+        description: 'Permohonan kartu keluarga menunggu review admin.',
+        variant: 'success',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal mengirim pengajuan KK.';
+      toast({ title: 'Gagal mengirim KK', description: message, variant: 'destructive' });
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
   const closeSheet = () => setActiveSheet(null);
 
   const closePopup = () => {
@@ -554,7 +788,7 @@ export default function WargaHomePage() {
           </Alert>
         )}
 
-        <QuickActionsPanel isRestricted={isRestricted} />
+        <QuickActionsPanel isRestricted={isRestricted} onAction={openQuickActionSheet} />
 
         {isRestricted ? (
           <VerificationRequiredCard rejectionReason={identity.rejectionReason} />
@@ -573,7 +807,7 @@ export default function WargaHomePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <FeatureCard
-                icon={ShieldCheck}
+                icon={Flag}
                 judul="Cek DPT/TPS"
                 deskripsi="Periksa status pemilih Anda di DPT."
                 badge="Pemilu"
@@ -914,6 +1148,279 @@ export default function WargaHomePage() {
         </div>
       </SlideUpSheet>
 
+      <SlideUpSheet
+        isOpen={activeSheet === 'penduduk'}
+        onClose={closeSheet}
+        title="Pengajuan Data Penduduk"
+        deskripsi="Data akan dikirim ke admin untuk diverifikasi sebelum masuk ke data warga."
+      >
+        <div className="flex max-h-[72dvh] flex-col gap-4 overflow-y-auto pr-1">
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-sm font-semibold text-foreground">Identitas warga</p>
+            <p className="mt-1 text-xs text-muted-foreground">Gunakan data sesuai KTP atau dokumen keluarga.</p>
+          </div>
+
+          <FormInput
+            label="NIK"
+            value={pendudukForm.nik}
+            onChange={(e) => updatePendudukForm('nik', e.target.value.replace(/\D/g, '').slice(0, 16))}
+            placeholder="16 digit NIK"
+            maxLength={16}
+            inputMode="numeric"
+            error={pendudukErrors.nik}
+          />
+          <FormInput
+            label="Nama Lengkap"
+            value={pendudukForm.name}
+            onChange={(e) => updatePendudukForm('name', e.target.value)}
+            placeholder="Sesuai KTP"
+            error={pendudukErrors.name}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormInput
+              label="Tempat Lahir"
+              value={pendudukForm.birthPlace}
+              onChange={(e) => updatePendudukForm('birthPlace', e.target.value)}
+              placeholder="Contoh: Cimahi"
+            />
+            <FormInput
+              label="Tanggal Lahir"
+              type="date"
+              value={pendudukForm.birthDate}
+              onChange={(e) => updatePendudukForm('birthDate', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-sm font-semibold text-foreground">Jenis Kelamin</Label>
+            <RadioGroup
+              value={pendudukForm.gender}
+              onValueChange={(value) => updatePendudukForm('gender', value)}
+              className="grid grid-cols-2 gap-2"
+            >
+              {[
+                ['L', 'Laki-laki'],
+                ['P', 'Perempuan'],
+              ].map(([value, label]) => (
+                <Label
+                  key={value}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-2xl border p-3 text-sm font-semibold',
+                    pendudukForm.gender === value ? 'border-primary/30 bg-primary text-primary-foreground' : 'border-border bg-card'
+                  )}
+                >
+                  <RadioGroupItem value={value} />
+                  {label}
+                </Label>
+              ))}
+            </RadioGroup>
+            {pendudukErrors.gender ? <p className="text-xs text-destructive">{pendudukErrors.gender}</p> : null}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField
+              label="Hubungan Keluarga"
+              value={pendudukForm.relationship}
+              onValueChange={(value) => updatePendudukForm('relationship', value)}
+              placeholder="Pilih hubungan"
+              error={pendudukErrors.relationship}
+              options={['Kepala Keluarga', 'Suami', 'Istri', 'Anak', 'Famili Lain']}
+            />
+            <SelectField
+              label="Agama"
+              value={pendudukForm.religion}
+              onValueChange={(value) => updatePendudukForm('religion', value)}
+              placeholder="Pilih agama"
+              error={pendudukErrors.religion}
+              options={['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']}
+            />
+            <SelectField
+              label="Status Perkawinan"
+              value={pendudukForm.maritalStatus}
+              onValueChange={(value) => updatePendudukForm('maritalStatus', value)}
+              placeholder="Pilih status"
+              error={pendudukErrors.maritalStatus}
+              options={['Belum Kawin', 'Kawin', 'Cerai Hidup', 'Cerai Mati']}
+            />
+            <SelectField
+              label="Pendidikan"
+              value={pendudukForm.education}
+              onValueChange={(value) => updatePendudukForm('education', value)}
+              placeholder="Pilih pendidikan"
+              error={pendudukErrors.education}
+              options={['Tidak/Belum Sekolah', 'SD/Sederajat', 'SMP/Sederajat', 'SMA/Sederajat', 'Diploma', 'Sarjana']}
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={handlePendudukSubmit}
+            disabled={submitting === 'penduduk'}
+            className="h-12 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            {submitting === 'penduduk' ? 'Mengirim...' : 'Kirim Pengajuan'}
+          </Button>
+        </div>
+      </SlideUpSheet>
+
+      <SlideUpSheet
+        isOpen={activeSheet === 'mutasi'}
+        onClose={closeSheet}
+        title="Pengajuan Mutasi"
+        deskripsi="Ajukan mutasi masuk atau keluar untuk direview admin."
+      >
+        <div className="flex max-h-[72dvh] flex-col gap-4 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-sm font-semibold text-foreground">Jenis Mutasi</Label>
+            <RadioGroup
+              value={mutationForm.type}
+              onValueChange={(value) => updateMutationForm('type', value)}
+              className="grid grid-cols-2 gap-2"
+            >
+              {[
+                ['MUTATION_IN', 'Mutasi Masuk'],
+                ['MUTATION_OUT', 'Mutasi Keluar'],
+              ].map(([value, label]) => (
+                <Label
+                  key={value}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-2xl border p-3 text-sm font-semibold',
+                    mutationForm.type === value ? 'border-primary/30 bg-primary text-primary-foreground' : 'border-border bg-card'
+                  )}
+                >
+                  <RadioGroupItem value={value} />
+                  {label}
+                </Label>
+              ))}
+            </RadioGroup>
+            {mutationErrors.type ? <p className="text-xs text-destructive">{mutationErrors.type}</p> : null}
+          </div>
+
+          <FormInput
+            label="Tanggal Mutasi"
+            type="date"
+            value={mutationForm.mutationDate}
+            onChange={(e) => updateMutationForm('mutationDate', e.target.value)}
+            error={mutationErrors.mutationDate}
+          />
+          <FormTextarea
+            label="Alamat Asal"
+            value={mutationForm.fromAddress}
+            onChange={(value) => updateMutationForm('fromAddress', value)}
+            placeholder="Alamat lama atau asal perpindahan"
+            maxLength={255}
+            error={mutationErrors.fromAddress}
+          />
+          <FormTextarea
+            label="Alamat Tujuan"
+            value={mutationForm.toAddress}
+            onChange={(value) => updateMutationForm('toAddress', value)}
+            placeholder="Alamat baru atau tujuan perpindahan"
+            maxLength={255}
+            error={mutationErrors.toAddress}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField
+              label="RT Tujuan"
+              value={mutationForm.targetRt}
+              onValueChange={(value) => updateMutationForm('targetRt', value)}
+              placeholder="Pilih RT"
+              error={mutationErrors.targetRt}
+              options={RT_OPTIONS.map((rt) => `RT ${rt}`)}
+              getValue={(label) => label.replace('RT ', '')}
+            />
+            <FormInput
+              label="Nomor Telepon"
+              value={mutationForm.phone}
+              onChange={(e) => updateMutationForm('phone', e.target.value.replace(/[^\d+]/g, '').slice(0, 20))}
+              placeholder="08..."
+              inputMode="tel"
+              error={mutationErrors.phone}
+            />
+          </div>
+
+          <FormTextarea
+            label="Alasan Mutasi"
+            value={mutationForm.reason}
+            onChange={(value) => updateMutationForm('reason', value)}
+            placeholder="Contoh: pindah domisili karena pekerjaan"
+            maxLength={255}
+            error={mutationErrors.reason}
+          />
+
+          <Button
+            type="button"
+            onClick={handleMutationSubmit}
+            disabled={submitting === 'mutasi'}
+            className="h-12 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            {submitting === 'mutasi' ? 'Mengirim...' : 'Kirim Pengajuan'}
+          </Button>
+        </div>
+      </SlideUpSheet>
+
+      <SlideUpSheet
+        isOpen={activeSheet === 'tambahKk'}
+        onClose={closeSheet}
+        title="Pengajuan Tambah KK"
+        deskripsi="Ajukan pembuatan kartu keluarga baru untuk direview admin."
+      >
+        <div className="flex max-h-[72dvh] flex-col gap-4 overflow-y-auto pr-1">
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-sm font-semibold text-foreground">Kepala keluarga memakai akun aktif</p>
+            <p className="mt-1 text-xs text-muted-foreground">Admin akan memverifikasi akun warga sebagai kepala keluarga.</p>
+          </div>
+
+          <FormInput
+            label="Nomor Kartu Keluarga"
+            value={householdForm.kkNumber}
+            onChange={(e) => updateHouseholdForm('kkNumber', e.target.value.replace(/\D/g, '').slice(0, 16))}
+            placeholder="16 digit nomor KK"
+            maxLength={16}
+            inputMode="numeric"
+            error={householdErrors.kkNumber}
+          />
+          <FormTextarea
+            label="Alamat Lengkap"
+            value={householdForm.address}
+            onChange={(value) => updateHouseholdForm('address', value)}
+            placeholder="Nama jalan, nomor rumah, gang, kelurahan, kecamatan"
+            maxLength={255}
+            error={householdErrors.address}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <SelectField
+              label="RT"
+              value={householdForm.rt}
+              onValueChange={(value) => updateHouseholdForm('rt', value)}
+              placeholder="Pilih RT"
+              error={householdErrors.rt}
+              options={RT_OPTIONS.map((rt) => `RT ${rt}`)}
+              getValue={(label) => label.replace('RT ', '')}
+            />
+            <FormInput
+              label="RW"
+              value={householdForm.rw}
+              onChange={(e) => updateHouseholdForm('rw', e.target.value.replace(/\D/g, '').slice(0, 3))}
+              placeholder="25"
+              inputMode="numeric"
+              error={householdErrors.rw}
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={handleHouseholdSubmit}
+            disabled={submitting === 'tambahKk'}
+            className="h-12 rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            {submitting === 'tambahKk' ? 'Mengirim...' : 'Kirim Pengajuan'}
+          </Button>
+        </div>
+      </SlideUpSheet>
+
       {popup && bansosResult && (
         <StatusPopup
           isOpen
@@ -1123,6 +1630,48 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4 border-b border-border py-2 last:border-0">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-semibold text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onValueChange,
+  placeholder,
+  options,
+  error,
+  getValue = (option) => option,
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder: string;
+  options: string[];
+  error?: string;
+  getValue?: (option: string) => string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-sm font-semibold text-foreground">{label}</Label>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger
+          className={cn(
+            'h-11 rounded-xl border-border bg-muted/40',
+            error && 'border-destructive focus:ring-destructive/50',
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option} value={getValue(option)}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>
   );
 }

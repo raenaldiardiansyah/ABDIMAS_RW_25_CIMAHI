@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 import { useEffect, useState } from 'react';
-import { CalendarDays, MapPin, Clock, Search, Plus } from 'lucide-react';
+import { CalendarBlank as CalendarDays, MapPin, Clock, MagnifyingGlass as Search, Plus } from '@phosphor-icons/react';
 
 import { ActivityTimeRangeField } from '@/components/admin/ActivityTimeRangeField';
 import { cn } from '@/lib/utils';

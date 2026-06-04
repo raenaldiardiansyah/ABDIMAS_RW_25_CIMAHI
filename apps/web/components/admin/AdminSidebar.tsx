@@ -2,26 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  FileInput,
-  Flag,
-  IdCard,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  RefreshCw,
-  Settings,
-  ShieldCheck,
-  TrendingUp,
-  UserPlus,
-  Book,
-  HandCoins,
-  Users,
-} from 'lucide-react';
+import { CalendarBlank as Calendar, CaretLeft as ChevronLeft, CaretRight as ChevronRight, ClipboardText as ClipboardList, FileArrowDown as FileInput, Flag, IdentificationCard as IdCard, SquaresFour as LayoutDashboard, SignOut as LogOut, List as Menu, ArrowClockwise as RefreshCw, Gear as Settings, ShieldCheck, TrendUp as TrendingUp, UserPlus, Book, HandCoins, Users } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 
 import { platformFetch } from '@/lib/api/platform';

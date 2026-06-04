@@ -5,17 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  RefreshCw,
-  Search,
-  SlidersHorizontal,
-  Eye,
-  LogIn,
-  LogOut,
-  Download,
-  ArrowRight,
-  ArrowLeft,
-} from 'lucide-react';
+import { ArrowClockwise as RefreshCw, MagnifyingGlass as Search, SlidersHorizontal, Eye, SignIn as LogIn, SignOut as LogOut, DownloadSimple as Download, ArrowRight, ArrowLeft } from '@phosphor-icons/react';
 
 import {
   Dialog,

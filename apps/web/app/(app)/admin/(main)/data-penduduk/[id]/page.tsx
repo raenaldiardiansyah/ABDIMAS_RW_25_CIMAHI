@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, UserRound, BadgeInfo, Briefcase } from "lucide-react";
+import { ArrowLeft, Briefcase, Info as BadgeInfo, MapPin, UserRound, type LucideIcon } from "lucide-react";
 
 import { requireAdmin } from "@/lib/auth-server";
 import { getBackendServerUrl } from "@/lib/api/backend";
@@ -111,7 +111,7 @@ function DetailCard({
   label,
   value,
 }: {
-  icon: typeof UserRound;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {

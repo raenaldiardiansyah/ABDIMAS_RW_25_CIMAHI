@@ -3,16 +3,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Bell,
-  BellOff,
-  BookOpen,
-  ClipboardList,
-  HelpCircle,
-  Info,
-  Rocket,
-  Search,
-} from 'lucide-react';
+import { Bell, BellSlash as BellOff, BookOpen, ClipboardText as ClipboardList, Question as HelpCircle, Info, RocketLaunch as Rocket, MagnifyingGlass as Search } from '@phosphor-icons/react';
 import {
   Breadcrumb,
   BreadcrumbItem,

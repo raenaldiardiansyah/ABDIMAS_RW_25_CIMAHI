@@ -2,23 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Calendar,
-  ChevronDown,
-  ClipboardList,
-  FileBarChart,
-  FileCheck,
-  FileInput,
-  FileText,
-  RefreshCw,
-  ShieldCheck,
-  Settings,
-  UserPlus,
-  Users,
-  UserCog,
-  Trash2,
-} from 'lucide-react';
+import type { Icon } from '@phosphor-icons/react';
+import { CalendarBlank as Calendar, CaretDown as ChevronDown, ClipboardText as ClipboardList, ChartBar as FileBarChart, FileText as FileCheck, FileArrowDown as FileInput, FileText, ArrowClockwise as RefreshCw, ShieldCheck, Gear as Settings, UserPlus, Users, UserGear as UserCog, Trash as Trash2 } from '@phosphor-icons/react';
 
 import AdminCalendar from '@/components/admin/AdminCalendar';
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
@@ -58,14 +43,14 @@ type DashboardResponse = {
 /* ── Activity Category Mapping ── */
 
 function getCategoryMeta(item: ActivityItem): {
-  icon: LucideIcon;
+  icon: Icon;
   label: string;
   href: string;
 } {
   if (item.entityType === 'MUTATION') return { label: 'Mutasi Penduduk', icon: RefreshCw, href: '/admin/mutasi' };
   if (item.entityType === 'HOUSEHOLD') return { label: 'Pembaruan Data KK', icon: FileText, href: '/admin/kartu-keluarga' };
   if (item.entityType === 'CITIZEN') return { label: 'Data Warga', icon: Users, href: '/admin/data-penduduk' };
-  if (item.entityType === 'REQUEST') return { label: 'Permohonan Masuk', icon: FileCheck, href: '/admin/permohonan' };
+  if (item.entityType === 'REQUEST') return { label: 'Permohonan Masuk', icon: ClipboardList, href: '/admin/permohonan' };
   if (item.entityType === 'ADMIN_USER') return { label: 'Aktivitas Admin', icon: UserCog, href: '/admin/hak-akses' };
   if (item.entityType === 'ACTIVITY') return { label: 'Kegiatan RW', icon: Calendar, href: '/admin/kegiatan' };
   if (item.entityType === 'VERIFICATION') return { label: 'Verifikasi Warga', icon: ShieldCheck, href: '/admin/verification' };
@@ -189,7 +174,7 @@ export default function AdminDashboardPage() {
   const activities = dashboard?.latestActivities ?? [];
 
   const groupedActivities = useMemo(() => {
-    const groups: Record<string, { label: string; icon: LucideIcon; href: string; items: ActivityItem[] }> = {};
+    const groups: Record<string, { label: string; icon: Icon; href: string; items: ActivityItem[] }> = {};
 
     activities.forEach((item) => {
       if (hiddenActivities.includes(item.id)) return;
@@ -204,7 +189,7 @@ export default function AdminDashboardPage() {
       { label: 'Mutasi Penduduk', icon: RefreshCw, href: '/admin/mutasi' },
       { label: 'Pembaruan Data KK', icon: FileText, href: '/admin/kartu-keluarga' },
       { label: 'Data Warga', icon: Users, href: '/admin/data-penduduk' },
-      { label: 'Permohonan Masuk', icon: FileCheck, href: '/admin/permohonan' },
+      { label: 'Permohonan Masuk', icon: ClipboardList, href: '/admin/permohonan' },
       { label: 'Aduan Warga', icon: FileInput, href: '/admin/laporan' },
     ];
 

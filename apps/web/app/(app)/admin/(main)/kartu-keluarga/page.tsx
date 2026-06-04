@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, Search, SlidersHorizontal, Eye, Trash2, UserPlus } from 'lucide-react';
+import { ClipboardText as ClipboardList, MagnifyingGlass as Search, SlidersHorizontal, Eye, Trash as Trash2, UserPlus } from '@phosphor-icons/react';
 
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
@@ -150,10 +150,10 @@ export default function KartuKeluargaPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-stretch justify-between gap-4">
+      <div className="flex flex-col items-stretch justify-end gap-4 sm:flex-row">
         <Link
           href="/admin/kartu-keluarga/tambah"
-          className="relative flex flex-1 items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#3B82F6] px-6 py-5 text-white shadow-lg transition hover:from-[#1D4ED8] hover:to-[#2563EB] active:scale-[0.99] sm:px-6 sm:py-5"
+          className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#3B82F6] px-6 py-5 text-white shadow-lg transition hover:from-[#1D4ED8] hover:to-[#2563EB] active:scale-[0.99] sm:w-[420px] sm:px-6 sm:py-5"
         >
           {/* Decorative circles */}
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/[0.08]" />
@@ -259,7 +259,7 @@ export default function KartuKeluargaPage() {
                     </span>
                   </td>
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-end gap-3">
                       <Link href={`/admin/kartu-keluarga/${row.id}`} className="transition hover:opacity-70">
                         <Eye className="h-5 w-5 text-[#3B82F6]" />
                       </Link>

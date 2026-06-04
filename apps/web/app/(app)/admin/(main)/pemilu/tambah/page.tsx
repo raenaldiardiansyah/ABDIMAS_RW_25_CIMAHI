@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { createPemiluEventSchema } from '@abdimas/contracts';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash as Trash2 } from '@phosphor-icons/react';
 import { useState } from 'react';
 
 import { ActivityTimeRangeField } from '@/components/admin/ActivityTimeRangeField';

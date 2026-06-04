@@ -2,18 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Edit,
-  KeyRound,
-  Plus,
-  Search,
-  ShieldCheck,
-  Trash2,
-  UserX,
-  Users,
-} from 'lucide-react';
+import { CaretLeft as ChevronLeft, CaretRight as ChevronRight, PencilSimple as Edit, Key as KeyRound, Plus, MagnifyingGlass as Search, ShieldCheck, Trash as Trash2, UserMinus as UserX, Users } from '@phosphor-icons/react';
 
 import { cn } from '@/lib/utils';
 import { platformFetch } from '@/lib/api/platform';
@@ -436,7 +425,7 @@ export default function HakAksesPage() {
                     </span>
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   CalendarDays,
   ClipboardList,
-  FileText,
   MessageSquareText,
   Sparkles,
   Users,
@@ -32,7 +31,17 @@ type QuickActionItem =
       desc: string;
       icon: LucideIcon;
       href?: string;
+      action?: string;
       soon: true;
+    }
+  | {
+      key: string;
+      label: string;
+      desc: string;
+      icon: LucideIcon;
+      action: string;
+      href?: never;
+      soon?: false;
     };
 
 const QUICK_ACTIONS: QuickActionItem[] = [
@@ -54,7 +63,7 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     key: 'aspirasi',
     label: 'Aspirasi',
     desc: 'Status & tanggapan',
-    href: '/warga/aspirasi',
+    action: 'aspirasi',
     icon: MessageSquareText,
   },
 
@@ -62,21 +71,21 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     key: 'penduduk',
     label: 'Data Penduduk',
     desc: 'Data kependudukan',
-    href: '/warga/penduduk',
+    action: 'penduduk',
     icon: Users,
   },
   {
     key: 'mutasi',
     label: 'Mutasi',
     desc: 'Pindah/Datang',
-    href: '/warga/mutasi/tambah',
+    action: 'mutasi',
     icon: ArrowRightLeft,
   },
   {
     key: 'nambah_kk',
     label: 'Tambah KK',
     desc: 'Pengajuan KK baru',
-    href: '/warga/kk',
+    action: 'tambahKk',
     icon: FilePlus2,
   },
 ];
@@ -136,10 +145,12 @@ const QUICK_ACTION_TONE_MAP: Record<
 
 interface QuickActionsPanelProps {
   isRestricted: boolean;
+  onAction?: (action: string) => void;
 }
 
 export default function QuickActionsPanel({
   isRestricted,
+  onAction,
 }: QuickActionsPanelProps) {
   return (
     <Card className="overflow-hidden rounded-4xl border-0 bg-card shadow-none px-0">
@@ -199,7 +210,7 @@ export default function QuickActionsPanel({
               </div>
             );
 
-              if ('href' in item && !isSoon) {
+              if ('href' in item && item.href && !isSoon) {
                 return (
                   <Link
                     key={item.key}
@@ -208,6 +219,18 @@ export default function QuickActionsPanel({
                   >
                     {content}
                   </Link>
+                );
+              }
+              if ('action' in item && item.action && !isSoon) {
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => onAction?.(item.action)}
+                    className="shrink-0 rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    {content}
+                  </button>
                 );
               }
               return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileInput, CheckCircle2, XCircle, Eye, RefreshCw } from 'lucide-react';
+import { FileArrowDown as FileInput, CheckCircle as CheckCircle2, XCircle, Eye, ArrowClockwise as RefreshCw } from '@phosphor-icons/react';
 
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Button } from '@/components/ui/button';

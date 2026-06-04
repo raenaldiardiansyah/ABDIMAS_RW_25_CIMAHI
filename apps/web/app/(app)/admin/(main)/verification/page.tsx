@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Eye, Search, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle as CheckCircle2, Eye, MagnifyingGlass as Search, ShieldCheck, XCircle } from '@phosphor-icons/react';
 
 import type { AdminVerificationBuckets, AdminVerificationItem, VerificationStatus } from '@abdimas/contracts';
 

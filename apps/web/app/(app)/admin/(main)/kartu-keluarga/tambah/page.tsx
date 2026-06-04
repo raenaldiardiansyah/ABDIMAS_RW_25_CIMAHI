@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CheckCircle2, Search, X } from 'lucide-react';
+import { CaretLeft as ChevronLeft, CheckCircle as CheckCircle2, MagnifyingGlass as Search, X } from '@phosphor-icons/react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
