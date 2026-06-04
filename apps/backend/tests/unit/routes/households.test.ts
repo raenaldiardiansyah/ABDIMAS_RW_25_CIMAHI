@@ -165,7 +165,7 @@ describe("householdsRoutes", () => {
       updatedAt: new Date("2024-05-01T00:00:00Z"),
     };
 
-    dbState.selectQueue.push([], [createdCitizen]);
+    dbState.selectQueue.push([], [], [], [{ total: 0 }], [createdCitizen]);
     dbState.insertQueue.push([createdCitizen], [createdHousehold]);
 
     const app = createApp();
@@ -187,7 +187,7 @@ describe("householdsRoutes", () => {
     expect(json.success).toBe(true);
     expect(json.data.headCitizenId).toBe(createdCitizen.id);
     expect(json.data.members).toHaveLength(1);
-    expect(json.data.members[0].relationship).toBe("Kepala Keluarga");
+    expect(json.data.members[0].relationship).toBe("HEAD_OF_FAMILY");
   });
 
   it("[OK] deletes household and related citizens that only belong to that household", async () => {

@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
 import { drizzle as drizzleNeonHttp } from "drizzle-orm/neon-http";
 import { neon, neonConfig } from "@neondatabase/serverless";
@@ -7,37 +5,26 @@ import { Pool } from "pg";
 
 import * as schema from "./schema/index";
 
-function readRootEnv(name: string) {
-  const candidates = [
-    path.resolve(process.cwd(), ".env"),
-    path.resolve(process.cwd(), "../../.env"),
-  ];
-
-  for (const envPath of candidates) {
-    if (!fs.existsSync(envPath)) continue;
-    const text = fs.readFileSync(envPath, "utf8");
-    const match = text.match(new RegExp(`(?:^|\\r?\\n)${name}=([^\\r\\n]+)`));
-    if (match?.[1]) {
-      return match[1].trim().replace(/^['"]|['"]$/g, "");
-    }
-  }
-
-  return undefined;
-}
-
-const databaseUrl = process.env.DATABASE_URL || readRootEnv("DATABASE_URL");
-
 let pool: Pool | null = null;
 let neonDb: ReturnType<typeof drizzleNeonHttp> | null = null;
 let nodePgDb: ReturnType<typeof drizzleNodePg> | null = null;
+let activeDatabaseUrl: string | null = null;
 
 function shouldUseNeonHttp(url: string) {
   return url.includes(".neon.tech") || url.includes("neon.tech");
 }
 
 export function getDb() {
+  const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("Missing DATABASE_URL env var");
+  }
+
+  if (activeDatabaseUrl !== databaseUrl) {
+    pool = null;
+    neonDb = null;
+    nodePgDb = null;
+    activeDatabaseUrl = databaseUrl;
   }
 
   if (shouldUseNeonHttp(databaseUrl)) {

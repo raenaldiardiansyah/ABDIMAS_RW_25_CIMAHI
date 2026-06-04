@@ -7,18 +7,21 @@ import {
   adminUserListResponseSchema,
   adminUserResponseSchema,
   createAdminUserSchema,
+  idParamSchema,
   updateAdminUserSchema,
   paginationQuerySchema,
 } from "@abdimas/contracts";
 import { account, adminActivityLog, getDb, user } from "@abdimas/db";
 
-import { logAdminActivity } from "../lib/admin-logs";
-import { conflict, notFound } from "../lib/errors";
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { created, ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson, parseQuery } from "../lib/validation";
-import { adminMiddleware } from "../middleware/auth";
+import { logAdminActivity } from "../lib/admin-logs.js";
+import { forbidden, notFound } from "../lib/errors.js";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { createRateLimitMiddleware } from "../lib/rate-limit.js";
+import { created, ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
+import { adminMiddleware } from "../middleware/auth.js";
+import { createAdminUserService, deactivateAdminUserService, resetAdminPasswordService } from "../services/admin-users.js";
 
 function randomPassword() {
   return `Adm${Math.random().toString(36).slice(2, 8)}9!`;
@@ -30,7 +33,7 @@ function mapAdminUser(row: typeof user.$inferSelect) {
     name: row.name,
     email: row.email,
     username: row.username,
-    role: row.role as "ADMIN" | "USER",
+    role: row.role as "ADMIN" | "USER" | "SUPER_ADMIN",
     status: (row.status || "ACTIVE") as "ACTIVE" | "INACTIVE",
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
@@ -44,7 +47,7 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         status: c.req.query("status") || undefined,
       },
       adminUserListQuerySchema,
@@ -79,45 +82,13 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     adminUserListResponseSchema.parse(payload);
     return ok(c, payload.data, meta);
   })
-  .post("/", async (c) => {
+  .post("/", createRateLimitMiddleware({ key: "admin-create", limit: 10, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, createAdminUserSchema);
-    const db = getDb();
-
-    const existing = await db
-      .select({ id: user.id })
-      .from(user)
-      .where(or(eq(user.email, body.email.toLowerCase()), eq(user.username, body.username.toLowerCase())))
-      .limit(1);
-    if (existing.length > 0) throw conflict("Admin user already exists");
-
-    const password = randomPassword();
-    const hashedPassword = await hashPassword(password);
-    const [createdUser] = await db
-      .insert(user)
-      .values({
-        name: body.name,
-        email: body.email.toLowerCase(),
-        username: body.username.toLowerCase(),
-        displayUsername: body.username.toLowerCase(),
-        role: "ADMIN",
-        status: "ACTIVE",
-      })
-      .returning();
-
-    await db.insert(account).values({
-      userId: createdUser.id,
-      accountId: createdUser.id,
-      providerId: "credential",
-      password: hashedPassword,
-    });
-
-    await logAdminActivity({
-      adminId: sessionUser.id,
-      action: "ADMIN_USER_CREATED",
-      entityType: "ADMIN_USER",
-      entityId: createdUser.id,
-      metadata: { temporaryPassword: password },
+    const { createdUser } = await createAdminUserService({
+      actorId: sessionUser.id,
+      actorRole: sessionUser.role,
+      body,
     });
 
     const payload = { success: true as const, data: mapAdminUser(createdUser) };
@@ -126,16 +97,23 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
   })
   .patch("/:id", async (c) => {
     const sessionUser = c.get("sessionUser");
+    const { id } = parseParams(c.req.param(), idParamSchema);
     const body = await parseJson(c.req.raw, updateAdminUserSchema);
+    if (sessionUser.id === id && body.status === "INACTIVE") {
+      throw forbidden("Admin cannot deactivate themselves");
+    }
     const [updated] = await getDb()
       .update(user)
       .set({
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.status !== undefined ? { status: body.status } : {}),
       })
-      .where(and(eq(user.id, c.req.param("id")), eq(user.role, "ADMIN")))
+      .where(and(eq(user.id, id), or(eq(user.role, "ADMIN"), eq(user.role, "SUPER_ADMIN"))))
       .returning();
     if (!updated) throw notFound("Admin user not found");
+    if (updated.role === "SUPER_ADMIN" && sessionUser.role !== "SUPER_ADMIN") {
+      throw forbidden("Only SUPER_ADMIN can edit SUPER_ADMIN users");
+    }
 
     await logAdminActivity({
       adminId: sessionUser.id,
@@ -149,42 +127,23 @@ export const adminUsersRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     adminUserResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
-  .post("/:id/reset-password", async (c) => {
+  .post("/:id/reset-password", createRateLimitMiddleware({ key: "admin-reset-password", limit: 10, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
-    const userId = c.req.param("id");
-    const tempPassword = randomPassword();
-    const hashedPassword = await hashPassword(tempPassword);
-    const [updatedAccount] = await getDb()
-      .update(account)
-      .set({ password: hashedPassword })
-      .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
-      .returning();
-    if (!updatedAccount) throw notFound("Admin credential account not found");
-
-    await logAdminActivity({
-      adminId: sessionUser.id,
-      action: "ADMIN_USER_PASSWORD_RESET",
-      entityType: "ADMIN_USER",
-      entityId: userId,
-      metadata: { temporaryPassword: tempPassword },
+    const { id } = parseParams(c.req.param(), idParamSchema);
+    const result = await resetAdminPasswordService({
+      actorId: sessionUser.id,
+      actorRole: sessionUser.role,
+      targetUserId: id,
     });
-
-    return ok(c, { userId, temporaryPassword: tempPassword });
+    return ok(c, result);
   })
-  .post("/:id/deactivate", async (c) => {
+  .post("/:id/deactivate", createRateLimitMiddleware({ key: "admin-deactivate", limit: 10, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
-    const [updated] = await getDb()
-      .update(user)
-      .set({ status: "INACTIVE" })
-      .where(and(eq(user.id, c.req.param("id")), eq(user.role, "ADMIN")))
-      .returning();
-    if (!updated) throw notFound("Admin user not found");
-
-    await logAdminActivity({
-      adminId: sessionUser.id,
-      action: "ADMIN_USER_DEACTIVATED",
-      entityType: "ADMIN_USER",
-      entityId: updated.id,
+    const { id } = parseParams(c.req.param(), idParamSchema);
+    const updated = await deactivateAdminUserService({
+      actorId: sessionUser.id,
+      actorRole: sessionUser.role,
+      targetUserId: id,
     });
 
     const payload = { success: true as const, data: mapAdminUser(updated) };

@@ -1,7 +1,6 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
-import PageHeader from "@/components/ui/page-header";
 
 const SignInClient = nextDynamic(() => import("./sign-in-client"), {
   ssr: false,
@@ -14,23 +13,26 @@ export default function SignInShellClient({ nextPath }: { nextPath?: string }) {
 
 function AuthPageSkeleton() {
   return (
-    <main className="min-h-screen bg-[color:var(--brand-600)] text-white">
-      <div className="mx-auto w-full max-w-md min-h-screen flex flex-col animate-pulse">
-        <PageHeader
-          title=" "
-          variant="brand"
-          className="border-b-0 px-6 pb-8"
-          titleClassName="h-10 w-56 rounded bg-secondary text-transparent"
-          descriptionClassName="h-4 w-64 rounded bg-secondary text-transparent"
-          rightSlot={<div className="h-10 w-10 rounded-full border border-white/10 bg-secondary" />}
-          bottomSlot={<div className="h-4 w-20 rounded bg-secondary" />}
-        />
+    <main className="min-h-screen bg-[#f8fafc] text-slate-950">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-6 py-6 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="h-6 w-28 rounded bg-slate-200" />
+          <div className="h-10 w-10 rounded-full border border-slate-200 bg-white" />
+        </div>
 
-        <section className="mt-auto bg-[color:var(--panel-on-brand)] text-[color:var(--panel-on-brand-foreground)] rounded-t-[28px] px-6 pt-6 pb-10 shadow-2xl">
+        <section className="pb-8 pt-10">
+          <div className="h-10 w-56 rounded-2xl bg-slate-200" />
+          <div className="mt-3 h-4 w-64 rounded bg-slate-200" />
+          <div className="mt-2 h-4 w-52 rounded bg-slate-100" />
+        </section>
+
+        <section className="mt-auto rounded-[32px] border border-slate-200 bg-white px-6 pb-8 pt-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
           <div className="space-y-4">
-            <div className="h-12 rounded-xl bg-slate-100" />
-            <div className="h-12 rounded-xl bg-slate-100" />
-            <div className="h-11 rounded-xl bg-slate-200" />
+            <div className="h-14 rounded-[22px] bg-slate-100" />
+            <div className="h-5 w-40 rounded bg-slate-100" />
+            <div className="h-14 rounded-[20px] bg-slate-100" />
+            <div className="h-14 rounded-[20px] bg-slate-100" />
+            <div className="h-12 rounded-2xl bg-slate-200" />
           </div>
         </section>
       </div>

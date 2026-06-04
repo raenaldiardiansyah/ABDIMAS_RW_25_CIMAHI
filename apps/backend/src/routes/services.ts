@@ -1,12 +1,12 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { bansosCheckResponseSchema, pemiluCheckResponseSchema, serviceNikCheckSchema } from "@abdimas/contracts";
 import { citizen, getDb, historyEntry } from "@abdimas/db";
 
-import { ok } from "../lib/response";
-import { parseJson } from "../lib/validation";
-import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth";
+import { ok } from "../lib/response.js";
+import { parseJson } from "../lib/validation.js";
+import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth.js";
 
 function getAgeFromDate(value: string) {
   const birth = new Date(value);
@@ -17,13 +17,21 @@ function getAgeFromDate(value: string) {
   return age;
 }
 
+function maskNik(nik: string) {
+  return `${nik.slice(0, 4)}********${nik.slice(-4)}`;
+}
+
 export const servicesRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", authMiddleware)
   .use("*", verifiedWargaMiddleware)
   .post("/bansos/check", async (c) => {
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, serviceNikCheckSchema);
-    const [citizenRow] = await getDb().select().from(citizen).where(eq(citizen.nik, body.nik)).limit(1);
+    const [citizenRow] = await getDb()
+      .select()
+      .from(citizen)
+      .where(and(eq(citizen.userId, sessionUser.id), eq(citizen.nik, body.nik), eq(citizen.isArchived, false)))
+      .limit(1);
     const eligible = !!citizenRow && citizenRow.status === "PENDUDUK_TETAP";
     const checkedAt = new Date().toISOString();
     const message = eligible
@@ -35,7 +43,7 @@ export const servicesRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       type: "BANSOS_CHECK",
       title: "Cek Status Bansos",
       description: message,
-      metadata: { nik: body.nik, eligible, checkedAt },
+      metadata: { maskedNik: maskNik(body.nik), eligible, checkedAt },
     });
 
     const payload = { success: true as const, data: { eligible, message, checkedAt } };
@@ -45,7 +53,11 @@ export const servicesRoutes = new Hono<{ Variables: { sessionUser: { id: string;
   .post("/pemilu/check", async (c) => {
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, serviceNikCheckSchema);
-    const [citizenRow] = await getDb().select().from(citizen).where(eq(citizen.nik, body.nik)).limit(1);
+    const [citizenRow] = await getDb()
+      .select()
+      .from(citizen)
+      .where(and(eq(citizen.userId, sessionUser.id), eq(citizen.nik, body.nik), eq(citizen.isArchived, false)))
+      .limit(1);
     const registered = !!citizenRow && getAgeFromDate(citizenRow.birthDate) >= 17;
     const checkedAt = new Date().toISOString();
     const tps = registered && citizenRow ? `TPS ${citizenRow.rt.padStart(3, "0")}` : undefined;
@@ -58,7 +70,7 @@ export const servicesRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       type: "PEMILU_CHECK",
       title: "Cek DPT/TPS",
       description: message,
-      metadata: { nik: body.nik, registered, tps: tps ?? null, checkedAt },
+      metadata: { maskedNik: maskNik(body.nik), registered, tps: tps ?? null, checkedAt },
     });
 
     const payload = { success: true as const, data: { registered, ...(tps ? { tps } : {}), message, checkedAt } };

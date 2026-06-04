@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import PageHeader from "@/components/ui/page-header";
 
 const schema = z.object({
   identifier: z.string().trim().min(3, "Username/email minimal 3 karakter"),
@@ -88,12 +87,9 @@ export default function SignInClient({ nextPath }: { nextPath?: string }) {
     if (!parsed.success) {
       toast({
         title: "Input tidak valid",
-        description:
-          parsed.error.issues[0]?.message ||
-          "Cek kembali username/email dan password.",
+        description: parsed.error.issues[0]?.message || "Cek kembali username/email dan password.",
         variant: "destructive",
       });
-
       return;
     }
 
@@ -155,118 +151,90 @@ export default function SignInClient({ nextPath }: { nextPath?: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-[color:var(--primary)] text-[color:var(--primary-foreground)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
-        <PageHeader
-          title={activeMode.title}
-          variant="brand"
-          className="border-b-0 px-6 pb-8"
-          titleClassName="text-3xl font-extrabold leading-tight text-[color:var(--primary-foreground)]"
-          descriptionClassName="text-sm text-[color:color-mix(in_srgb,var(--primary-foreground),transparent_18%)]"
-          description={activeMode.helper}
-          rightSlot={
-            <Button
-              type="button"
-              onClick={() => router.back()}
-              size="icon"
-              variant="secondary"
-              className="rounded-full border border-[color:color-mix(in_srgb,var(--primary-foreground),transparent_84%)] bg-[color:color-mix(in_srgb,var(--primary-foreground),transparent_88%)] text-[color:var(--primary-foreground)] hover:bg-[color:color-mix(in_srgb,var(--primary-foreground),transparent_80%)]"
-              aria-label="Kembali"
-              disabled={loading}
-            >
-              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-            </Button>
-          }
-          bottomSlot={
-            <Button
-              type="button"
-              onClick={() => {
-                if (mode === "admin") {
-                  setMode("citizen");
-                  return;
-                }
-                router.push("/register");
-              }}
-              variant="link"
-              size="sm"
-              className="h-auto px-0 py-0 text-sm font-semibold text-[color:var(--primary-foreground)] underline underline-offset-4 hover:text-[color:color-mix(in_srgb,var(--primary-foreground),transparent_14%)]"
-              disabled={loading}
-            >
-              {mode === "admin" ? "Masuk sebagai warga" : "Daftar"}
-            </Button>
-          }
-        />
+    <main className="min-h-screen bg-[#f8fafc] text-slate-950">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold tracking-[-0.01em] text-slate-500">RW 25 Cimahi</div>
+          <Button
+            type="button"
+            onClick={() => router.back()}
+            size="icon"
+            variant="outline"
+            className="rounded-full border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            aria-label="Kembali"
+            disabled={loading}
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        </div>
 
-        <section className="mt-auto rounded-t-[28px] border border-[color:var(--border)] bg-[color:var(--panel-on-brand)] px-6 pb-10 pt-6 text-[color:var(--panel-on-brand-foreground)] shadow-2xl">
+        <section className="pb-8 pt-10">
+          <h1 className="max-w-xs text-[2.45rem] font-bold leading-[1.02] tracking-[-0.055em] text-slate-950">
+            Masuk ke Akun
+          </h1>
+          <p className="mt-4 max-w-sm text-[16px] leading-8 text-slate-500">
+            Pilih mode akun dan masuk untuk mengakses layanan digital RW 25 Cimahi.
+          </p>
+        </section>
+
+        <section className="mt-auto rounded-[32px] border border-slate-200 bg-white px-6 pb-8 pt-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-3">
               <Tabs value={mode} onValueChange={(value) => setMode(value as SignInMode)}>
-                <TabsList className="h-auto w-full gap-1.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--muted)] p-1.5">
+                <TabsList className="h-auto w-full gap-1.5 rounded-[22px] border border-slate-200 bg-slate-50 p-1.5">
                   <TabsTrigger
                     value="citizen"
-                    className="flex-1 rounded-xl px-3 py-2.5 text-[13px] font-bold text-[color:var(--muted-foreground)] data-[state=active]:bg-[color:var(--primary)] data-[state=active]:text-[color:var(--primary-foreground)]"
+                    className="flex-1 rounded-[18px] px-3 py-3 text-[13px] font-semibold text-slate-500 data-[state=active]:bg-[color:var(--primary)] data-[state=active]:text-white"
                   >
-                    Sign in as Citizen
+                    Masuk sebagai Warga
                   </TabsTrigger>
                   <TabsTrigger
                     value="admin"
-                    className="flex-1 rounded-xl px-3 py-2.5 text-[13px] font-bold text-[color:var(--muted-foreground)] data-[state=active]:bg-[color:var(--primary)] data-[state=active]:text-[color:var(--primary-foreground)]"
+                    className="flex-1 rounded-[18px] px-3 py-3 text-[13px] font-semibold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
                   >
-                    Sign in as Admin
+                    Masuk sebagai Admin
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              <p className="text-xs leading-relaxed text-[color:var(--muted-foreground)]">
-                {activeMode.description}
-              </p>
+              <p className="text-sm leading-7 text-slate-500">{activeMode.description}</p>
             </div>
 
             <div>
-              <Label className="mb-2 block text-xs font-semibold text-[color:var(--panel-on-brand-foreground)]">
-                Username / Email
-              </Label>
-
+              <Label className="mb-2 block text-xs font-semibold text-slate-800">Username / Email</Label>
               <Input
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value.trimStart())}
                 placeholder="contoh: warga01 atau warga@mail.com"
-                className="h-auto rounded-xl border-[color:var(--input)] bg-[color:var(--panel-on-brand)] px-4 py-3.5 text-[color:var(--panel-on-brand-foreground)] placeholder:text-[color:var(--muted-foreground)] focus-visible:ring-[color:var(--ring)]"
+                className="h-auto rounded-[20px] border-slate-200 bg-white px-4 py-4 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[color:var(--ring)]"
                 autoComplete="username"
                 disabled={loading}
               />
             </div>
 
             <div>
-              <Label className="mb-2 block text-xs font-semibold text-[color:var(--panel-on-brand-foreground)]">
-                Password
-              </Label>
-
+              <Label className="mb-2 block text-xs font-semibold text-slate-800">Password</Label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimal 8 karakter"
-                className="h-auto rounded-xl border-[color:var(--input)] bg-[color:var(--panel-on-brand)] px-4 py-3.5 text-[color:var(--panel-on-brand-foreground)] placeholder:text-[color:var(--muted-foreground)] focus-visible:ring-[color:var(--ring)]"
+                className="h-auto rounded-[20px] border-slate-200 bg-white px-4 py-4 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[color:var(--ring)]"
                 autoComplete={remember ? "current-password" : "off"}
                 disabled={loading}
               />
             </div>
 
             <div className="flex items-center justify-between gap-4 pt-1">
-              <div className="inline-flex select-none items-center gap-2 text-xs text-[color:var(--muted-foreground)]">
+              <div className="inline-flex select-none items-center gap-2 text-xs text-slate-500">
                 <Checkbox
                   id="remember"
                   checked={remember}
                   onCheckedChange={(checked) => setRemember(checked === true)}
-                  className="rounded border-[color:var(--input)] text-[color:var(--primary-foreground)] focus-visible:ring-[color:var(--ring)] data-[state=checked]:border-[color:var(--primary)] data-[state=checked]:bg-[color:var(--primary)] data-[state=checked]:text-[color:var(--primary-foreground)]"
+                  className="rounded border-slate-300 text-white focus-visible:ring-[color:var(--ring)] data-[state=checked]:border-[color:var(--primary)] data-[state=checked]:bg-[color:var(--primary)] data-[state=checked]:text-white"
                   disabled={loading}
                 />
-
-                <Label
-                  htmlFor="remember"
-                  className="text-xs font-semibold text-[color:var(--muted-foreground)]"
-                >
+                <Label htmlFor="remember" className="text-xs font-semibold text-slate-500">
                   Ingat saya
                 </Label>
               </div>
@@ -285,14 +253,30 @@ export default function SignInClient({ nextPath }: { nextPath?: string }) {
             <Button
               type="submit"
               disabled={loading}
-              className="h-auto w-full rounded-xl bg-[color:var(--primary)] py-3.5 text-sm font-bold tracking-wide text-[color:var(--primary-foreground)] shadow-lg shadow-[color:color-mix(in_srgb,var(--primary),transparent_72%)] hover:bg-[color:var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-auto w-full rounded-[22px] bg-[color:var(--primary)] py-4 text-sm font-semibold tracking-[-0.01em] text-white shadow-[0_16px_32px_rgba(37,99,235,0.22)] hover:bg-[color:var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? "Memproses..." : activeMode.submitLabel}
             </Button>
 
-            <p className="pt-2 text-[11px] leading-relaxed text-[color:var(--muted-foreground)]">
-              Dengan masuk, Anda menyetujui ketentuan layanan dan kebijakan privasi internal.
-            </p>
+            <div className="flex items-center justify-between gap-3 pt-2 text-[11px] leading-relaxed text-slate-400">
+              <p className="max-w-[15rem]">Dengan masuk, Anda menyetujui ketentuan layanan dan kebijakan privasi internal.</p>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (mode === "admin") {
+                    setMode("citizen");
+                    return;
+                  }
+                  router.push("/register");
+                }}
+                variant="link"
+                size="sm"
+                className="h-auto px-0 py-0 text-xs font-semibold text-[color:var(--primary)] hover:text-[color:var(--brand-700)]"
+                disabled={loading}
+              >
+                {mode === "admin" ? "Masuk sebagai warga" : "Daftar"}
+              </Button>
+            </div>
           </form>
         </section>
       </div>

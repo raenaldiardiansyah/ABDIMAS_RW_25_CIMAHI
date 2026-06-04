@@ -35,7 +35,8 @@ async function getCitizenDetail(id: string): Promise<CitizenDetail | null> {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to fetch citizen detail (${res.status})`);
 
-  const payload = (await res.json()) as { success: boolean; data: CitizenDetail };
+  const payload = (await res.json()) as { success: boolean; data?: CitizenDetail };
+  if (!payload.success || !payload.data) throw new Error("Invalid citizen detail response");
   return payload.data;
 }
 

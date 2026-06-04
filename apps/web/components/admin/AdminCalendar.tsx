@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { platformFetch } from '@/lib/api/platform';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
@@ -29,6 +29,7 @@ export default function AdminCalendar() {
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
   const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const [events, setEvents] = useState<ScheduleItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -39,10 +40,11 @@ export default function AdminCalendar() {
         const response = await platformFetch<ScheduleItem[]>(`/schedule?month=${month}`);
         if (!active) return;
         setEvents(response.data);
+        setErrorMessage(null);
       } catch (error) {
-        console.error(error);
         if (!active) return;
         setEvents([]);
+        setErrorMessage(getPlatformErrorMessage(error, 'Gagal memuat jadwal kegiatan.'));
       }
     }
 
@@ -171,7 +173,12 @@ export default function AdminCalendar() {
       {/* Agenda Section */}
       <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
         <h4 className="mb-3 text-sm font-bold text-[color:var(--admin-body)]">Agenda Hari Ini</h4>
-        {todayEvents.length > 0 ? (
+        {errorMessage ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left">
+            <p className="text-xs font-bold text-red-700">Jadwal gagal dimuat</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-red-600">{errorMessage}</p>
+          </div>
+        ) : todayEvents.length > 0 ? (
           <div className="flex flex-col gap-2.5">
             {todayEvents.map((ev) => (
               <div

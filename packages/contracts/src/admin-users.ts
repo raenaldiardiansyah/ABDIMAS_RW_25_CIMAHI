@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { appRoleSchema } from "./auth";
 import { createApiSuccessSchema, paginationQuerySchema } from "./common";
 
 export const adminUserStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
@@ -9,7 +10,7 @@ export const adminUserSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   username: z.string(),
-  role: z.enum(["ADMIN", "USER"]),
+  role: appRoleSchema,
   status: adminUserStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -24,6 +25,7 @@ export const createAdminUserSchema = z.object({
   name: z.string().min(2).max(120),
   email: z.string().email(),
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9]+$/),
+  role: z.enum(["ADMIN", "SUPER_ADMIN"]).default("ADMIN"),
 });
 
 export const updateAdminUserSchema = z.object({

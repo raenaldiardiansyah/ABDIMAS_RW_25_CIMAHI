@@ -12,21 +12,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useActionToast } from '@/lib/use-action-toast';
 
 const PAGE_SIZE = 20;
+type CitizenRow = {
+  id: string;
+  nama: string;
+  nik: string;
+  noKK: string;
+  alamat: string;
+  status: 'Penduduk Tetap' | 'Ngekost' | 'Null';
+};
+
+type CitizenApiItem = {
+  id: string;
+  name: string | null;
+  nik: string | null;
+  noKK: string | null;
+  address: string | null;
+  status: string | null;
+};
+
+function toNullableLabel(value: unknown) {
+  if (value === null || value === undefined) return 'Null';
+  if (typeof value === 'string' && value.trim().length === 0) return 'Null';
+  return String(value);
+}
 
 /* ── Page ────────────────────────────────────────────────── */
 
 export default function DataPendudukPage() {
   const { runWithToast } = useActionToast();
-  const [rows, setRows] = useState<
-    Array<{
-      id: string;
-      nama: string;
-      nik: string;
-      noKK: string;
-      alamat: string;
-      status: 'Penduduk Tetap' | 'Ngekost';
-    }>
-  >([]);
+  const [rows, setRows] = useState<CitizenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -55,24 +69,17 @@ export default function DataPendudukPage() {
       if (search) params.set('q', search);
       if (status === 'Penduduk Tetap') params.set('status', 'PENDUDUK_TETAP');
       if (status === 'Ngekost') params.set('status', 'NGEKOST');
-      const res = await platformFetch<Array<{
-        id: string;
-        name: string;
-        nik: string;
-        noKK: string;
-        address: string;
-        status: string;
-      }>>(`/admin/citizens?${params.toString()}`);
+      const res = await platformFetch<CitizenApiItem[]>(`/admin/citizens?${params.toString()}`);
       
-      const mapped = (res.data || []).map((c: any) => ({
+      const mapped: CitizenRow[] = (res.data || []).map((c) => ({
         id: c.id,
-        nama: c.name || '-',
-        nik: c.nik || '-',
-        noKK: c.noKK || '-',
-        alamat: c.address || '-',
-        status: c.status === 'NGEKOST' ? 'Ngekost' : 'Penduduk Tetap',
+        nama: toNullableLabel(c?.name),
+        nik: toNullableLabel(c?.nik),
+        noKK: toNullableLabel(c?.noKK),
+        alamat: toNullableLabel(c?.address),
+        status: c?.status === 'NGEKOST' ? 'Ngekost' : c?.status === 'PENDUDUK_TETAP' ? 'Penduduk Tetap' : 'Null',
       }));
-      setRows(mapped as any);
+      setRows(mapped);
       setTotalItems(res.meta?.total ?? mapped.length);
       setTotalPages(res.meta?.totalPages ?? 1);
       setCurrentPage(res.meta?.page ?? page);
@@ -89,7 +96,7 @@ export default function DataPendudukPage() {
     void fetchCitizens(currentPage, debouncedQuery, statusFilter);
 
     // Check for pending requests
-    platformFetch<any[]>('/admin/requests?page=1&limit=1&status=PENDING')
+    platformFetch<unknown[]>('/admin/requests?page=1&limit=1&status=PENDING')
       .then(({ data }) => {
         setHasPendingRequests(data.length > 0);
       })
@@ -182,14 +189,14 @@ export default function DataPendudukPage() {
             type="text"
             placeholder="Search"
             value={query}
-            onChange={(e: any) => setQuery(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             className="h-10 w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-[#3B82F6]"
           />
         </div>
 
         {/* Filter button */}
         <div className="w-[180px]">
-          <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}>
             <SelectTrigger className="h-10 rounded-full border border-gray-200 bg-white font-medium text-gray-700 shadow-sm focus:ring-[#3B82F6]">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4 text-[#3B82F6]" />
@@ -234,7 +241,9 @@ export default function DataPendudukPage() {
                     <span
                       className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${row.status === 'Penduduk Tetap'
                           ? 'bg-purple-100 text-purple-700'
-                          : 'bg-gray-100 text-gray-600'
+                          : row.status === 'Ngekost'
+                            ? 'bg-gray-100 text-gray-600'
+                            : 'bg-slate-100 text-slate-500'
                         }`}
                     >
                       {row.status}

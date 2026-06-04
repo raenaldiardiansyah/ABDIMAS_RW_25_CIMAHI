@@ -24,7 +24,7 @@ export const requestListQuerySchema = paginationQuerySchema.extend({
 });
 
 export const requestDecisionSchema = z.object({
-  reason: z.string().max(255).optional(),
+  reason: z.string().trim().min(1, "Reason is required").max(255),
 });
 
 export const serviceRequestListResponseSchema = createApiSuccessSchema(z.array(serviceRequestSchema));

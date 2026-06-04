@@ -8,18 +8,22 @@ import {
   citizenListQuerySchema,
   citizenListResponseSchema,
   reportDemographicsResponseSchema,
+  reportCitizenDrilldownQuerySchema,
+  reportFilterSchema,
   reportSummaryResponseSchema,
   rtBreakdownResponseSchema,
 } from "@abdimas/contracts";
 
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { adminMiddleware } from "../middleware/auth";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { createRateLimitMiddleware } from "../lib/rate-limit.js";
+import { ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
+import { adminMiddleware } from "../middleware/auth.js";
 
 async function getSummaryData(rt?: string) {
   const db = getDb();
-  const citizenWhere = rt ? eq(citizen.rt, rt) : undefined;
+  const citizenWhere = rt ? and(eq(citizen.isArchived, false), eq(citizen.rt, rt)) : eq(citizen.isArchived, false);
   const householdWhere = rt ? eq(household.rt, rt) : undefined;
 
   const [
@@ -40,6 +44,7 @@ async function getSummaryData(rt?: string) {
         warga: sql<number>`count(*)::int`,
       })
       .from(citizen)
+      .where(eq(citizen.isArchived, false))
       .groupBy(citizen.rt, citizen.rw)
       .orderBy(citizen.rt),
   ]);
@@ -58,7 +63,8 @@ async function getSummaryData(rt?: string) {
 export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", adminMiddleware)
   .get("/summary", async (c) => {
-    const summary = await getSummaryData(c.req.query("rt") || undefined);
+    const filter = parseQuery({ rt: c.req.query("rt") || undefined }, reportFilterSchema);
+    const summary = await getSummaryData(filter.rt);
     const payload = {
       success: true as const,
       data: {
@@ -92,6 +98,7 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
         produktif: sql<number>`count(*) filter (where extract(year from age(current_date, ${citizen.birthDate})) between 16 and 60)::int`,
       })
       .from(citizen)
+      .where(eq(citizen.isArchived, false))
       .groupBy(citizen.rt, citizen.rw)
       .orderBy(citizen.rt);
 
@@ -110,8 +117,9 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     return ok(c, payload.data);
   })
   .get("/demographics", async (c) => {
-    const rt = c.req.query("rt") || undefined;
-    const where = rt ? eq(citizen.rt, rt) : undefined;
+    const filter = parseQuery({ rt: c.req.query("rt") || undefined }, reportFilterSchema);
+    const rt = filter.rt;
+    const where = rt ? and(eq(citizen.isArchived, false), eq(citizen.rt, rt)) : eq(citizen.isArchived, false);
     const rows = await getDb()
       .select({
         gender: citizen.gender,
@@ -158,19 +166,19 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     return ok(c, payload.data);
   })
   .get("/rt/:rtId/citizens", async (c) => {
-    const query = {
+    const parsed = reportCitizenDrilldownQuerySchema.parse({
       page: c.req.query("page"),
       limit: c.req.query("limit"),
-      q: c.req.query("q") || undefined,
-    };
-    const parsed = citizenListQuerySchema.parse(query);
+      q: sanitizeSearchTerm(c.req.query("q") || undefined),
+    });
     const rtId = c.req.param("rtId").replace(/^RT\s*/i, "").padStart(2, "0");
     const where = parsed.q
       ? and(
+          eq(citizen.isArchived, false),
           eq(citizen.rt, rtId),
           sql`(${citizen.name} ilike ${`%${parsed.q}%`} or ${citizen.nik} ilike ${`%${parsed.q}%`})`,
         )
-      : eq(citizen.rt, rtId);
+      : and(eq(citizen.isArchived, false), eq(citizen.rt, rtId));
     const db = getDb();
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
@@ -213,8 +221,8 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     citizenListResponseSchema.parse(payload);
     return ok(c, payload.data, meta);
   })
-  .get("/export/xlsx", async (c) => {
-    const rows = await getDb().select().from(citizen).orderBy(citizen.rt, citizen.name);
+  .get("/export/xlsx", createRateLimitMiddleware({ key: "reports-export", limit: 5, windowMs: 60_000 }), async (c) => {
+    const rows = await getDb().select().from(citizen).where(eq(citizen.isArchived, false)).orderBy(citizen.rt, citizen.name);
     const workbook = XLSX.utils.book_new();
     const sheet = XLSX.utils.json_to_sheet(
       rows.map((row) => ({
@@ -233,7 +241,7 @@ export const reportsRoutes = new Hono<{ Variables: { sessionUser: { id: string; 
     c.header("content-disposition", 'attachment; filename="report-citizens.xlsx"');
     return c.body(buffer);
   })
-  .get("/export/pdf", async (c) => {
+  .get("/export/pdf", createRateLimitMiddleware({ key: "reports-export", limit: 5, windowMs: 60_000 }), async (c) => {
     const summary = await getSummaryData();
     const doc = new PDFDocument({ margin: 48 });
     const chunks: Uint8Array[] = [];

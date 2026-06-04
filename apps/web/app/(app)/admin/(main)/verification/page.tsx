@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Eye, Search, ShieldCheck, XCircle } from 'lucide-react';
 
-import type { AdminVerificationItem, VerificationStatus } from '@abdimas/contracts';
+import type { AdminVerificationBuckets, AdminVerificationItem, VerificationStatus } from '@abdimas/contracts';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,11 @@ import { useActionToast } from '@/lib/use-action-toast';
 import { cn } from '@/lib/utils';
 
 const STATUSES: VerificationStatus[] = ['PENDING', 'VERIFIED', 'REJECTED'];
+const STATUS_KEYS: Record<VerificationStatus, keyof AdminVerificationBuckets> = {
+  PENDING: 'pending',
+  VERIFIED: 'verified',
+  REJECTED: 'rejected',
+};
 
 type VerificationActionResponse = {
   userId: string;
@@ -51,11 +56,21 @@ export default function AdminVerificationPage() {
   const [status, setStatus] = useState<VerificationStatus>('PENDING');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
-  const [items, setItems] = useState<AdminVerificationItem[]>([]);
+  const [buckets, setBuckets] = useState<AdminVerificationBuckets>({
+    pending: [],
+    verified: [],
+    rejected: [],
+    counts: {
+      pending: 0,
+      verified: 0,
+      rejected: 0,
+    },
+  });
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<AdminVerificationItem | null>(null);
   const [rejectingItem, setRejectingItem] = useState<AdminVerificationItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [actingUserId, setActingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(search.trim()), 1000);
@@ -68,15 +83,25 @@ export default function AdminVerificationPage() {
     async function load() {
       setLoading(true);
       try {
-        const params = new URLSearchParams({ status });
+        const params = new URLSearchParams();
         if (query) params.set('q', query);
-        const response = await platformFetch<AdminVerificationItem[]>(`/admin/verifications?${params.toString()}`);
+        const suffix = params.toString();
+        const response = await platformFetch<AdminVerificationBuckets>(`/admin/verifications${suffix ? `?${suffix}` : ''}`);
         if (!active) return;
-        setItems(response.data);
+        setBuckets(response.data);
       } catch (error) {
         console.error(error);
         if (!active) return;
-        setItems([]);
+        setBuckets({
+          pending: [],
+          verified: [],
+          rejected: [],
+          counts: {
+            pending: 0,
+            verified: 0,
+            rejected: 0,
+          },
+        });
       } finally {
         if (active) setLoading(false);
       }
@@ -86,20 +111,49 @@ export default function AdminVerificationPage() {
     return () => {
       active = false;
     };
-  }, [query, status]);
+  }, [query]);
 
-  const counts = useMemo(
-    () => ({
-      pending: items.filter((item) => item.verificationStatus === 'PENDING').length,
-      verified: items.filter((item) => item.verificationStatus === 'VERIFIED').length,
-      rejected: items.filter((item) => item.verificationStatus === 'REJECTED').length,
-    }),
-    [items],
-  );
+  const items = buckets[STATUS_KEYS[status]] as AdminVerificationItem[];
+  const counts = buckets.counts;
+
+  const moveItemToStatus = (
+    current: AdminVerificationBuckets,
+    item: AdminVerificationItem,
+    nextStatus: Extract<VerificationStatus, 'VERIFIED' | 'REJECTED'>,
+    rejectionReason?: string | null,
+    verifiedAt?: string | null,
+    verifiedBy?: string | null,
+  ): AdminVerificationBuckets => {
+    const updatedItem: AdminVerificationItem = {
+      ...item,
+      verificationStatus: nextStatus,
+      rejectionReason: rejectionReason ?? (nextStatus === 'REJECTED' ? item.rejectionReason ?? null : null),
+      verifiedAt: verifiedAt ?? item.verifiedAt ?? null,
+      verifiedBy: verifiedBy ?? item.verifiedBy ?? null,
+    };
+
+    return {
+      pending: current.pending.filter((entry) => entry.userId !== item.userId),
+      verified:
+        nextStatus === 'VERIFIED'
+          ? [updatedItem, ...current.verified.filter((entry) => entry.userId !== item.userId)]
+          : current.verified.filter((entry) => entry.userId !== item.userId),
+      rejected:
+        nextStatus === 'REJECTED'
+          ? [updatedItem, ...current.rejected.filter((entry) => entry.userId !== item.userId)]
+          : current.rejected.filter((entry) => entry.userId !== item.userId),
+      counts: {
+        pending: Math.max(0, current.counts.pending - 1),
+        verified: current.counts.verified + (nextStatus === 'VERIFIED' ? 1 : 0),
+        rejected: current.counts.rejected + (nextStatus === 'REJECTED' ? 1 : 0),
+      },
+    };
+  };
 
   const handleApprove = async (item: AdminVerificationItem) => {
+    setActingUserId(item.userId);
     try {
-      await runWithToast(
+      const response = await runWithToast(
         () => platformFetch<VerificationActionResponse>(`/admin/verifications/${item.userId}/approve`, { method: 'POST' }),
         {
           loading: 'Menyetujui verifikasi...',
@@ -107,17 +161,33 @@ export default function AdminVerificationPage() {
           error: 'Gagal menyetujui verifikasi',
         },
       );
-      setItems((prev) => prev.filter((entry) => entry.userId !== item.userId));
+      setBuckets((current) =>
+        moveItemToStatus(current, item, 'VERIFIED', null, response.data.verifiedAt ?? null, response.data.verifiedBy ?? null),
+      );
+      setSelectedItem((current) =>
+        current?.userId === item.userId
+          ? {
+              ...current,
+              verificationStatus: 'VERIFIED',
+              rejectionReason: null,
+              verifiedAt: response.data.verifiedAt ?? null,
+              verifiedBy: response.data.verifiedBy ?? null,
+            }
+          : current,
+      );
     } catch (error) {
       console.error(error);
+    } finally {
+      setActingUserId(null);
     }
   };
 
   const handleReject = async () => {
     if (!rejectingItem || !rejectReason.trim()) return;
+    setActingUserId(rejectingItem.userId);
 
     try {
-      await runWithToast(
+      const response = await runWithToast(
         () =>
           platformFetch<VerificationActionResponse>(`/admin/verifications/${rejectingItem.userId}/reject`, {
             method: 'POST',
@@ -129,11 +199,33 @@ export default function AdminVerificationPage() {
           error: 'Gagal menolak verifikasi',
         },
       );
-      setItems((prev) => prev.filter((entry) => entry.userId !== rejectingItem.userId));
+      setBuckets((current) =>
+        moveItemToStatus(
+          current,
+          rejectingItem,
+          'REJECTED',
+          response.data.rejectionReason ?? rejectReason.trim(),
+          response.data.verifiedAt ?? null,
+          response.data.verifiedBy ?? null,
+        ),
+      );
+      setSelectedItem((current) =>
+        current?.userId === rejectingItem.userId
+          ? {
+              ...current,
+              verificationStatus: 'REJECTED',
+              rejectionReason: response.data.rejectionReason ?? rejectReason.trim(),
+              verifiedAt: response.data.verifiedAt ?? null,
+              verifiedBy: response.data.verifiedBy ?? null,
+            }
+          : current,
+      );
       setRejectingItem(null);
       setRejectReason('');
     } catch (error) {
       console.error(error);
+    } finally {
+      setActingUserId(null);
     }
   };
 
@@ -243,6 +335,7 @@ export default function AdminVerificationPage() {
                           variant="outline"
                           size="icon"
                           onClick={() => setSelectedItem(item)}
+                          disabled={actingUserId === item.userId}
                           className="h-10 w-10 rounded-xl border-gray-200"
                         >
                           <Eye className="h-4 w-4" />
@@ -252,6 +345,7 @@ export default function AdminVerificationPage() {
                             <Button
                               type="button"
                               onClick={() => setRejectingItem(item)}
+                              disabled={actingUserId === item.userId}
                               className="rounded-xl border-[color:var(--admin-danger-border)] bg-[color:var(--admin-danger-soft)] px-4 text-[color:var(--admin-danger-foreground)] hover:bg-[color:var(--admin-danger-soft)]/80"
                             >
                               <XCircle className="h-4 w-4" />
@@ -260,6 +354,7 @@ export default function AdminVerificationPage() {
                             <Button
                               type="button"
                               onClick={() => void handleApprove(item)}
+                              disabled={actingUserId === item.userId}
                               className="rounded-xl bg-primary px-4 text-primary-foreground hover:bg-[color:var(--admin-primary-strong)]"
                             >
                               <CheckCircle2 className="h-4 w-4" />
@@ -363,7 +458,7 @@ export default function AdminVerificationPage() {
               <Button
                 type="button"
                 onClick={() => void handleReject()}
-                disabled={!rejectReason.trim()}
+                disabled={!rejectReason.trim() || actingUserId === rejectingItem?.userId}
                 className="rounded-xl bg-[color:var(--status-error)] text-white hover:bg-[color:var(--admin-danger-foreground)]"
               >
                 Tolak Verifikasi

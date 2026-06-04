@@ -3,6 +3,7 @@ import { Hono } from "hono";
 
 import {
   createMutationSchema,
+  idParamSchema,
   mutationAttachmentSchema,
   mutationListQuerySchema,
   mutationListResponseSchema,
@@ -11,21 +12,16 @@ import {
 } from "@abdimas/contracts";
 import { citizen, getDb, mutation, mutationAttachment } from "@abdimas/db";
 
-import { logAdminActivity } from "../lib/admin-logs";
-import { AppError, internalError, notFound, validationError } from "../lib/errors";
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson, parseQuery } from "../lib/validation";
-import {
-  buildObjectKey,
-  buildObjectUrl,
-  deleteObject,
-  ensureStorageConfigured,
-  uploadObject,
-  validateUpload,
-} from "../lib/storage";
-import { adminMiddleware } from "../middleware/auth";
+import { logAdminActivity } from "../lib/admin-logs.js";
+import { notFound, validationError } from "../lib/errors.js";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { createRateLimitMiddleware } from "../lib/rate-limit.js";
+import { ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
+import { buildObjectUrl } from "../lib/storage.js";
+import { adminMiddleware } from "../middleware/auth.js";
+import { approveMutationService, createMutationService } from "../services/mutations.js";
 
 function toDateString(value: Date | string | null | undefined) {
   if (!value) return null;
@@ -57,12 +53,15 @@ async function mapMutationAttachment(row: typeof mutationAttachment.$inferSelect
   const mapped = {
     id: row.id,
     mutationId: row.mutationId,
+    entityType: "MUTATION" as const,
+    entityId: row.entityId,
     kind: row.kind,
-    objectKey: row.objectKey,
-    fileName: row.fileName,
-    contentType: row.contentType,
-    sizeBytes: row.sizeBytes,
-    url: await buildObjectUrl(row.objectKey).catch(() => null),
+    storageKey: row.storageKey,
+    originalFilename: row.originalFilename,
+    mimeType: row.mimeType,
+    size: row.size,
+    uploadedBy: row.uploadedBy ?? null,
+    url: await buildObjectUrl(row.storageKey, { signedOnly: true }).catch(() => null),
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
   };
   return mutationAttachmentSchema.parse(mapped);
@@ -91,12 +90,12 @@ function getOptionalFile(formData: FormData, key: string) {
 
 export const mutationsRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", adminMiddleware)
-  .get("/export", async (c) => {
+  .get("/export", createRateLimitMiddleware({ key: "mutation-export", limit: 10, windowMs: 60_000 }), async (c) => {
     const query = parseQuery(
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         type: c.req.query("type") || undefined,
         status: c.req.query("status") || undefined,
       },
@@ -189,7 +188,7 @@ export const mutationsRoutes = new Hono<{ Variables: { sessionUser: { id: string
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         type: c.req.query("type") || undefined,
         status: c.req.query("status") || undefined,
       },
@@ -260,7 +259,7 @@ export const mutationsRoutes = new Hono<{ Variables: { sessionUser: { id: string
     mutationListResponseSchema.parse(payload);
     return ok(c, payload.data, meta);
   })
-  .post("/", async (c) => {
+  .post("/", createRateLimitMiddleware({ key: "mutation-upload", limit: 20, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
     const formData = await c.req.raw.formData();
     const parsed = createMutationSchema.safeParse({
@@ -281,51 +280,6 @@ export const mutationsRoutes = new Hono<{ Variables: { sessionUser: { id: string
     }
 
     const body = parsed.data;
-    const db = getDb();
-    const [existingCitizen] = await db
-      .select()
-      .from(citizen)
-      .where(eq(citizen.nik, body.nik))
-      .limit(1);
-
-    const [citizenRow] = existingCitizen
-      ? [existingCitizen]
-      : await db
-          .insert(citizen)
-          .values({
-            nik: body.nik,
-            name: body.name,
-            gender: body.gender,
-            birthPlace: "Tidak Diketahui",
-            birthDate: body.mutationDate,
-            religion: "Tidak Diketahui",
-            maritalStatus: "Belum Kawin",
-            occupation: body.occupation,
-            education: "Tidak Diketahui",
-            bloodType: null,
-            address: body.toAddress ?? body.fromAddress ?? "Tidak Diketahui",
-            rt: body.targetRt ?? "01",
-            rw: "25",
-            status: "PENDUDUK_TETAP",
-          })
-          .returning();
-
-    const [createdRow] = await db
-      .insert(mutation)
-      .values({
-        citizenId: citizenRow.id,
-        type: body.type,
-        status: "PENDING",
-        mutationDate: body.mutationDate,
-        fromAddress: body.fromAddress ?? null,
-        toAddress: body.toAddress ?? null,
-        targetRt: body.targetRt ?? null,
-        phone: body.phone ?? null,
-        reason: body.reason ?? null,
-        requestedBy: sessionUser.id,
-      })
-      .returning();
-
     const fileMap = [
       { field: "suratKeterangan", kind: "SURAT_KETERANGAN" as const },
       { field: "ktp", kind: "KTP" as const },
@@ -337,69 +291,29 @@ export const mutationsRoutes = new Hono<{ Variables: { sessionUser: { id: string
         (item): item is (typeof fileMap)[number] & { file: File } =>
           item.file instanceof File,
       );
-    const uploadedKeys: string[] = [];
+    const created = await createMutationService({
+      adminId: sessionUser.id,
+      body,
+      files: selectedFiles.map((item) => ({ kind: item.kind, file: item.file })),
+    });
 
-    try {
-      if (selectedFiles.length > 0) {
-        ensureStorageConfigured();
-      }
-
-      const attachmentRows = [];
-      for (const item of selectedFiles) {
-        const file = item.file;
-        validateUpload(file);
-
-        const objectKey = buildObjectKey({
-          mutationId: createdRow.id,
-          kind: item.kind,
-          fileName: file.name,
-        });
-        await uploadObject({ key: objectKey, file });
-        uploadedKeys.push(objectKey);
-
-        const [attachmentRow] = await db
-          .insert(mutationAttachment)
-          .values({
-            mutationId: createdRow.id,
-            kind: item.kind,
-            objectKey,
-            fileName: file.name,
-            contentType: file.type,
-            sizeBytes: String(file.size),
-          })
-          .returning();
-        attachmentRows.push(attachmentRow);
-      }
-
-      await logAdminActivity({
-        adminId: sessionUser.id,
-        action: "MUTATION_CREATED",
-        entityType: "MUTATION",
-        entityId: createdRow.id,
-        metadata: { citizenId: citizenRow.id, type: createdRow.type },
-      });
-
-      const payload = {
-        success: true as const,
-        data: {
-          ...mapMutation(createdRow),
-          attachments: await Promise.all(attachmentRows.map(mapMutationAttachment)),
-        },
-      };
-      mutationResponseSchema.parse(payload);
-      return ok(c, payload.data, undefined, 201);
-    } catch (error) {
-      await Promise.all(uploadedKeys.map((key) => deleteObject(key).catch(() => null)));
-      if (error instanceof AppError) throw error;
-      throw internalError("Failed to process mutation documents through Cloudflare R2.");
-    }
+    const payload = {
+      success: true as const,
+      data: {
+        ...mapMutation(created.mutation),
+        attachments: await Promise.all(created.attachments.map(mapMutationAttachment)),
+      },
+    };
+    mutationResponseSchema.parse(payload);
+    return ok(c, payload.data, undefined, 201);
   })
   .get("/:id", async (c) => {
+    const { id } = parseParams(c.req.param(), idParamSchema);
     const db = getDb();
     const [row] = await db
       .select()
       .from(mutation)
-      .where(eq(mutation.id, c.req.param("id")))
+      .where(eq(mutation.id, id))
       .limit(1);
     if (!row) throw notFound("Mutation not found");
     const attachmentRows = await db
@@ -421,25 +335,13 @@ export const mutationsRoutes = new Hono<{ Variables: { sessionUser: { id: string
   .patch("/:id/status", async (c) => {
     const sessionUser = c.get("sessionUser");
     const db = getDb();
+    const { id } = parseParams(c.req.param(), idParamSchema);
     const body = await parseJson(c.req.raw, updateMutationStatusSchema);
-    const [updated] = await db
-      .update(mutation)
-      .set({
-        status: body.status,
-        reviewedBy: sessionUser.id,
-        reviewedAt: new Date(),
-        ...(body.reason !== undefined ? { reason: body.reason } : {}),
-      })
-      .where(eq(mutation.id, c.req.param("id")))
-      .returning();
-    if (!updated) throw notFound("Mutation not found");
-
-    await logAdminActivity({
+    const updated = await approveMutationService({
       adminId: sessionUser.id,
-      action: "MUTATION_STATUS_UPDATED",
-      entityType: "MUTATION",
-      entityId: updated.id,
-      metadata: { status: body.status, reason: body.reason ?? null },
+      mutationId: id,
+      status: body.status,
+      reason: body.reason,
     });
 
     const attachmentRows = await db

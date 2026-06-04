@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { createApiSuccessSchema } from "./common";
+import { createApiSuccessSchema, paginationQuerySchema } from "./common";
 
 export const dashboardSummarySchema = z.object({
   stats: z.object({
@@ -49,6 +49,14 @@ export const reportDemographicsSchema = z.object({
     male: z.number().int().min(0),
     female: z.number().int().min(0),
   }),
+});
+
+export const reportFilterSchema = z.object({
+  rt: z.string().trim().regex(/^\d{1,3}$/).optional(),
+});
+
+export const reportCitizenDrilldownQuerySchema = paginationQuerySchema.extend({
+  q: z.string().trim().optional(),
 });
 
 export const reportSummaryResponseSchema = createApiSuccessSchema(dashboardSummarySchema);

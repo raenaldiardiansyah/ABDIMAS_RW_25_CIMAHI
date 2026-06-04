@@ -18,6 +18,8 @@ type ApiEnvelope<T> = {
 
 export class PlatformApiError extends Error {
   code?: string;
+  path: string;
+  status: number;
   verificationStatus?: "PENDING" | "VERIFIED" | "REJECTED";
   rejectionReason?: string | null;
 
@@ -25,6 +27,8 @@ export class PlatformApiError extends Error {
     message: string,
     options?: {
       code?: string;
+      path?: string;
+      status?: number;
       verificationStatus?: "PENDING" | "VERIFIED" | "REJECTED";
       rejectionReason?: string | null;
     },
@@ -32,9 +36,22 @@ export class PlatformApiError extends Error {
     super(message);
     this.name = "PlatformApiError";
     this.code = options?.code;
+    this.path = options?.path ?? "";
+    this.status = options?.status ?? 0;
     this.verificationStatus = options?.verificationStatus;
     this.rejectionReason = options?.rejectionReason;
   }
+}
+
+export function getPlatformErrorMessage(error: unknown, fallback = "Gagal memuat data.") {
+  if (error instanceof PlatformApiError) {
+    const code = error.code ? ` [${error.code}]` : "";
+    const status = error.status ? `HTTP ${error.status}` : "Request failed";
+    return `${status}${code}: ${error.message}`;
+  }
+
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
 export async function platformFetch<T>(path: string, init?: RequestInit) {
@@ -53,6 +70,8 @@ export async function platformFetch<T>(path: string, init?: RequestInit) {
   if (!res.ok || !json?.success) {
     throw new PlatformApiError(json?.error?.message || `Request failed: ${path}`, {
       code: json?.error?.code,
+      path,
+      status: res.status,
       verificationStatus: json?.verificationStatus,
       rejectionReason: json?.rejectionReason,
     });

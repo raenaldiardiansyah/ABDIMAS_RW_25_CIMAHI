@@ -4,11 +4,32 @@ import { createApiSuccessSchema, paginationQuerySchema } from "./common";
 
 export const citizenStatusSchema = z.enum(["PENDUDUK_TETAP", "NGEKOST"]);
 export const citizenGenderSchema = z.enum(["L", "P"]);
+const nikSchema = z.string().regex(/^\d{16}$/, "NIK must be exactly 16 numeric digits");
+const rtRwSchema = z.string().trim().regex(/^\d{1,3}$/, "RT/RW must be 1-3 numeric digits");
+const birthDateSchema = z
+  .string()
+  .trim()
+  .transform((value, ctx) => {
+    if (!value) {
+      ctx.addIssue({ code: "custom", message: "Birth date is required" });
+      return z.NEVER;
+    }
+
+    const normalized = value.includes("T") ? value.slice(0, 10) : value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      ctx.addIssue({ code: "custom", message: "Invalid date" });
+      return z.NEVER;
+    }
+
+    return normalized;
+  })
+  .refine((value) => new Date(value).getTime() <= Date.now(), "Birth date cannot be in the future");
 
 export const citizenSchema = z.object({
   id: z.string(),
   userId: z.string().nullable(),
-  nik: z.string().length(16),
+  noKK: z.string().nullable().optional(),
+  nik: nikSchema,
   name: z.string(),
   gender: citizenGenderSchema,
   birthPlace: z.string(),
@@ -22,6 +43,7 @@ export const citizenSchema = z.object({
   rt: z.string(),
   rw: z.string(),
   status: citizenStatusSchema,
+  isArchived: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -29,23 +51,25 @@ export const citizenSchema = z.object({
 export const citizenListQuerySchema = paginationQuerySchema.extend({
   q: z.string().trim().optional(),
   status: citizenStatusSchema.optional(),
+  rt: rtRwSchema.optional(),
+  rw: rtRwSchema.optional(),
 });
 
 export const createCitizenSchema = z.object({
   userId: z.string().optional(),
-  nik: z.string().length(16),
+  nik: nikSchema,
   name: z.string().min(2).max(120),
   gender: citizenGenderSchema,
   birthPlace: z.string().min(2).max(120),
-  birthDate: z.string(),
+  birthDate: birthDateSchema,
   religion: z.string().min(2).max(60),
   maritalStatus: z.string().min(2).max(60),
   occupation: z.string().min(2).max(120),
   education: z.string().min(2).max(120),
   bloodType: z.string().max(10).optional(),
   address: z.string().min(5).max(255),
-  rt: z.string().min(1).max(10),
-  rw: z.string().min(1).max(10),
+  rt: rtRwSchema,
+  rw: rtRwSchema,
   status: citizenStatusSchema.default("PENDUDUK_TETAP"),
 });
 

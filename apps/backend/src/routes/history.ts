@@ -4,11 +4,11 @@ import { Hono } from "hono";
 import { historyEntry, getDb } from "@abdimas/db";
 import { historyListQuerySchema, historyListResponseSchema } from "@abdimas/contracts";
 
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseQuery } from "../lib/validation";
-import { authMiddleware } from "../middleware/auth";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseQuery } from "../lib/validation.js";
+import { authMiddleware } from "../middleware/auth.js";
 
 export const historyRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", authMiddleware)

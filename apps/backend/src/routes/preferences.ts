@@ -7,10 +7,10 @@ import {
   userPreferenceResponseSchema,
 } from "@abdimas/contracts";
 
-import { ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson } from "../lib/validation";
-import { authMiddleware } from "../middleware/auth";
+import { ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson } from "../lib/validation.js";
+import { authMiddleware } from "../middleware/auth.js";
 
 async function getOrCreatePreference(userId: string) {
   const db = getDb();

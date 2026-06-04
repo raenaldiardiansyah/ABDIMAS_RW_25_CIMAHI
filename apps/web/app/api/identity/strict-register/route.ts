@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq, or } from "drizzle-orm";
 import { splitSetCookieHeader } from "better-auth/cookies";
+import { createCitizenSchema } from "@abdimas/contracts";
 
 import { getDb } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -46,18 +47,38 @@ const passwordSchema = z
     message: "Password harus mengandung angka",
   });
 
+const onboardingSchema = createCitizenSchema.pick({
+  nik: true,
+  name: true,
+  gender: true,
+  birthPlace: true,
+  birthDate: true,
+  religion: true,
+  maritalStatus: true,
+  occupation: true,
+  education: true,
+  bloodType: true,
+  address: true,
+  rt: true,
+  rw: true,
+  status: true,
+});
+
 const bodySchema = z.object({
   username: usernameSchema,
   email: emailSchema,
   password: passwordSchema,
-  nik: z.string().trim().min(16).max(16),
-  fullName: z
-    .string()
-    .trim()
-    .min(2, "Nama lengkap minimal 2 karakter")
-    .max(120, "Nama lengkap maksimal 120 karakter")
-    .optional(),
-});
+  kkNumber: z.string().trim().regex(/^\d{16}$/, "Nomor KK harus 16 digit angka").optional(),
+  familyRelationship: z.string().trim().min(2).max(60).optional(),
+}).and(onboardingSchema)
+  .refine((data) => !(data.kkNumber && !data.familyRelationship), {
+    path: ["familyRelationship"],
+    message: "Hubungan keluarga wajib diisi jika nomor KK diisi",
+  })
+  .refine((data) => !(!data.kkNumber && data.familyRelationship), {
+    path: ["kkNumber"],
+    message: "Nomor KK wajib diisi jika hubungan keluarga dipilih",
+  });
 
 type ApiErrorCode =
   | "INVALID_INPUT"
@@ -283,7 +304,21 @@ export async function POST(req: Request) {
     username: normalizedUsername,
     email: normalizedEmail,
     password,
-    fullName,
+    name,
+    gender,
+    birthPlace,
+    birthDate,
+    religion,
+    maritalStatus,
+    occupation,
+    education,
+    bloodType,
+    address,
+    rt,
+    rw,
+    status,
+    kkNumber,
+    familyRelationship,
   } = parsed.data;
 
   if (passwordContainsUserData(password, normalizedEmail, normalizedUsername)) {
@@ -424,7 +459,7 @@ export async function POST(req: Request) {
         "x-forwarded-proto": origin.startsWith("https://") ? "https" : "http",
       },
       body: JSON.stringify({
-        name: (fullName || normalizedUsername).trim(),
+        name: name.trim(),
         email: normalizedEmail,
         password,
         username: normalizedUsername,
@@ -475,7 +510,21 @@ export async function POST(req: Request) {
       nikHash,
       nikFirst4: nikMaskParts.first4,
       nikLast4: nikMaskParts.last4,
-      fullName: fullName ?? null,
+      fullName: name.trim(),
+      gender,
+      birthPlace,
+      birthDate,
+      religion,
+      maritalStatus,
+      occupation,
+      education,
+      bloodType: bloodType ?? null,
+      address,
+      rt,
+      rw,
+      citizenStatus: status,
+      kkNumber: kkNumber?.trim() || null,
+      familyRelationship: familyRelationship?.trim() || null,
       verificationStatus: "PENDING",
     });
 

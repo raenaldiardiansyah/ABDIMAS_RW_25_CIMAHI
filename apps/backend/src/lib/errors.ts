@@ -22,6 +22,10 @@ export function forbidden(message = "Forbidden") {
   return new AppError(403, "FORBIDDEN", message);
 }
 
+export function tooManyRequests(message = "Too many requests") {
+  return new AppError(429, "VALIDATION_ERROR", message);
+}
+
 export function verificationRequired(params: {
   verificationStatus: "PENDING" | "REJECTED";
   rejectionReason?: string | null;

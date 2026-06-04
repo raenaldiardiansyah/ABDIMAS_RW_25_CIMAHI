@@ -1,7 +1,7 @@
 import { createMiddleware } from "hono/factory";
 
-import { forbidden, unauthorized, verificationRequired } from "../lib/errors";
-import { resolveIdentity, resolveSession } from "../session";
+import { forbidden, unauthorized, verificationRequired } from "../lib/errors.js";
+import { resolveIdentity, resolveSession } from "../session.js";
 
 export type SessionUser = NonNullable<Awaited<ReturnType<typeof resolveSession>>>;
 
@@ -19,7 +19,17 @@ export const adminMiddleware = createMiddleware<{
 }>(async (c, next) => {
   const sessionUser = await resolveSession(c.req.header("cookie"));
   if (!sessionUser) throw unauthorized();
-  if (sessionUser.role !== "ADMIN") throw forbidden();
+  if (sessionUser.role !== "ADMIN" && sessionUser.role !== "SUPER_ADMIN") throw forbidden();
+  c.set("sessionUser", sessionUser);
+  await next();
+});
+
+export const superAdminMiddleware = createMiddleware<{
+  Variables: { sessionUser: SessionUser };
+}>(async (c, next) => {
+  const sessionUser = await resolveSession(c.req.header("cookie"));
+  if (!sessionUser) throw unauthorized();
+  if (sessionUser.role !== "SUPER_ADMIN") throw forbidden("Super admin access required");
   c.set("sessionUser", sessionUser);
   await next();
 });

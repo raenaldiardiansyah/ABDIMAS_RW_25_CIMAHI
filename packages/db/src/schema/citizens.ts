@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   date,
   index,
   pgEnum,
@@ -34,6 +35,7 @@ export const citizen = pgTable(
     rt: text("rt").notNull(),
     rw: text("rw").notNull(),
     status: citizenStatusEnum("status").notNull().default("PENDUDUK_TETAP"),
+    isArchived: boolean("is_archived").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -45,6 +47,7 @@ export const citizen = pgTable(
     userUq: uniqueIndex("citizens_user_id_uq").on(t.userId),
     nameIdx: index("citizens_name_idx").on(t.name),
     statusIdx: index("citizens_status_idx").on(t.status),
+    archivedIdx: index("citizens_is_archived_idx").on(t.isArchived),
     rtRwIdx: index("citizens_rt_rw_idx").on(t.rt, t.rw),
   }),
 );

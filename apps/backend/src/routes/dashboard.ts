@@ -1,11 +1,11 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { reportSummaryResponseSchema } from "@abdimas/contracts";
 import { adminActivityLog, citizen, getDb, household, mutation, serviceRequest, userIdentity } from "@abdimas/db";
 
-import { ok } from "../lib/response";
-import { adminMiddleware } from "../middleware/auth";
+import { ok } from "../lib/response.js";
+import { adminMiddleware } from "../middleware/auth.js";
 
 export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", adminMiddleware)
@@ -23,7 +23,7 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
       [{ deltaMutasi }],
       latestLogRows,
     ] = await Promise.all([
-      db.select({ totalWarga: sql<number>`count(*)::int` }).from(citizen),
+      db.select({ totalWarga: sql<number>`count(*)::int` }).from(citizen).where(eq(citizen.isArchived, false)),
       db.select({ totalKK: sql<number>`count(*)::int` }).from(household),
       db.select({ totalMutasi: sql<number>`count(*)::int` }).from(mutation),
       db
@@ -41,7 +41,7 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
       db
         .select({ deltaWarga: sql<number>`count(*)::int` })
         .from(citizen)
-        .where(sql`${citizen.createdAt} >= now() - interval '7 days'`),
+        .where(and(eq(citizen.isArchived, false), sql`${citizen.createdAt} >= now() - interval '7 days'`)),
       db
         .select({ deltaKK: sql<number>`count(*)::int` })
         .from(household)
@@ -87,4 +87,3 @@ export const dashboardRoutes = new Hono<{ Variables: { sessionUser: { id: string
     reportSummaryResponseSchema.parse(payload);
     return ok(c, payload.data);
   });
-

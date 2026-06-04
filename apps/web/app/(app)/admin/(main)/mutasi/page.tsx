@@ -13,6 +13,8 @@ import {
   LogIn,
   LogOut,
   Download,
+  ArrowRight,
+  ArrowLeft,
 } from 'lucide-react';
 
 import {

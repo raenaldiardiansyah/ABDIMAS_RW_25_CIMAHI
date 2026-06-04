@@ -21,21 +21,27 @@ export const activitySchema = z.object({
 export const activityListQuerySchema = paginationQuerySchema.extend({
   q: z.string().trim().optional(),
   category: activityCategorySchema.optional(),
-  date: z.string().optional(),
-  month: z.string().optional(),
+  date: z.string().date().optional(),
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
-export const createActivitySchema = z.object({
+const activityWriteSchema = z.object({
   title: z.string().min(2).max(120),
   description: z.string().min(2).max(500),
   location: z.string().min(2).max(255),
   category: activityCategorySchema,
-  date: z.string(),
+  date: z.string().date(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
 });
 
-export const updateActivitySchema = createActivitySchema.partial().refine(
+export const createActivitySchema = activityWriteSchema.superRefine((value, ctx) => {
+  if (value.startTime && value.endTime && value.startTime >= value.endTime) {
+    ctx.addIssue({ code: "custom", message: "startTime must be before endTime", path: ["startTime"] });
+  }
+});
+
+export const updateActivitySchema = activityWriteSchema.partial().refine(
   (value) => Object.keys(value).length > 0,
   "At least one field must be provided",
 );

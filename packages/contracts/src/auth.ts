@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const appRoleSchema = z.enum(["USER", "ADMIN"]);
+export const appRoleSchema = z.enum(["USER", "ADMIN", "SUPER_ADMIN"]);
 export const verificationStatusSchema = z.enum(["PENDING", "VERIFIED", "REJECTED"]);
 
 export const sessionUserSchema = z.object({

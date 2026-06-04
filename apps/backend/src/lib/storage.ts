@@ -5,9 +5,10 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
 
-import { backendConfig } from "../config";
-import { AppError } from "./errors";
+import { backendConfig } from "../config.js";
+import { AppError } from "./errors.js";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -15,7 +16,15 @@ const ALLOWED_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
   "image/png",
+  "image/webp",
 ]);
+const SAFE_EXTENSIONS_BY_CONTENT_TYPE: Record<string, string> = {
+  "application/pdf": ".pdf",
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+};
 
 let client: S3Client | null = null;
 
@@ -60,11 +69,10 @@ export function validateUpload(file: File) {
   }
 }
 
-export function buildObjectKey(input: { mutationId: string; kind: string; fileName: string }) {
-  const safeExt = input.fileName.includes(".")
-    ? input.fileName.slice(input.fileName.lastIndexOf(".")).toLowerCase()
-    : "";
-  return `mutations/${input.mutationId}/${input.kind.toLowerCase()}-${Date.now()}${safeExt}`;
+export function buildObjectKeyForFile(input: { mutationId: string; kind: string; file: File }) {
+  const safeExt = SAFE_EXTENSIONS_BY_CONTENT_TYPE[input.file.type] ?? "";
+  const randomSuffix = randomUUID();
+  return `mutations/${input.mutationId}/${input.kind.toLowerCase()}-${Date.now()}-${randomSuffix}${safeExt}`;
 }
 
 export async function uploadObject(input: {
@@ -100,8 +108,8 @@ export async function deleteObject(key: string) {
   );
 }
 
-export async function buildObjectUrl(key: string) {
-  if (backendConfig.r2PublicBaseUrl) {
+export async function buildObjectUrl(key: string, options?: { signedOnly?: boolean }) {
+  if (backendConfig.r2PublicBaseUrl && !options?.signedOnly) {
     return `${backendConfig.r2PublicBaseUrl.replace(/\/$/, "")}/${key}`;
   }
 

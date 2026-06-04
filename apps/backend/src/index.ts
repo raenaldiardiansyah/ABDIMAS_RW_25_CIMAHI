@@ -1,7 +1,8 @@
+import "./load-env.js";
 import { serve } from "@hono/node-server";
 
-import { backendConfig } from "./config";
-import { createApp } from "./routes";
+import { backendConfig } from "./config.js";
+import { createApp } from "./routes.js";
 
 const app = createApp();
 

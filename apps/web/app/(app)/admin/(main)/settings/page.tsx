@@ -28,6 +28,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { authClient } from '@/lib/auth-client';
 import { getAdminProfile, type AdminProfile } from '@/lib/admin-profile';
+import { platformFetch } from '@/lib/api/platform';
+
+type UserPreference = {
+  id: string;
+  userId: string;
+  language: string;
+  theme: string;
+  notificationEnabled: boolean;
+};
 
 const DICT: Record<string, Record<string, string>> = {
   Indonesia: {
@@ -56,10 +65,11 @@ export default function AdminSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [profile, setProfile] = useState<AdminProfile>(() => getAdminProfile());
-  
   const [isDark, setIsDark] = useState(false);
   const [notifStatus, setNotifStatus] = useState<string>('default');
+  const [notifikasi, setNotifikasi] = useState(false);
   const [bahasa, setBahasa] = useState('Indonesia');
+  const [savingKey, setSavingKey] = useState<'theme' | 'language' | 'notification' | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [activeDialog, setActiveDialog] = useState<'bahasa' | 'security' | null>(null);
 
@@ -69,9 +79,17 @@ export default function AdminSettingsPage() {
     let active = true;
 
     async function loadSession() {
-      const session = await authClient.getSession().catch(() => null);
+      const [session, preference] = await Promise.all([
+        authClient.getSession().catch(() => null),
+        platformFetch<UserPreference>('/me/preferences').catch(() => null),
+      ]);
       if (!active) return;
       setProfile(getAdminProfile(session?.data?.user));
+      if (preference?.data) {
+        setIsDark(preference.data.theme === 'dark');
+        setNotifikasi(preference.data.notificationEnabled);
+        setBahasa(preference.data.language === 'en' ? 'English' : preference.data.language === 'su' ? 'Sunda' : 'Indonesia');
+      }
     }
 
     void loadSession();
@@ -97,24 +115,43 @@ export default function AdminSettingsPage() {
       toast({ title: 'Tidak Didukung', description: 'Browser Anda tidak mendukung notifikasi.' });
       return;
     }
-    if (notifStatus === 'granted') {
-      toast({ title: 'Notifikasi Aktif', description: 'Notifikasi sudah diaktifkan. Anda hanya bisa mematikannya dari pengaturan browser.' });
-    } else if (notifStatus === 'denied') {
+    if (notifStatus === 'denied') {
       toast({ title: 'Notifikasi Diblokir', description: 'Anda memblokir notifikasi. Silakan ubah di pengaturan browser (ikon gembok 🔒).', variant: 'destructive' });
-    } else {
+      return;
+    }
+    if (notifStatus !== 'granted') {
       const p = await Notification.requestPermission();
       setNotifStatus(p);
       window.dispatchEvent(new CustomEvent('notif-updated'));
       if (p === 'granted') {
         new Notification('Portal RW 25', { body: 'Notifikasi berhasil diaktifkan!', icon: '/favicon.ico' });
+      } else {
+        return;
       }
     }
+    const next = !notifikasi;
+    setNotifikasi(next);
+    void persistPreference({ notificationEnabled: next }, 'notification');
   };
 
   const handleLogout = async () => {
     await authClient.signOut().catch(() => null);
     toast({ title: "Berhasil keluar", description: "Anda telah logout.", variant: "default" });
     router.push('/sign-in');
+  };
+
+  const persistPreference = async (payload: Partial<Pick<UserPreference, 'theme' | 'language' | 'notificationEnabled'>>, key: 'theme' | 'language' | 'notification') => {
+    setSavingKey(key);
+    try {
+      await platformFetch<UserPreference>('/me/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      toast({ title: 'Gagal menyimpan preferensi', variant: 'destructive' });
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   return (
@@ -151,7 +188,12 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
               <Button
-                onClick={() => setIsDark(!isDark)}
+                onClick={() => {
+                  const next = !isDark;
+                  setIsDark(next);
+                  void persistPreference({ theme: next ? 'dark' : 'light' }, 'theme');
+                }}
+                disabled={savingKey === 'theme'}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
                   isDark ? 'bg-[#1F7A6B]' : 'bg-[#D0D5DD]'
                 }`}
@@ -203,12 +245,13 @@ export default function AdminSettingsPage() {
               </div>
               <Button
                 onClick={handleToggleNotif}
+                disabled={savingKey === 'notification'}
                 className={`relative w-14 h-8 rounded-full transition-all duration-300 ${
-                  notifStatus === 'granted' ? 'bg-[#2C5F75]' : 'bg-[#D0D5DD]'
+                  notifStatus === 'granted' && notifikasi ? 'bg-[#2C5F75]' : 'bg-[#D0D5DD]'
                 }`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${
-                  notifStatus === 'granted' ? 'left-[28px]' : 'left-1'
+                  notifStatus === 'granted' && notifikasi ? 'left-[28px]' : 'left-1'
                 }`} />
               </Button>
             </div>
@@ -319,7 +362,7 @@ export default function AdminSettingsPage() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium text-[#667085]">
               {activeDialog === 'bahasa' && 'Pilih bahasa antarmuka sistem.'}
-              {activeDialog === 'security' && 'Pengaturan keamanan sedang dalam tahap pengembangan akhir.'}
+              {activeDialog === 'security' && 'Pengaturan keamanan di halaman ini masih bersifat informasional. Perubahan kredensial dikelola dari alur admin management/backend.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {activeDialog === 'bahasa' && (
@@ -327,7 +370,12 @@ export default function AdminSettingsPage() {
               {['Indonesia', 'Sunda', 'English'].map((l) => (
                 <Button
                   key={l}
-                  onClick={() => { setBahasa(l); setActiveDialog(null); }}
+                  onClick={() => {
+                    setBahasa(l);
+                    setActiveDialog(null);
+                    void persistPreference({ language: l === 'English' ? 'en' : l === 'Sunda' ? 'su' : 'id' }, 'language');
+                  }}
+                  disabled={savingKey === 'language'}
                   className={`flex items-center justify-between rounded-xl border p-4 text-left transition-colors ${
                     bahasa === l ? 'border-[#1F7A6B] bg-[#E8F3F0] text-[#1F7A6B]' : 'border-gray-100 hover:bg-gray-50'
                   }`}

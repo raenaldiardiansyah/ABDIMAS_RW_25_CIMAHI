@@ -1,0 +1,15 @@
+ALTER TABLE "user_identity"
+ADD COLUMN "gender" "public"."citizen_gender",
+ADD COLUMN "birth_place" text,
+ADD COLUMN "birth_date" date,
+ADD COLUMN "religion" text,
+ADD COLUMN "marital_status" text,
+ADD COLUMN "occupation" text,
+ADD COLUMN "education" text,
+ADD COLUMN "blood_type" text,
+ADD COLUMN "address" text,
+ADD COLUMN "rt" text,
+ADD COLUMN "rw" text,
+ADD COLUMN "citizen_status" "public"."citizen_status" DEFAULT 'PENDUDUK_TETAP',
+ADD COLUMN "kk_number" text,
+ADD COLUMN "family_relationship" text;

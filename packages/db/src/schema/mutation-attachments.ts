@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+import { user } from "./auth";
 
 import { mutation } from "./mutations";
 
@@ -17,16 +19,20 @@ export const mutationAttachment = pgTable(
     mutationId: text("mutation_id")
       .notNull()
       .references(() => mutation.id, { onDelete: "cascade" }),
+    entityType: text("entity_type").notNull().default("MUTATION"),
+    entityId: text("entity_id").notNull(),
     kind: mutationAttachmentKindEnum("kind").notNull(),
-    objectKey: text("object_key").notNull(),
-    fileName: text("file_name").notNull(),
-    contentType: text("content_type").notNull(),
-    sizeBytes: text("size_bytes").notNull(),
+    storageKey: text("storage_key").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    size: integer("size").notNull(),
+    uploadedBy: text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     mutationIdx: index("mutation_attachments_mutation_id_idx").on(t.mutationId),
     mutationKindIdx: index("mutation_attachments_mutation_kind_idx").on(t.mutationId, t.kind),
+    entityIdx: index("mutation_attachments_entity_idx").on(t.entityType, t.entityId),
   }),
 );
 

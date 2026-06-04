@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import {
+  idParamSchema,
   requestDecisionSchema,
   requestListQuerySchema,
   serviceRequestListResponseSchema,
@@ -9,13 +10,15 @@ import {
 } from "@abdimas/contracts";
 import { getDb, household, householdMember, mutation, serviceRequest } from "@abdimas/db";
 
-import { logAdminActivity } from "../lib/admin-logs";
-import { notFound } from "../lib/errors";
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson, parseQuery } from "../lib/validation";
-import { adminMiddleware } from "../middleware/auth";
+import { logAdminActivity } from "../lib/admin-logs.js";
+import { notFound } from "../lib/errors.js";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { createRateLimitMiddleware } from "../lib/rate-limit.js";
+import { ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson, parseParams, parseQuery } from "../lib/validation.js";
+import { adminMiddleware } from "../middleware/auth.js";
+import { approveRequestService, rejectRequestService } from "../services/requests.js";
 
 function mapRequest(row: typeof serviceRequest.$inferSelect) {
   return {
@@ -50,71 +53,6 @@ type MutationPayload = {
   toAddress?: string;
   reason?: string;
 };
-
-async function applyRequestApproval(row: typeof serviceRequest.$inferSelect, adminId: string) {
-  const db = getDb();
-
-  if (row.type === "HOUSEHOLD_CREATE") {
-    const payload = row.payload as HouseholdCreatePayload;
-    const [createdHousehold] = await db
-      .insert(household)
-      .values({
-        kkNumber: payload.household.kkNumber,
-        headCitizenId: payload.household.headCitizenId,
-        address: payload.household.address,
-        rt: payload.household.rt,
-        rw: payload.household.rw,
-        status: payload.household.status ?? "ACTIVE",
-      })
-      .returning();
-
-    const members = payload.members ?? [];
-    const normalizedMembers = new Map<string, string>();
-    normalizedMembers.set(payload.household.headCitizenId, "Kepala Keluarga");
-    for (const member of members) normalizedMembers.set(member.citizenId, member.relationship);
-
-    await db.insert(householdMember).values(
-      Array.from(normalizedMembers.entries()).map(([citizenId, relationship]) => ({
-        householdId: createdHousehold.id,
-        citizenId,
-        relationship,
-      })),
-    );
-
-    await logAdminActivity({
-      adminId,
-      action: "REQUEST_APPROVED",
-      entityType: "HOUSEHOLD",
-      entityId: createdHousehold.id,
-      metadata: { requestId: row.id, requestType: row.type },
-    });
-    return;
-  }
-
-  const payload = row.payload as MutationPayload;
-  const [createdMutation] = await db
-    .insert(mutation)
-    .values({
-      citizenId: payload.citizenId,
-      type: row.type === "MUTATION_IN" ? "IN" : "OUT",
-      status: "APPROVED",
-      fromAddress: payload.fromAddress ?? null,
-      toAddress: payload.toAddress ?? null,
-      reason: payload.reason ?? null,
-      requestedBy: row.requestedBy,
-      reviewedBy: adminId,
-      reviewedAt: new Date(),
-    })
-    .returning();
-
-  await logAdminActivity({
-    adminId,
-    action: "REQUEST_APPROVED",
-    entityType: "MUTATION",
-    entityId: createdMutation.id,
-    metadata: { requestId: row.id, requestType: row.type },
-  });
-}
 
 export const requestsRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string } } }>()
   .use("*", adminMiddleware)
@@ -153,66 +91,30 @@ export const requestsRoutes = new Hono<{ Variables: { sessionUser: { id: string;
     return ok(c, payload.data, meta);
   })
   .get("/:id", async (c) => {
+    const { id } = parseParams(c.req.param(), idParamSchema);
     const row = await getDb()
       .select()
       .from(serviceRequest)
-      .where(eq(serviceRequest.id, c.req.param("id")))
+      .where(eq(serviceRequest.id, id))
       .limit(1);
     if (!row[0]) throw notFound("Request not found");
     const payload = { success: true as const, data: mapRequest(row[0]) };
     serviceRequestResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
-  .post("/:id/approve", async (c) => {
-    const requestId = c.req.param("id");
+  .post("/:id/approve", createRateLimitMiddleware({ key: "request-approve", limit: 20, windowMs: 60_000 }), async (c) => {
+    const { id: requestId } = parseParams(c.req.param(), idParamSchema);
     const sessionUser = c.get("sessionUser");
-    const db = getDb();
-    const [row] = await db
-      .select()
-      .from(serviceRequest)
-      .where(eq(serviceRequest.id, requestId))
-      .limit(1);
-    if (!row) throw notFound("Request not found");
-
-    const [updated] = await db
-      .update(serviceRequest)
-      .set({
-        status: "APPROVED",
-        reviewedBy: sessionUser.id,
-        reviewedAt: new Date(),
-        rejectionReason: null,
-      })
-      .where(eq(serviceRequest.id, requestId))
-      .returning();
-
-    await applyRequestApproval(updated, sessionUser.id);
+    const updated = await approveRequestService({ adminId: sessionUser.id, requestId });
     const payload = { success: true as const, data: mapRequest(updated) };
     serviceRequestResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
-  .post("/:id/reject", async (c) => {
-    const requestId = c.req.param("id");
+  .post("/:id/reject", createRateLimitMiddleware({ key: "request-reject", limit: 20, windowMs: 60_000 }), async (c) => {
+    const { id: requestId } = parseParams(c.req.param(), idParamSchema);
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, requestDecisionSchema);
-    const [updated] = await getDb()
-      .update(serviceRequest)
-      .set({
-        status: "REJECTED",
-        reviewedBy: sessionUser.id,
-        reviewedAt: new Date(),
-        rejectionReason: body.reason ?? "Rejected by admin",
-      })
-      .where(eq(serviceRequest.id, requestId))
-      .returning();
-    if (!updated) throw notFound("Request not found");
-
-    await logAdminActivity({
-      adminId: sessionUser.id,
-      action: "REQUEST_REJECTED",
-      entityType: "REQUEST",
-      entityId: requestId,
-      metadata: { requestType: updated.type, reason: body.reason ?? null },
-    });
+    const updated = await rejectRequestService({ adminId: sessionUser.id, requestId, reason: body.reason });
 
     const payload = { success: true as const, data: mapRequest(updated) };
     serviceRequestResponseSchema.parse(payload);

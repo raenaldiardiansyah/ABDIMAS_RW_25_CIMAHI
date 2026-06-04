@@ -22,7 +22,7 @@ import {
 
 import AdminCalendar from '@/components/admin/AdminCalendar';
 import { Button } from '@/components/ui/button';
-import { platformFetch } from '@/lib/api/platform';
+import { getPlatformErrorMessage, platformFetch } from '@/lib/api/platform';
 
 /* ── Types ── */
 
@@ -133,6 +133,7 @@ const quickActions = [
 
 export default function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [hiddenActivities, setHiddenActivities] = useState<string[]>([]);
   const [categoryPages, setCategoryPages] = useState<Record<string, number>>({});
@@ -160,10 +161,11 @@ export default function AdminDashboardPage() {
         const response = await platformFetch<DashboardResponse>('/admin/dashboard');
         if (!active) return;
         setDashboard(response.data);
+        setDashboardError(null);
       } catch (error) {
-        console.error(error);
         if (!active) return;
         setDashboard(null);
+        setDashboardError(getPlatformErrorMessage(error, 'Gagal memuat dashboard admin.'));
       }
     }
 
@@ -219,6 +221,13 @@ export default function AdminDashboardPage() {
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       {/* ── Left Column ── */}
       <div className="flex flex-col gap-5">
+        {dashboardError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="font-bold">Dashboard gagal dimuat</p>
+            <p className="mt-1 text-xs leading-relaxed">{dashboardError}</p>
+          </div>
+        ) : null}
+
         {/* Request Queue Banner */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#3B82F6] px-5 py-5 text-white shadow-lg sm:px-6 sm:py-5">
           {/* Decorative circles */}

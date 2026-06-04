@@ -6,16 +6,18 @@ import {
   activityListResponseSchema,
   activityResponseSchema,
   createActivitySchema,
+  idParamSchema,
   updateActivitySchema,
 } from "@abdimas/contracts";
 import { activity, getDb } from "@abdimas/db";
 
-import { logAdminActivity } from "../lib/admin-logs";
-import { notFound } from "../lib/errors";
-import { ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson, parseQuery } from "../lib/validation";
-import { adminMiddleware, authMiddleware } from "../middleware/auth";
+import { logAdminActivity } from "../lib/admin-logs.js";
+import { notFound } from "../lib/errors.js";
+import { createRateLimitMiddleware } from "../lib/rate-limit.js";
+import { ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
+import { adminMiddleware, authMiddleware } from "../middleware/auth.js";
 
 function mapActivity(row: typeof activity.$inferSelect) {
   return {
@@ -65,7 +67,7 @@ export const scheduleRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         category: c.req.query("category") || undefined,
         date: c.req.query("date") || undefined,
         month: c.req.query("month") || undefined,
@@ -91,7 +93,7 @@ export const adminActivitiesRoutes = new Hono<{ Variables: { sessionUser: { id: 
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         category: c.req.query("category") || undefined,
         date: c.req.query("date") || undefined,
         month: c.req.query("month") || undefined,
@@ -109,7 +111,7 @@ export const adminActivitiesRoutes = new Hono<{ Variables: { sessionUser: { id: 
     activityListResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
-  .post("/", async (c) => {
+  .post("/", createRateLimitMiddleware({ key: "activity-write", limit: 30, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
     const body = await parseJson(c.req.raw, createActivitySchema);
     const [createdRow] = await getDb()
@@ -128,13 +130,14 @@ export const adminActivitiesRoutes = new Hono<{ Variables: { sessionUser: { id: 
     activityResponseSchema.parse(payload);
     return ok(c, payload.data, undefined, 201);
   })
-  .patch("/:id", async (c) => {
+  .patch("/:id", createRateLimitMiddleware({ key: "activity-write", limit: 30, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
+    const { id } = parseParams(c.req.param(), idParamSchema);
     const body = await parseJson(c.req.raw, updateActivitySchema);
     const [updated] = await getDb()
       .update(activity)
       .set(body)
-      .where(eq(activity.id, c.req.param("id")))
+      .where(eq(activity.id, id))
       .returning();
     if (!updated) throw notFound("Activity not found");
 
@@ -149,9 +152,10 @@ export const adminActivitiesRoutes = new Hono<{ Variables: { sessionUser: { id: 
     activityResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
-  .delete("/:id", async (c) => {
+  .delete("/:id", createRateLimitMiddleware({ key: "activity-write", limit: 30, windowMs: 60_000 }), async (c) => {
     const sessionUser = c.get("sessionUser");
-    const [deleted] = await getDb().delete(activity).where(eq(activity.id, c.req.param("id"))).returning();
+    const { id } = parseParams(c.req.param(), idParamSchema);
+    const [deleted] = await getDb().delete(activity).where(eq(activity.id, id)).returning();
     if (!deleted) throw notFound("Activity not found");
 
     await logAdminActivity({

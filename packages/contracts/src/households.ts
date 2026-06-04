@@ -3,11 +3,26 @@ import { z } from "zod";
 import { citizenSchema } from "./citizens";
 import { createApiSuccessSchema, paginationQuerySchema } from "./common";
 
+export const householdRelationshipSchema = z.enum([
+  "HEAD_OF_FAMILY",
+  "SPOUSE",
+  "CHILD",
+  "PARENT",
+  "SIBLING",
+  "OTHER",
+]);
+export const householdRelationshipInputSchema = z.union([
+  householdRelationshipSchema,
+  z.enum(["Kepala Keluarga", "Suami", "Istri", "Anak", "Orang Tua", "Saudara", "Lainnya"]),
+]);
+const kkNumberSchema = z.string().regex(/^\d{16}$/, "KK number must be exactly 16 numeric digits");
+const rtRwSchema = z.string().trim().regex(/^\d{1,3}$/, "RT/RW must be 1-3 numeric digits");
+
 export const householdMemberSchema = z.object({
   id: z.string(),
   householdId: z.string(),
   citizenId: z.string(),
-  relationship: z.string(),
+  relationship: householdRelationshipSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
   citizen: citizenSchema.optional(),
@@ -44,12 +59,12 @@ export const householdListQuerySchema = paginationQuerySchema.extend({
 });
 
 export const createHouseholdSchema = z.object({
-  kkNumber: z.string().min(8).max(32),
+  kkNumber: kkNumberSchema,
   headCitizenId: z.string().optional(),
   headCitizenName: z.string().min(2).max(120).optional(),
   address: z.string().min(5).max(255),
-  rt: z.string().min(1).max(10),
-  rw: z.string().min(1).max(10),
+  rt: rtRwSchema,
+  rw: rtRwSchema,
   status: z.string().min(1).max(40).default("ACTIVE"),
 });
 
@@ -60,11 +75,11 @@ export const updateHouseholdSchema = createHouseholdSchema.partial().refine(
 
 export const addHouseholdMemberSchema = z.object({
   citizenId: z.string(),
-  relationship: z.string().min(2).max(80),
+  relationship: householdRelationshipInputSchema,
 });
 
 export const updateHouseholdMemberSchema = z.object({
-  relationship: z.string().min(2).max(80).optional(),
+  relationship: householdRelationshipInputSchema.optional(),
   birthDate: z.string().optional(),
   occupation: z.string().optional(),
 });

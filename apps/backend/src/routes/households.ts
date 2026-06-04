@@ -5,6 +5,7 @@ import {
   addHouseholdMemberSchema,
   createHouseholdSchema,
   householdAuditLogResponseSchema,
+  idParamSchema,
   householdListQuerySchema,
   householdListResponseSchema,
   householdResponseSchema,
@@ -13,13 +14,14 @@ import {
 } from "@abdimas/contracts";
 import { adminActivityLog, citizen, getDb, household, householdMember, mutation } from "@abdimas/db";
 
-import { logAdminActivity } from "../lib/admin-logs";
-import { conflict, notFound } from "../lib/errors";
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { created, fail, ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson, parseQuery } from "../lib/validation";
-import { adminMiddleware } from "../middleware/auth";
+import { logAdminActivity } from "../lib/admin-logs.js";
+import { conflict, notFound, validationError } from "../lib/errors.js";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { created, ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
+import { adminMiddleware } from "../middleware/auth.js";
+import { addHouseholdMemberService, createHouseholdService, normalizeHouseholdRelationship } from "../services/households.js";
 
 function mapCitizen(row: typeof citizen.$inferSelect) {
   return {
@@ -69,7 +71,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         rt: c.req.query("rt") || undefined,
       },
       householdListQuerySchema,
@@ -93,7 +95,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     const [{ total }] = await db
       .select({ total: sql<number>`count(distinct ${household.id})::int` })
       .from(household)
-      .innerJoin(citizen, eq(citizen.id, household.headCitizenId))
+      .leftJoin(citizen, eq(citizen.id, household.headCitizenId))
       .where(where);
 
     const rows = await db
@@ -113,7 +115,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
         )`,
       })
       .from(household)
-      .innerJoin(citizen, eq(citizen.id, household.headCitizenId))
+      .leftJoin(citizen, eq(citizen.id, household.headCitizenId))
       .where(where)
       .orderBy(desc(household.createdAt))
       .limit(query.limit)
@@ -136,67 +138,23 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
   })
   .post("/", async (c) => {
     const body = await parseJson(c.req.raw, createHouseholdSchema);
-    const db = getDb();
+    const inserted = await createHouseholdService({
+      adminId: c.get("sessionUser").id,
+      body: {
+        kkNumber: body.kkNumber,
+        headCitizenId: body.headCitizenId,
+        headCitizenName: body.headCitizenName,
+        address: body.address,
+        rt: body.rt,
+        rw: body.rw,
+        status: body.status,
+      },
+    });
 
-    if (!body.headCitizenId && !body.headCitizenName) {
-      throw fail(c, "BAD_REQUEST", "Either headCitizenId or headCitizenName must be provided");
-    }
-
-    const [existingHousehold] = await db
-      .select({ id: household.id })
-      .from(household)
-      .where(eq(household.kkNumber, body.kkNumber))
-      .limit(1);
-
-    if (existingHousehold) throw conflict("KK number already exists");
-
-    let finalHeadCitizenId = body.headCitizenId;
-
-    if (finalHeadCitizenId) {
-      const [existingHead] = await db
-        .select({ id: citizen.id })
-        .from(citizen)
-        .where(eq(citizen.id, finalHeadCitizenId))
-        .limit(1);
-      if (!existingHead) throw notFound("Head citizen not found");
-    } else {
-      const dummyNik = Math.floor(Math.random() * 9000000000000000 + 1000000000000000).toString();
-      const [newCitizen] = await db
-        .insert(citizen)
-        .values({
-          nik: dummyNik,
-          name: body.headCitizenName!,
-          gender: "L",
-          birthPlace: "-",
-          birthDate: new Date().toISOString().split("T")[0],
-          religion: "-",
-          maritalStatus: "-",
-          occupation: "-",
-          education: "-",
-          address: body.address,
-          rt: body.rt,
-          rw: body.rw,
-          status: "PENDUDUK_TETAP",
-        })
-        .returning();
-      finalHeadCitizenId = newCitizen.id;
-    }
-
-    const { headCitizenName, ...householdData } = body;
-    const [inserted] = await db
-      .insert(household)
-      .values({ ...householdData, headCitizenId: finalHeadCitizenId! })
-      .returning();
-
-    await db
-      .insert(householdMember)
-      .values({ householdId: inserted.id, citizenId: finalHeadCitizenId!, relationship: "Kepala Keluarga" })
-      .onConflictDoNothing();
-
-    const [headCitizenRow] = await db
+    const [headCitizenRow] = await getDb()
       .select()
       .from(citizen)
-      .where(eq(citizen.id, finalHeadCitizenId!))
+      .where(eq(citizen.id, inserted.headCitizenId))
       .limit(1);
 
     const payload = {
@@ -207,8 +165,8 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
           {
             id: "",
             householdId: inserted.id,
-            citizenId: finalHeadCitizenId!,
-            relationship: "Kepala Keluarga",
+            citizenId: inserted.headCitizenId,
+            relationship: "HEAD_OF_FAMILY",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             citizen: mapCitizen(headCitizenRow),
@@ -220,7 +178,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     return created(c, payload.data);
   })
   .get("/:id", async (c) => {
-    const householdId = c.req.param("id");
+    const { id: householdId } = parseParams(c.req.param(), idParamSchema);
     const db = getDb();
     const [base, members] = await Promise.all([
       db
@@ -237,7 +195,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
           headCitizen: citizen,
         })
         .from(household)
-        .innerJoin(citizen, eq(citizen.id, household.headCitizenId))
+        .leftJoin(citizen, eq(citizen.id, household.headCitizenId))
         .where(eq(household.id, householdId))
         .limit(1),
       db
@@ -281,7 +239,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     return ok(c, payload.data);
   })
   .patch("/:id", async (c) => {
-    const householdId = c.req.param("id");
+    const { id: householdId } = parseParams(c.req.param(), idParamSchema);
     const body = await parseJson(c.req.raw, updateHouseholdSchema);
     const db = getDb();
 
@@ -303,6 +261,15 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       if (exists.length === 0) throw notFound("Head citizen not found");
     }
 
+    if (body.headCitizenId) {
+      const existingMembership = await db
+        .select({ id: householdMember.id })
+        .from(householdMember)
+        .where(and(eq(householdMember.citizenId, body.headCitizenId), sql`${householdMember.householdId} <> ${householdId}`))
+        .limit(1);
+      if (existingMembership[0]) throw conflict("Head citizen already belongs to another active household");
+    }
+
     const [updated] = await db.update(household).set(body).where(eq(household.id, householdId)).returning();
     if (!updated) throw notFound("Household not found");
     const [headCitizenRow] = await db
@@ -321,7 +288,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     return ok(c, payload.data);
   })
   .delete("/:id", async (c) => {
-    const householdId = c.req.param("id");
+    const { id: householdId } = parseParams(c.req.param(), idParamSchema);
     const db = getDb();
     const [householdRow, members] = await Promise.all([
       db
@@ -339,40 +306,28 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     ]);
 
     if (!householdRow[0]) throw notFound("Household not found");
-
-    const relatedCitizenIds = Array.from(
-      new Set([householdRow[0].headCitizenId, ...members.map((member) => member.citizenId)]),
-    );
-
-    const relatedCounts =
-      relatedCitizenIds.length > 0
+    const memberCitizenIds = [...new Set(members.map((member) => member.citizenId))];
+    const membershipCounts =
+      memberCitizenIds.length > 0
         ? await db
             .select({
               citizenId: householdMember.citizenId,
-              householdCount: sql<number>`count(distinct ${householdMember.householdId})::int`,
+              householdCount: sql<number>`count(*)::int`,
             })
             .from(householdMember)
-            .where(inArray(householdMember.citizenId, relatedCitizenIds))
+            .where(inArray(householdMember.citizenId, memberCitizenIds))
             .groupBy(householdMember.citizenId)
         : [];
 
-    const deletableCitizenIds = relatedCounts
-      .filter((row) => Number(row.householdCount) <= 1)
+    const retainedCitizenIds = membershipCounts
+      .filter((row) => Number(row.householdCount || 0) > 1)
       .map((row) => row.citizenId);
+    const deletedCitizenIds = memberCitizenIds.filter((citizenId) => !retainedCitizenIds.includes(citizenId));
 
-    const [deletedHousehold] = await db
-      .delete(household)
-      .where(eq(household.id, householdId))
-      .returning();
-
-    if (!deletedHousehold) throw notFound("Household not found");
-
-    if (deletableCitizenIds.length > 0) {
-      await db.delete(mutation).where(inArray(mutation.citizenId, deletableCitizenIds)).returning();
-      await db
-        .delete(citizen)
-        .where(inArray(citizen.id, deletableCitizenIds))
-        .returning();
+    const [deletedHousehold] = await db.delete(household).where(eq(household.id, householdId)).returning();
+    if (deletedCitizenIds.length > 0) {
+      await db.delete(mutation).where(inArray(mutation.citizenId, deletedCitizenIds)).returning();
+      await db.delete(citizen).where(inArray(citizen.id, deletedCitizenIds)).returning();
     }
 
     await logAdminActivity({
@@ -380,41 +335,25 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
       action: "HOUSEHOLD_DELETED",
       entityType: "HOUSEHOLD",
       entityId: deletedHousehold.id,
-      metadata: {
-        kkNumber: deletedHousehold.kkNumber,
-        deletedCitizenIds: deletableCitizenIds,
-        retainedCitizenIds: relatedCitizenIds.filter((id) => !deletableCitizenIds.includes(id)),
-      },
+      metadata: { kkNumber: deletedHousehold.kkNumber },
     });
 
     return ok(c, {
       id: deletedHousehold.id,
-      deletedCitizenIds: deletableCitizenIds,
-      retainedCitizenIds: relatedCitizenIds.filter((id) => !deletableCitizenIds.includes(id)),
+      deletedCitizenIds,
+      retainedCitizenIds,
     });
   })
   .post("/:id/members", async (c) => {
-    const householdId = c.req.param("id");
+    const { id: householdId } = parseParams(c.req.param(), idParamSchema);
     const body = await parseJson(c.req.raw, addHouseholdMemberSchema);
-    const db = getDb();
-    const [householdRow, citizenRow, duplicate] = await Promise.all([
-      db.select({ id: household.id }).from(household).where(eq(household.id, householdId)).limit(1),
-      db.select().from(citizen).where(eq(citizen.id, body.citizenId)).limit(1),
-      db
-        .select({ id: householdMember.id })
-        .from(householdMember)
-        .where(and(eq(householdMember.householdId, householdId), eq(householdMember.citizenId, body.citizenId)))
-        .limit(1),
-    ]);
-
-    if (!householdRow[0]) throw notFound("Household not found");
-    if (!citizenRow[0]) throw notFound("Citizen not found");
-    if (duplicate[0]) throw conflict("Citizen already belongs to this household");
-
-    const [inserted] = await db
-      .insert(householdMember)
-      .values({ householdId, citizenId: body.citizenId, relationship: body.relationship })
-      .returning();
+    const inserted = await addHouseholdMemberService({
+      adminId: c.get("sessionUser").id,
+      householdId,
+      citizenId: body.citizenId,
+      relationship: body.relationship,
+    });
+    const [citizenRow] = await getDb().select().from(citizen).where(eq(citizen.id, body.citizenId)).limit(1);
 
     const payload = {
       success: true as const,
@@ -425,14 +364,14 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
         relationship: inserted.relationship,
         createdAt: toIso(inserted.createdAt) ?? new Date().toISOString(),
         updatedAt: toIso(inserted.updatedAt) ?? new Date().toISOString(),
-        citizen: mapCitizen(citizenRow[0]),
+        citizen: mapCitizen(citizenRow),
       },
     };
     return created(c, payload.data);
   })
   .patch("/:id/members/:memberId", async (c) => {
-    const householdId = c.req.param("id");
-    const memberId = c.req.param("memberId");
+    const { id: householdId } = parseParams({ id: c.req.param("id") }, idParamSchema);
+    const { id: memberId } = parseParams({ id: c.req.param("memberId") }, idParamSchema);
     const body = await parseJson(c.req.raw, updateHouseholdMemberSchema);
     const db = getDb();
 
@@ -446,9 +385,25 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     if (!member) throw notFound("Household member not found");
 
     if (body.relationship) {
+      const normalizedRelationship = normalizeHouseholdRelationship(body.relationship);
+      if (normalizedRelationship === "HEAD_OF_FAMILY") {
+        const existingHead = await db
+          .select({ id: householdMember.id })
+          .from(householdMember)
+          .where(
+            and(
+              eq(householdMember.householdId, householdId),
+              eq(householdMember.relationship, "HEAD_OF_FAMILY"),
+              sql`${householdMember.id} <> ${memberId}`,
+            ),
+          )
+          .limit(1);
+        if (existingHead[0]) throw conflict("Household already has a head of family");
+      }
+
       await db
         .update(householdMember)
-        .set({ relationship: body.relationship })
+        .set({ relationship: normalizedRelationship })
         .where(eq(householdMember.id, memberId));
     }
 
@@ -462,8 +417,17 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     return ok(c, { id: member.id });
   })
   .delete("/:id/members/:memberId", async (c) => {
-    const householdId = c.req.param("id");
-    const memberId = c.req.param("memberId");
+    const { id: householdId } = parseParams({ id: c.req.param("id") }, idParamSchema);
+    const { id: memberId } = parseParams({ id: c.req.param("memberId") }, idParamSchema);
+    const [memberRow] = await getDb()
+      .select()
+      .from(householdMember)
+      .where(and(eq(householdMember.id, memberId), eq(householdMember.householdId, householdId)))
+      .limit(1);
+    if (!memberRow) throw notFound("Household member not found");
+    if (memberRow.relationship === "HEAD_OF_FAMILY") {
+      throw validationError("Head of family cannot be removed before reassigning the role");
+    }
     const [deleted] = await getDb()
       .delete(householdMember)
       .where(and(eq(householdMember.id, memberId), eq(householdMember.householdId, householdId)))
@@ -473,7 +437,7 @@ export const householdsRoutes = new Hono<{ Variables: { sessionUser: { id: strin
     return ok(c, { id: deleted.id });
   })
   .get("/:id/audit-log", async (c) => {
-    const householdId = c.req.param("id");
+    const { id: householdId } = parseParams(c.req.param(), idParamSchema);
     const rows = await getDb()
       .select()
       .from(adminActivityLog)

@@ -34,7 +34,7 @@ type AdminUser = {
   name: string;
   email: string;
   username: string;
-  role: 'ADMIN' | 'USER';
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'USER';
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
 };
@@ -50,6 +50,7 @@ type AdminLog = {
 
 export default function KelolaAdminPage() {
   const { runWithToast, toast } = useActionToast();
+  const [currentRole, setCurrentRole] = useState<'ADMIN' | 'SUPER_ADMIN' | 'USER'>('USER');
   const [activeTab, setActiveTab] = useState<'daftar' | 'log'>('daftar');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,7 +59,7 @@ export default function KelolaAdminPage() {
   const [newNama, setNewNama] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newUsername, setNewUsername] = useState('');
-  const [newRole, setNewRole] = useState<'ADMIN'>('ADMIN');
+  const [newRole, setNewRole] = useState<'ADMIN' | 'SUPER_ADMIN'>('ADMIN');
   const [selectedAdminForAction, setSelectedAdminForAction] = useState<AdminUser | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -70,6 +71,7 @@ export default function KelolaAdminPage() {
   const [logPage, setLogPage] = useState(1);
   const [logTotalPages, setLogTotalPages] = useState(1);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [submittingAction, setSubmittingAction] = useState<'create' | 'edit' | 'reset' | 'deactivate' | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -87,9 +89,10 @@ export default function KelolaAdminPage() {
         const adminParams = new URLSearchParams({ page: String(adminPage), limit: String(PAGE_SIZE) });
         if (debouncedSearchQuery) adminParams.set('q', debouncedSearchQuery);
         const logParams = new URLSearchParams({ page: String(logPage), limit: String(PAGE_SIZE) });
-        const [adminResponse, logResponse] = await Promise.all([
+        const [adminResponse, logResponse, sessionResponse] = await Promise.all([
           platformFetch<AdminUser[]>(`/admin/admin-users?${adminParams.toString()}`),
           platformFetch<AdminLog[]>(`/admin/admin-users/activity-logs?${logParams.toString()}`),
+          platformFetch<{ user: { role: 'ADMIN' | 'SUPER_ADMIN' | 'USER' } }>('/me'),
         ]);
 
         if (!active) return;
@@ -98,6 +101,7 @@ export default function KelolaAdminPage() {
         setAdminTotalPages(adminResponse.meta?.totalPages ?? 1);
         setAdminTotalItems(adminResponse.meta?.total ?? adminResponse.data.length);
         setLogTotalPages(logResponse.meta?.totalPages ?? 1);
+        setCurrentRole(sessionResponse.data.user.role);
       } catch (error) {
         console.error(error);
         if (!active) return;
@@ -106,6 +110,7 @@ export default function KelolaAdminPage() {
         setAdminTotalPages(1);
         setAdminTotalItems(0);
         setLogTotalPages(1);
+        setCurrentRole('USER');
       }
     }
 
@@ -119,6 +124,7 @@ export default function KelolaAdminPage() {
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmittingAction('create');
 
     try {
       const response = await runWithToast(
@@ -143,9 +149,12 @@ export default function KelolaAdminPage() {
       setNewNama('');
       setNewEmail('');
       setNewUsername('');
+      setNewRole('ADMIN');
       setIsModalOpen(false);
     } catch (error) {
       console.error(error);
+    } finally {
+      setSubmittingAction(null);
     }
   };
 
@@ -157,6 +166,7 @@ export default function KelolaAdminPage() {
 
   const handleEditSave = async () => {
     if (!selectedAdminForAction) return;
+    setSubmittingAction('edit');
 
     try {
       const response = await runWithToast(
@@ -176,11 +186,14 @@ export default function KelolaAdminPage() {
       setIsEditModalOpen(false);
     } catch (error) {
       console.error(error);
+    } finally {
+      setSubmittingAction(null);
     }
   };
 
   const handleResetPassword = async () => {
     if (!selectedAdminForAction) return;
+    setSubmittingAction('reset');
 
     try {
       const response = await runWithToast(
@@ -204,11 +217,14 @@ export default function KelolaAdminPage() {
       setIsResetModalOpen(false);
     } catch (error) {
       console.error(error);
+    } finally {
+      setSubmittingAction(null);
     }
   };
 
   const handleDeactivate = async () => {
     if (!selectedAdminForAction) return;
+    setSubmittingAction('deactivate');
 
     try {
       const response = await runWithToast(
@@ -227,11 +243,19 @@ export default function KelolaAdminPage() {
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error(error);
+    } finally {
+      setSubmittingAction(null);
     }
   };
 
   const activeAdminCount = admins.filter((admin) => admin.status === 'ACTIVE').length;
-  const superAdminCount = admins.filter((admin) => admin.role === 'ADMIN').length;
+  const superAdminCount = admins.filter((admin) => admin.role === 'SUPER_ADMIN').length;
+  const canManagePrivilegedAdmins = currentRole === 'SUPER_ADMIN';
+  const isCreateInvalid =
+    newNama.trim().length < 2 ||
+    !newEmail.trim() ||
+    !newUsername.trim() ||
+    (newRole === 'SUPER_ADMIN' && !canManagePrivilegedAdmins);
 
   return (
     <div className="flex flex-col gap-6">
@@ -242,6 +266,7 @@ export default function KelolaAdminPage() {
         </div>
         <Button
           onClick={() => setIsModalOpen(true)}
+          disabled={!canManagePrivilegedAdmins}
           className="flex items-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#2563EB]"
         >
           <Plus className="h-4 w-4" />
@@ -308,7 +333,7 @@ export default function KelolaAdminPage() {
               type="text"
               placeholder="Cari admin..."
               value={searchQuery}
-              onChange={(e: any) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               className="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[#3B82F6] focus:bg-white"
             />
           </div>
@@ -366,6 +391,7 @@ export default function KelolaAdminPage() {
                       <div className="flex items-center justify-center gap-2">
                         <Button
                           onClick={() => handleEditOpen(admin)}
+                          disabled={admin.role === 'SUPER_ADMIN' && !canManagePrivilegedAdmins}
                           className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-[#3B82F6]"
                           title="Edit Profil"
                         >
@@ -376,6 +402,7 @@ export default function KelolaAdminPage() {
                             setSelectedAdminForAction(admin);
                             setIsResetModalOpen(true);
                           }}
+                          disabled={!canManagePrivilegedAdmins}
                           className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-amber-50 hover:text-amber-500"
                           title="Reset Password"
                         >
@@ -386,6 +413,7 @@ export default function KelolaAdminPage() {
                             setSelectedAdminForAction(admin);
                             setIsDeleteModalOpen(true);
                           }}
+                          disabled={!canManagePrivilegedAdmins || admin.role === 'SUPER_ADMIN'}
                           className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
                           title="Non-aktifkan"
                         >
@@ -457,7 +485,7 @@ export default function KelolaAdminPage() {
                 type="text"
                 required
                 value={newNama}
-                onChange={(e: any) => setNewNama(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNama(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
@@ -467,7 +495,7 @@ export default function KelolaAdminPage() {
                 type="email"
                 required
                 value={newEmail}
-                onChange={(e: any) => setNewEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
@@ -478,7 +506,7 @@ export default function KelolaAdminPage() {
                   type="text"
                   required
                   value={newUsername}
-                  onChange={(e: any) => setNewUsername(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 />
               </div>
@@ -486,10 +514,11 @@ export default function KelolaAdminPage() {
                 <label className="mb-1 block text-sm font-semibold text-[#1E293B]">Role</label>
                 <select
                   value={newRole}
-                  onChange={(e: any) => setNewRole(e.target.value as 'ADMIN')}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRole(e.target.value as 'ADMIN' | 'SUPER_ADMIN')}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
                 >
                   <option value="ADMIN">ADMIN</option>
+                  {canManagePrivilegedAdmins ? <option value="SUPER_ADMIN">SUPER_ADMIN</option> : null}
                 </select>
               </div>
             </div>
@@ -498,7 +527,7 @@ export default function KelolaAdminPage() {
                 Temporary password is generated by backend reset/create flow.
               </p>
             </div>
-            <Button type="submit" className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]">
+            <Button type="submit" disabled={isCreateInvalid || submittingAction === 'create'} className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]">
               Simpan Admin
             </Button>
           </form>
@@ -516,12 +545,13 @@ export default function KelolaAdminPage() {
               <Input
                 type="text"
                 value={editName}
-                onChange={(e: any) => setEditName(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#3B82F6] focus:bg-white"
               />
             </div>
             <Button
               onClick={() => void handleEditSave()}
+              disabled={editName.trim().length < 2 || submittingAction === 'edit'}
               className="mt-2 rounded-xl bg-[#3B82F6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2563EB]"
             >
               Simpan Perubahan
@@ -548,6 +578,7 @@ export default function KelolaAdminPage() {
               </Button>
               <Button
                 onClick={() => void handleResetPassword()}
+                disabled={!canManagePrivilegedAdmins || submittingAction === 'reset'}
                 className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-600"
               >
                 Ya, Reset Password
@@ -575,6 +606,7 @@ export default function KelolaAdminPage() {
               </Button>
               <Button
                 onClick={() => void handleDeactivate()}
+                disabled={!canManagePrivilegedAdmins || submittingAction === 'deactivate'}
                 className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600"
               >
                 Non-aktifkan

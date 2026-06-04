@@ -9,6 +9,7 @@ const dbState = vi.hoisted(() => ({
   selectQueue: [] as unknown[][],
   insertQueue: [] as unknown[][],
   updateQueue: [] as unknown[][],
+  deleteQueue: [] as unknown[][],
 }));
 
 const storageState = vi.hoisted(() => ({
@@ -16,7 +17,7 @@ const storageState = vi.hoisted(() => ({
   validateUpload: vi.fn(),
   uploadObject: vi.fn(),
   deleteObject: vi.fn(),
-  buildObjectKey: vi.fn(),
+  buildObjectKeyForFile: vi.fn(),
   buildObjectUrl: vi.fn(),
 }));
 
@@ -44,11 +45,17 @@ vi.mock("@abdimas/db", () => {
     returning: vi.fn(async () => dbState.updateQueue.shift() ?? []),
   });
 
+  const createDeleteChain = () => ({
+    where: vi.fn(() => createDeleteChain()),
+    returning: vi.fn(async () => dbState.deleteQueue.shift() ?? []),
+  });
+
   return {
     getDb: () => ({
       select: vi.fn(() => createSelectChain()),
       insert: vi.fn(() => createInsertChain()),
       update: vi.fn(() => createUpdateChain()),
+      delete: vi.fn(() => createDeleteChain()),
     }),
     citizen: {
       id: "citizen.id",
@@ -128,11 +135,12 @@ beforeEach(() => {
   dbState.selectQueue = [];
   dbState.insertQueue = [];
   dbState.updateQueue = [];
+  dbState.deleteQueue = [];
   storageState.validateUpload.mockReset();
   storageState.ensureStorageConfigured.mockReset();
   storageState.uploadObject.mockReset();
   storageState.deleteObject.mockReset();
-  storageState.buildObjectKey.mockReset();
+  storageState.buildObjectKeyForFile.mockReset();
   storageState.buildObjectUrl.mockReset();
   logAdminActivity.mockReset();
 });
@@ -178,17 +186,20 @@ describe("mutationsRoutes", () => {
     const createdAttachment = {
       id: "attachment-1",
       mutationId: createdMutation.id,
+      entityType: "MUTATION",
+      entityId: createdMutation.id,
       kind: "KTP",
-      objectKey: "mutations/mutation-1/ktp-1.pdf",
-      fileName: "ktp.pdf",
-      contentType: "application/pdf",
-      sizeBytes: "4",
+      storageKey: "mutations/mutation-1/ktp-1.pdf",
+      originalFilename: "ktp.pdf",
+      mimeType: "application/pdf",
+      size: 4,
+      uploadedBy: sessionUser.id,
       createdAt: new Date("2024-05-01T00:00:00Z"),
     };
 
     dbState.selectQueue.push([existingCitizen]);
     dbState.insertQueue.push([createdMutation], [createdAttachment]);
-    storageState.buildObjectKey.mockReturnValue(createdAttachment.objectKey);
+    storageState.buildObjectKeyForFile.mockReturnValue(createdAttachment.storageKey);
     storageState.buildObjectUrl.mockResolvedValue("https://cdn.example/ktp.pdf");
 
     const app = createApp();
@@ -219,7 +230,7 @@ describe("mutationsRoutes", () => {
     expect(json.success).toBe(true);
     expect(json.data.citizenId).toBe(existingCitizen.id);
     expect(json.data.attachments).toHaveLength(1);
-    expect(storageState.validateUpload).toHaveBeenCalledTimes(1);
+    expect(storageState.validateUpload).toHaveBeenCalledTimes(2);
     expect(storageState.uploadObject).toHaveBeenCalledTimes(1);
     expect(logAdminActivity).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -357,7 +368,8 @@ describe("mutationsRoutes", () => {
 
     dbState.selectQueue.push([existingCitizen]);
     dbState.insertQueue.push([createdMutation]);
-    storageState.buildObjectKey
+    dbState.deleteQueue.push([], []);
+    storageState.buildObjectKeyForFile
       .mockReturnValueOnce(firstKey)
       .mockReturnValueOnce("mutations/mutation-3/ktp-2.pdf");
     storageState.uploadObject
@@ -375,6 +387,8 @@ describe("mutationsRoutes", () => {
           occupation: "Karyawan",
           type: "IN",
           mutationDate: "2024-05-03",
+          toAddress: "Jl Tujuan",
+          reason: "Pekerjaan",
         },
         {
           suratKeterangan: new File(["a"], "sk.pdf", { type: "application/pdf" }),

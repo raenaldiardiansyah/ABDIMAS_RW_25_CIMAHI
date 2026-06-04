@@ -1,6 +1,6 @@
 import { getDb, adminActivityLog } from "@abdimas/db";
 
-export async function logAdminActivity(input: {
+export async function createAuditLogService(input: {
   adminId: string;
   action: string;
   entityType: string;
@@ -15,3 +15,5 @@ export async function logAdminActivity(input: {
     metadata: input.metadata ?? {},
   });
 }
+
+export const logAdminActivity = createAuditLogService;

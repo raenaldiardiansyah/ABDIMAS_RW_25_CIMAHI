@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { relations } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { date, index, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+import { citizenGenderEnum, citizenStatusEnum } from "./citizens";
 
 export const verificationStatusEnum = pgEnum("verification_status", [
   "PENDING",
@@ -22,6 +23,20 @@ export const userIdentity = pgTable(
     nikFirst4: text("nik_first4"),
     nikLast4: text("nik_last4"),
     fullName: text("full_name"),
+    gender: citizenGenderEnum("gender"),
+    birthPlace: text("birth_place"),
+    birthDate: date("birth_date"),
+    religion: text("religion"),
+    maritalStatus: text("marital_status"),
+    occupation: text("occupation"),
+    education: text("education"),
+    bloodType: text("blood_type"),
+    address: text("address"),
+    rt: text("rt"),
+    rw: text("rw"),
+    citizenStatus: citizenStatusEnum("citizen_status").default("PENDUDUK_TETAP"),
+    kkNumber: text("kk_number"),
+    familyRelationship: text("family_relationship"),
     verificationStatus: verificationStatusEnum("verification_status")
       .notNull()
       .default("PENDING"),

@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import {
@@ -6,21 +6,30 @@ import {
   citizenListResponseSchema,
   citizenResponseSchema,
   createCitizenSchema,
+  idParamSchema,
   updateCitizenSchema,
 } from "@abdimas/contracts";
-import { citizen, adminActivityLog, getDb } from "@abdimas/db";
+import { citizen, getDb, household, householdMember } from "@abdimas/db";
 
-import { conflict, notFound } from "../lib/errors";
-import { buildPageMeta, getOffset } from "../lib/pagination";
-import { created, ok } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson, parseQuery } from "../lib/validation";
-import { adminMiddleware } from "../middleware/auth";
+import { notFound } from "../lib/errors.js";
+import { buildPageMeta, getOffset } from "../lib/pagination.js";
+import { created, ok } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson, parseParams, parseQuery, sanitizeSearchTerm } from "../lib/validation.js";
+import { adminMiddleware } from "../middleware/auth.js";
+import { createCitizenService, deleteCitizenService, updateCitizenService } from "../services/citizens.js";
 
-function mapCitizen(row: typeof citizen.$inferSelect) {
+const citizenColumns = getTableColumns(citizen);
+
+function mapCitizen(
+  row: typeof citizen.$inferSelect & {
+    noKK?: string | null;
+  },
+) {
   return {
     id: row.id,
     userId: row.userId ?? null,
+    noKK: row.noKK ?? null,
     nik: row.nik,
     name: row.name,
     gender: row.gender,
@@ -35,6 +44,7 @@ function mapCitizen(row: typeof citizen.$inferSelect) {
     rt: row.rt,
     rw: row.rw,
     status: row.status,
+    isArchived: row.isArchived,
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
   };
@@ -47,8 +57,10 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       {
         page: c.req.query("page"),
         limit: c.req.query("limit"),
-        q: c.req.query("q") || undefined,
+        q: sanitizeSearchTerm(c.req.query("q") || undefined),
         status: c.req.query("status") || undefined,
+        rt: c.req.query("rt") || undefined,
+        rw: c.req.query("rw") || undefined,
       },
       citizenListQuerySchema,
     );
@@ -58,7 +70,9 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       filters.push(or(ilike(citizen.name, `%${query.q}%`), ilike(citizen.nik, `%${query.q}%`)));
     }
     if (query.status) filters.push(eq(citizen.status, query.status));
-    const where = filters.length > 0 ? and(...filters) : undefined;
+    if (query.rt) filters.push(eq(citizen.rt, query.rt));
+    if (query.rw) filters.push(eq(citizen.rw, query.rw));
+    const where = filters.length > 0 ? and(eq(citizen.isArchived, false), ...filters) : eq(citizen.isArchived, false);
 
     const db = getDb();
     const [{ total }] = await db
@@ -67,8 +81,13 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
       .where(where);
 
     const rows = await db
-      .select()
+      .select({
+        ...citizenColumns,
+        noKK: household.kkNumber,
+      })
       .from(citizen)
+      .leftJoin(householdMember, eq(householdMember.citizenId, citizen.id))
+      .leftJoin(household, eq(household.id, householdMember.householdId))
       .where(where)
       .orderBy(desc(citizen.createdAt))
       .limit(query.limit)
@@ -81,52 +100,24 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
   })
   .post("/", async (c) => {
     const body = await parseJson(c.req.raw, createCitizenSchema);
-    const db = getDb();
-
-    const existingWhere = body.userId
-      ? or(eq(citizen.nik, body.nik), eq(citizen.userId, body.userId))
-      : eq(citizen.nik, body.nik);
-    const existing = await db.select({ id: citizen.id }).from(citizen).where(existingWhere).limit(1);
-
-    if (existing.length > 0) {
-      throw conflict("Citizen with same NIK or user is already registered");
-    }
-
-    const [inserted] = await db
-      .insert(citizen)
-      .values({
-        userId: body.userId ?? null,
-        nik: body.nik,
-        name: body.name,
-        gender: body.gender,
-        birthPlace: body.birthPlace,
-        birthDate: body.birthDate,
-        religion: body.religion,
-        maritalStatus: body.maritalStatus,
-        occupation: body.occupation,
-        education: body.education,
-        bloodType: body.bloodType ?? null,
-        address: body.address,
-        rt: body.rt,
-        rw: body.rw,
-        status: body.status,
-      })
-      .returning();
-
-    await db.insert(adminActivityLog).values({
-      adminId: c.get("sessionUser").id,
-      action: "Menambahkan data warga baru",
-      entityType: "CITIZEN",
-      entityId: inserted.id,
-      metadata: { name: body.name, nik: body.nik },
-    });
+    const inserted = await createCitizenService({ adminId: c.get("sessionUser").id, body });
 
     const payload = { success: true as const, data: mapCitizen(inserted) };
     citizenResponseSchema.parse(payload);
     return created(c, payload.data);
   })
   .get("/:id", async (c) => {
-    const row = await getDb().select().from(citizen).where(eq(citizen.id, c.req.param("id"))).limit(1);
+    const { id } = parseParams(c.req.param(), idParamSchema);
+    const row = await getDb()
+      .select({
+        ...citizenColumns,
+        noKK: household.kkNumber,
+      })
+      .from(citizen)
+      .leftJoin(householdMember, eq(householdMember.citizenId, citizen.id))
+      .leftJoin(household, eq(household.id, householdMember.householdId))
+      .where(eq(citizen.id, id))
+      .limit(1);
     if (!row[0]) throw notFound("Citizen not found");
     const payload = { success: true as const, data: mapCitizen(row[0]) };
     citizenResponseSchema.parse(payload);
@@ -134,60 +125,18 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
   })
   .patch("/:id", async (c) => {
     const body = await parseJson(c.req.raw, updateCitizenSchema);
-    const db = getDb();
-    const citizenId = c.req.param("id");
-
-    if (body.nik) {
-      const duplicate = await db
-        .select({ id: citizen.id })
-        .from(citizen)
-        .where(and(eq(citizen.nik, body.nik), sql`${citizen.id} <> ${citizenId}`))
-        .limit(1);
-
-      if (duplicate.length > 0) throw conflict("Citizen NIK already exists");
-    }
-
-    const [updated] = await db
-      .update(citizen)
-      .set({
-        ...(body.userId !== undefined ? { userId: body.userId } : {}),
-        ...(body.nik !== undefined ? { nik: body.nik } : {}),
-        ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.gender !== undefined ? { gender: body.gender } : {}),
-        ...(body.birthPlace !== undefined ? { birthPlace: body.birthPlace } : {}),
-        ...(body.birthDate !== undefined ? { birthDate: body.birthDate } : {}),
-        ...(body.religion !== undefined ? { religion: body.religion } : {}),
-        ...(body.maritalStatus !== undefined ? { maritalStatus: body.maritalStatus } : {}),
-        ...(body.occupation !== undefined ? { occupation: body.occupation } : {}),
-        ...(body.education !== undefined ? { education: body.education } : {}),
-        ...(body.bloodType !== undefined ? { bloodType: body.bloodType ?? null } : {}),
-        ...(body.address !== undefined ? { address: body.address } : {}),
-        ...(body.rt !== undefined ? { rt: body.rt } : {}),
-        ...(body.rw !== undefined ? { rw: body.rw } : {}),
-        ...(body.status !== undefined ? { status: body.status } : {}),
-      })
-      .where(eq(citizen.id, citizenId))
-      .returning();
-
-    if (!updated) throw notFound("Citizen not found");
+    const { id } = parseParams(c.req.param(), idParamSchema);
+    const updated = await updateCitizenService({ adminId: c.get("sessionUser").id, citizenId: id, body });
     const payload = { success: true as const, data: mapCitizen(updated) };
     citizenResponseSchema.parse(payload);
     return ok(c, payload.data);
   })
   .delete("/:id", async (c) => {
-    const db = getDb();
-    const citizenId = c.req.param("id");
-
-    const [deleted] = await db.delete(citizen).where(eq(citizen.id, citizenId)).returning();
-    if (!deleted) throw notFound("Citizen not found");
-
-    await db.insert(adminActivityLog).values({
-      adminId: c.get("sessionUser").id,
-      action: "Menghapus data warga",
-      entityType: "CITIZEN",
-      entityId: deleted.id,
-      metadata: { name: deleted.name, nik: deleted.nik },
+    const { id } = parseParams(c.req.param(), idParamSchema);
+    const result = await deleteCitizenService({ adminId: c.get("sessionUser").id, citizenId: id });
+    return ok(c, {
+      id: result.row.id,
+      mode: result.mode,
+      message: result.mode === "archived" ? "Citizen archived because related records exist" : "Citizen deleted successfully",
     });
-
-    return ok(c, { success: true, message: "Citizen deleted successfully" });
   });

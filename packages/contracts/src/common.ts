@@ -12,7 +12,19 @@ export const apiErrorCodeSchema = z.enum([
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(20).default(10),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+});
+
+export const idParamSchema = z.object({
+  id: z.string().trim().min(1).max(64),
+});
+
+export const userIdParamSchema = z.object({
+  userId: z.string().trim().min(1).max(64),
+});
+
+export const rtQuerySchema = z.object({
+  rt: z.string().trim().regex(/^\d{1,3}$/).optional(),
 });
 
 export const pageMetaSchema = z.object({

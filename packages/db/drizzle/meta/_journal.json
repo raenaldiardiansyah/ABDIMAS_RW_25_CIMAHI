@@ -22,6 +22,20 @@
       "when": 1780503600000,
       "tag": "0002_household_delete_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780569600000,
+      "tag": "0003_identity_onboarding_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780570554827,
+      "tag": "0004_loving_morlocks",
+      "breakpoints": true
     }
   ]
 }

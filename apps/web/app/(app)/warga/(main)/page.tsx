@@ -149,7 +149,7 @@ export default function WargaHomePage() {
             : 'Fitur ini menunggu verifikasi admin RW/RT.',
         );
       } else {
-        console.error(error);
+        setBlockedMessage(error instanceof Error ? error.message : 'Gagal memeriksa status bansos.');
       }
     } finally {
       setSubmitting(null);
@@ -197,7 +197,7 @@ export default function WargaHomePage() {
             : 'Fitur ini menunggu verifikasi admin RW/RT.',
         );
       } else {
-        console.error(error);
+        setBlockedMessage(error instanceof Error ? error.message : 'Gagal memeriksa status pemilu.');
       }
     } finally {
       setSubmitting(null);
@@ -230,7 +230,7 @@ export default function WargaHomePage() {
             : 'Fitur ini menunggu verifikasi admin RW/RT.',
         );
       } else {
-        console.error(error);
+        setBlockedMessage(error instanceof Error ? error.message : 'Gagal mengirim aspirasi.');
       }
     } finally {
       setSubmitting(null);
@@ -247,6 +247,7 @@ export default function WargaHomePage() {
 
   const isBansosSubmitDisabled =
     bansosNik.length !== 16 || !bansosNama.trim() || !bansosProgram;
+  const isPemiluSubmitDisabled = pemiluNik.length !== 16 || !pemiluTgl;
 
   return (
     <WargaPage>
@@ -529,7 +530,7 @@ export default function WargaHomePage() {
 
           <Button
             onClick={handlePemiluSubmit}
-            disabled={!pemiluNik || !pemiluTgl || submitting === 'pemilu'}
+            disabled={isPemiluSubmitDisabled || submitting === 'pemilu'}
             className="mt-2 h-12 rounded-xl font-semibold"
           >
             {submitting === 'pemilu' ? 'Memproses...' : 'Konfirmasi'}

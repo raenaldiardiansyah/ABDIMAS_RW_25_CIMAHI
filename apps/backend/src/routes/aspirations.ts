@@ -3,10 +3,10 @@ import { Hono } from "hono";
 import { aspiration, getDb, historyEntry } from "@abdimas/db";
 import { aspirationResponseSchema, createAspirationSchema } from "@abdimas/contracts";
 
-import { created } from "../lib/response";
-import { toIso } from "../lib/serialize";
-import { parseJson } from "../lib/validation";
-import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth";
+import { created } from "../lib/response.js";
+import { toIso } from "../lib/serialize.js";
+import { parseJson } from "../lib/validation.js";
+import { authMiddleware, verifiedWargaMiddleware } from "../middleware/auth.js";
 
 export const aspirationsRoutes = new Hono<{ Variables: { sessionUser: { id: string; role: string; name?: string } } }>()
   .use("*", authMiddleware)
