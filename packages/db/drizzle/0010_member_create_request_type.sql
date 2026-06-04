@@ -1,0 +1,1 @@
+ALTER TYPE "public"."service_request_type" ADD VALUE 'MEMBER_CREATE' BEFORE 'MUTATION_IN';

@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
   const [bahasa, setBahasa] = useState('Indonesia');
   const [savingKey, setSavingKey] = useState<'theme' | 'language' | 'notification' | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [activeDialog, setActiveDialog] = useState<'bahasa' | 'security' | null>(null);
+  const [activeDialog, setActiveDialog] = useState<'bahasa' | 'security' | 'tentang' | null>(null);
 
   const t = DICT['Indonesia'];
 
@@ -116,7 +116,7 @@ export default function AdminSettingsPage() {
       return;
     }
     if (notifStatus === 'denied') {
-      toast({ title: 'Notifikasi Diblokir', description: 'Anda memblokir notifikasi. Silakan ubah di pengaturan browser (ikon gembok 🔒).', variant: 'destructive' });
+      toast({ title: 'Notifikasi Diblokir', description: 'Anda memblokir notifikasi. Silakan ubah di pengaturan browser (ikon gembok ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢).', variant: 'destructive' });
       return;
     }
     if (notifStatus !== 'granted') {
@@ -203,11 +203,11 @@ export default function AdminSettingsPage() {
                 }`} />
               </Button>
             </div>
-            
+
             <div className="mx-5 h-px bg-[#EEF2F6]" />
 
             {/* Bahasa */}
-            <div 
+            <div
               className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => setActiveDialog('bahasa')}
             >
@@ -255,10 +255,10 @@ export default function AdminSettingsPage() {
                 }`} />
               </Button>
             </div>
-            
+
             <div className="mx-5 h-px bg-[#EEF2F6]" />
 
-            <div 
+            <div
               className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => setActiveDialog('security')}
             >
@@ -293,12 +293,12 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="mx-5 h-px bg-[#EEF2F6]" />
 
-            <div 
+            <div
               className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => document.dispatchEvent(new CustomEvent('open-admin-help'))}
+              onClick={() => setActiveDialog('tentang')}
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
@@ -384,6 +384,36 @@ export default function AdminSettingsPage() {
                   {bahasa === l && <Check className="h-5 w-5" />}
                 </Button>
               ))}
+            </div>
+          )}
+
+          {activeDialog === 'tentang' && (
+            <div className="flex flex-col gap-4 mt-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F6ECE6]">
+                  <Smartphone className="h-8 w-8 text-[#A44A3F]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#18212F]">Portal RW 25</h3>
+                  <p className="text-sm text-[#667085]">Versi 1.0.0</p>
+                </div>
+              </div>
+              <p className="text-sm leading-relaxed text-[#667085]">
+                Portal RW 25 adalah sistem informasi digital untuk mengelola data kependudukan warga di lingkungan RW 025, Kota Cimahi. Aplikasi ini membantu pengurus RW mengelola data warga, kartu keluarga, mutasi penduduk, dan permohonan secara efisien.
+              </p>
+              <div className="h-px bg-[#EEF2F6]" />
+              <div className="space-y-1 text-sm text-[#667085]">
+                <p><strong>Versi:</strong> 1.0.0 (Build 2026.04)</p>
+                <div>
+                  <p><strong>Dikembangkan oleh:</strong> Tim ABDIMAS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Telkom University</p>
+                  <ol className="list-decimal list-inside ml-2 mt-1 space-y-0.5 text-xs">
+                    <li>Raenaldi Ardiansyah Sidik - Front End Developer</li>
+                    <li>Faiq Haqqani - UI/UX Designer</li>
+                    <li>Muhammad Riyadhul Jinan Nasution - Back End Developer</li>
+                  </ol>
+                </div>
+                <p><strong>Untuk:</strong> RW 025, Kota Cimahi, Jawa Barat</p>
+              </div>
             </div>
           )}
           <AlertDialogFooter className="mt-6">

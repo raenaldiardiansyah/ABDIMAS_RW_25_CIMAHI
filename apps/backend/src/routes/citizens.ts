@@ -190,16 +190,16 @@ export const citizensRoutes = new Hono<{ Variables: { sessionUser: { id: string;
         citizen: mapCitizen(inserted.citizen),
         household: inserted.household
           ? {
-              id: inserted.household.id,
-              kkNumber: inserted.household.kkNumber,
-              headCitizenId: inserted.household.headCitizenId,
-              address: inserted.household.address,
-              rt: inserted.household.rt,
-              rw: inserted.household.rw,
-              status: inserted.household.status,
-              createdAt: toIso(inserted.household.createdAt) ?? new Date().toISOString(),
-              updatedAt: toIso(inserted.household.updatedAt) ?? new Date().toISOString(),
-            }
+            id: inserted.household.id,
+            kkNumber: inserted.household.kkNumber,
+            headCitizenId: inserted.household.headCitizenId,
+            address: inserted.household.address,
+            rt: inserted.household.rt,
+            rw: inserted.household.rw,
+            status: inserted.household.status,
+            createdAt: toIso(inserted.household.createdAt) ?? new Date().toISOString(),
+            updatedAt: toIso(inserted.household.updatedAt) ?? new Date().toISOString(),
+          }
           : null,
         members: inserted.members.map((member) => ({
           id: member.membershipId,

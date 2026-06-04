@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { createApiSuccessSchema, paginationQuerySchema } from "./common";
 
-export const requestTypeSchema = z.enum(["HOUSEHOLD_CREATE", "MUTATION_IN", "MUTATION_OUT", "BANSOS_APPLICATION"]);
+export const requestTypeSchema = z.enum(["HOUSEHOLD_CREATE", "MEMBER_CREATE", "MUTATION_IN", "MUTATION_OUT", "BANSOS_APPLICATION"]);
 export const requestStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"]);
 export const wargaMutationRequestTypeSchema = z.enum(["MUTATION_IN", "MUTATION_OUT"]);
 
@@ -34,6 +34,19 @@ export const createHouseholdRequestSchema = z.object({
   rt: z.string().trim().regex(/^\d{1,3}$/, "RT must be 1-3 numeric digits"),
   rw: z.string().trim().regex(/^\d{1,3}$/, "RW must be 1-3 numeric digits"),
 });
+
+export const createMemberRequestSchema = z.object({
+  nik: z.string().trim().regex(/^\d{16}$/, "NIK must be exactly 16 numeric digits"),
+  name: z.string().trim().min(2).max(120),
+  birthPlace: z.string().trim().max(100).optional(),
+  birthDate: z.string().date().optional(),
+  gender: z.enum(["L", "P"]),
+  religion: z.string().trim().max(40).optional(),
+  maritalStatus: z.string().trim().max(40).optional(),
+  education: z.string().trim().max(100).optional(),
+  relationship: z.string().trim().max(100),
+});
+
 
 export const createMutationRequestSchema = z.object({
   type: wargaMutationRequestTypeSchema,

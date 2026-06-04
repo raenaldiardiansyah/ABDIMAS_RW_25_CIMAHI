@@ -1,6 +1,7 @@
 'use client';
 
 import { type ReactNode } from 'react';
+
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface SlideUpSheetProps {
@@ -25,7 +26,7 @@ export default function SlideUpSheet({ isOpen, onClose, title, deskripsi, childr
           <SheetTitle>{title}</SheetTitle>
           {deskripsi ? <SheetDescription>{deskripsi}</SheetDescription> : null}
         </SheetHeader>
-        <div className="max-h-[70vh] overflow-y-auto px-6 pb-8">{children}</div>
+        <div className="max-h-[85dvh] overflow-y-auto px-6 pb-8">{children}</div>
       </SheetContent>
     </Sheet>
   );

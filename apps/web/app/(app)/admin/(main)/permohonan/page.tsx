@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Eye, FileInput, RefreshCw, XCircle } from 'lucide-react';
+import { FileInput, CheckCircle2, XCircle, Eye, RefreshCw } from 'lucide-react';
 
 import AdminAsyncState from '@/components/admin/AdminAsyncState';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ const PAGE_SIZE = 20;
 
 type RequestItem = {
   id: string;
-  type: 'HOUSEHOLD_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
+  type: 'HOUSEHOLD_CREATE' | 'MEMBER_CREATE' | 'MUTATION_IN' | 'MUTATION_OUT';
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   payload: Record<string, unknown>;
   rejectionReason: string | null;
@@ -97,8 +97,8 @@ export default function PermohonanPage() {
     intervalMs: 8000,
   });
 
-  const permohonan = requests.filter((item) => item.type === 'HOUSEHOLD_CREATE');
-  const permohonanMutasi = requests.filter((item) => item.type === 'MUTATION_IN' || item.type === 'MUTATION_OUT');
+  const permohonan = requests.filter((item) => item.type === 'HOUSEHOLD_CREATE' || item.type === 'MEMBER_CREATE');
+  const permohonanMutasi = requests.filter((item) => item.type !== 'HOUSEHOLD_CREATE' && item.type !== 'MEMBER_CREATE');
 
   const handleApprove = async (id: string) => {
     try {
@@ -142,7 +142,7 @@ export default function PermohonanPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#1E293B]">Daftar Permohonan Warga</h1>
           <p className="mt-1 text-sm text-[#64748B]">
-            Tinjau dan verifikasi permohonan kartu keluarga baru dan mutasi penduduk.
+            Tinjau dan verifikasi permohonan pendaftaran Kartu Keluarga baru.
           </p>
         </div>
       </div>
@@ -156,200 +156,221 @@ export default function PermohonanPage() {
           onRetry={() => setReloadKey((value) => value + 1)}
         />
       ) : (
-        <>
-          <div className="flex flex-col gap-4">
-            <h2 className="border-b border-gray-100 pb-2 text-lg font-bold text-[#1E293B]">
-              Permohonan Kartu Keluarga Baru
-            </h2>
-            {permohonan.length === 0 ? (
-              loading ? (
-                <AdminAsyncState mode="loading" page="Permohonan" action="memuat permohonan" />
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
-                    <CheckCircle2 className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-base font-bold text-[#1E293B]">Tidak ada permohonan baru</h3>
-                  <p className="text-xs text-[#64748B]">Semua permohonan KK telah diverifikasi.</p>
-                </div>
-              )
-            ) : (
-              permohonan.map((item) => {
-                const payload = item.payload as {
-                  household?: { address?: string; headCitizenId?: string };
-                  members?: Array<{ nama?: string; relationship?: string; nik?: string; citizenId?: string }>;
-                };
-
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-5 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md md:flex-row md:items-center md:justify-between"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EFF6FF]">
-                        <FileInput className="h-6 w-6 text-[#3B82F6]" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <h2 className="text-lg font-bold text-[#1E293B]">
-                            {payload.members?.[0]?.nama ?? payload.household?.headCitizenId ?? 'Permohonan KK'}
-                          </h2>
-                          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-600">
-                            Menunggu
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm font-semibold text-[#3B82F6]">Pendaftaran Kartu Keluarga Baru</p>
-
-                        <div className="mt-3 flex flex-col gap-1 text-sm text-[#64748B] sm:flex-row sm:items-center sm:gap-4">
-                          <p>
-                            Ref ID: <span className="font-semibold text-[#1E293B]">{item.id}</span>
-                          </p>
-                          <span className="hidden sm:inline">•</span>
-                          <p>
-                            Tanggal: <span className="font-semibold text-[#1E293B]">{formatDate(item.createdAt)}</span>
-                          </p>
-                        </div>
-                        <p className="mt-2 text-sm text-[#64748B]">{payload.household?.address ?? '-'}</p>
-                      </div>
-                    </div>
-
-                    <div className="w-full shrink-0 items-center justify-end gap-3 border-t border-gray-100 pt-4 md:flex md:w-auto md:border-none md:pt-0">
-                      <Button
-                        onClick={() => setViewedAnggota(item)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 md:flex-none"
-                        title="Lihat Daftar Keluarga"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        onClick={() => void handleReject(item.id)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 md:flex-none"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        <span className="hidden md:inline">Tolak</span>
-                      </Button>
-                      <Button
-                        onClick={() => void handleApprove(item.id)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 md:flex-none"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span className="hidden md:inline">Setujui</span>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-4">
-            <h2 className="border-b border-gray-100 pb-2 text-lg font-bold text-[#1E293B]">
-              Permohonan Mutasi Penduduk
-            </h2>
-            {permohonanMutasi.length === 0 ? (
-              loading ? (
-                <AdminAsyncState mode="loading" page="Permohonan" action="memuat permohonan" />
-              ) : (
-                <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
-                    <CheckCircle2 className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-base font-bold text-[#1E293B]">Tidak ada permohonan baru</h3>
-                  <p className="text-xs text-[#64748B]">Semua permohonan mutasi telah diverifikasi.</p>
-                </div>
-              )
-            ) : (
-              permohonanMutasi.map((item) => {
-                const payload = item.payload as {
-                  citizenId?: string;
-                  fromAddress?: string;
-                  toAddress?: string;
-                  reason?: string;
-                  nama?: string;
-                };
-
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-5 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md md:flex-row md:items-center md:justify-between"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50">
-                        <RefreshCw className="h-6 w-6 text-indigo-500" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <h2 className="text-lg font-bold text-[#1E293B]">
-                            {payload.nama ?? payload.citizenId ?? 'Permohonan Mutasi'}
-                          </h2>
-                          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-600">
-                            Menunggu
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm font-semibold text-indigo-500">
-                          {item.type === 'MUTATION_IN' ? 'Mutasi Masuk' : 'Mutasi Keluar'}
-                        </p>
-
-                        <div className="mt-3 flex flex-col gap-1 text-sm text-[#64748B] sm:flex-row sm:items-center sm:gap-4">
-                          <p>
-                            Ref ID: <span className="font-semibold text-[#1E293B]">{item.id}</span>
-                          </p>
-                          <span className="hidden sm:inline">•</span>
-                          <p>
-                            Tanggal: <span className="font-semibold text-[#1E293B]">{formatDate(item.createdAt)}</span>
-                          </p>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-[#1E293B]">Alasan: {payload.reason ?? '-'}</p>
-                        <p className="mt-1 text-sm text-[#64748B]">
-                          {payload.toAddress ?? payload.fromAddress ?? '-'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full shrink-0 items-center justify-end gap-3 border-t border-gray-100 pt-4 md:flex md:w-auto md:border-none md:pt-0">
-                      <Button
-                        onClick={() => setViewedMutasi(item)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 md:flex-none"
-                        title="Lihat Keterangan"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        onClick={() => void handleReject(item.id)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 md:flex-none"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        <span className="hidden md:inline">Tolak</span>
-                      </Button>
-                      <Button
-                        onClick={() => void handleApprove(item.id)}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 md:flex-none"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span className="hidden md:inline">Setujui</span>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="flex items-center justify-between rounded-2xl bg-[#3B82F6] px-5 py-3 text-white">
-            <span className="text-sm">
-              Menampilkan {requests.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} permohonan
-            </span>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="h-8 w-8 rounded-full bg-white/20 text-white hover:bg-white/30 disabled:opacity-50">
-                {'<'}
-              </Button>
-              <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
-              <Button type="button" variant="ghost" size="icon" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="h-8 w-8 rounded-full bg-white/20 text-white hover:bg-white/30 disabled:opacity-50">
-                {'>'}
-              </Button>
+      <>
+      <div className="flex flex-col gap-4">
+        <h2 className="border-b border-gray-100 pb-2 text-lg font-bold text-[#1E293B]">
+          Permohonan Kartu Keluarga Baru
+        </h2>
+        {permohonan.length === 0 ? (
+          loading ? (
+            <AdminAsyncState
+              mode="loading"
+              page="Permohonan"
+              action="memuat permohonan"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
+                <CheckCircle2 className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-bold text-[#1E293B]">Tidak ada permohonan baru</h3>
+              <p className="text-xs text-[#64748B]">Semua permohonan KK telah diverifikasi.</p>
             </div>
-          </div>
-        </>
+          )
+        ) : (
+          permohonan.map((item) => {
+            const isMemberCreate = item.type === 'MEMBER_CREATE';
+            const payload = item.payload as any;
+
+            const title = isMemberCreate
+              ? (payload.citizen?.name ?? 'Tambah Anggota')
+              : (payload.members?.[0]?.nama ?? payload.household?.headCitizenId ?? 'Permohonan KK');
+
+            const subtitle = isMemberCreate
+              ? 'Permohonan Tambah Anggota'
+              : 'Pendaftaran Kartu Keluarga Baru';
+
+            const infoText = isMemberCreate
+              ? `Status/Hubungan: ${payload.relationship ?? '-'}`
+              : (payload.household?.address ?? '-');
+
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col gap-5 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md md:flex-row md:items-center md:justify-between"
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isMemberCreate ? 'bg-[#F5F3FF]' : 'bg-[#EFF6FF]'}`}>
+                    <FileInput className={`h-6 w-6 ${isMemberCreate ? 'text-[#8B5CF6]' : 'text-[#3B82F6]'}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-bold text-[#1E293B]">
+                        {title}
+                      </h2>
+                      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-600">
+                        Menunggu
+                      </span>
+                    </div>
+                    <p className={`mt-1 text-sm font-semibold ${isMemberCreate ? 'text-[#8B5CF6]' : 'text-[#3B82F6]'}`}>
+                      {subtitle}
+                    </p>
+
+                    <div className="mt-3 flex flex-col gap-1 text-sm text-[#64748B] sm:flex-row sm:items-center sm:gap-4">
+                      <p>
+                        Ref ID: <span className="font-semibold text-[#1E293B]">{item.id}</span>
+                      </p>
+                      <span className="hidden sm:inline">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                      <p>
+                        Tanggal: <span className="font-semibold text-[#1E293B]">{formatDate(item.createdAt)}</span>
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm text-[#64748B]">{infoText}</p>
+                  </div>
+                </div>
+
+                <div className="w-full shrink-0 items-center justify-end gap-3 border-t border-gray-100 pt-4 md:flex md:w-auto md:border-none md:pt-0">
+                  <Button
+                    onClick={() => setViewedAnggota(item)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 md:flex-none"
+                    title="Lihat Daftar Keluarga"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => void handleReject(item.id)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 md:flex-none"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    <span className="hidden md:inline">Tolak</span>
+                  </Button>
+                  <Button
+                    onClick={() => void handleApprove(item.id)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 md:flex-none"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="hidden md:inline">Setujui</span>
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-4">
+        <h2 className="border-b border-gray-100 pb-2 text-lg font-bold text-[#1E293B]">
+          Permohonan Mutasi Penduduk
+        </h2>
+        {permohonanMutasi.length === 0 ? (
+          loading ? (
+            <AdminAsyncState
+              mode="loading"
+              page="Permohonan"
+              action="memuat permohonan"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 py-12 text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
+                <CheckCircle2 className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-bold text-[#1E293B]">Tidak ada permohonan baru</h3>
+              <p className="text-xs text-[#64748B]">Semua permohonan Mutasi telah diverifikasi.</p>
+            </div>
+          )
+        ) : (
+          permohonanMutasi.map((item) => {
+            const payload = item.payload as {
+              citizenId?: string;
+              fromAddress?: string;
+              toAddress?: string;
+              reason?: string;
+              nama?: string;
+              nik?: string;
+            };
+
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col gap-5 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md md:flex-row md:items-center md:justify-between"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50">
+                    <RefreshCw className="h-6 w-6 text-indigo-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-bold text-[#1E293B]">
+                        {payload.nama ?? payload.citizenId ?? 'Permohonan Mutasi'}
+                      </h2>
+                      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-600">
+                        Menunggu
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-indigo-500">
+                      {item.type === 'MUTATION_IN' ? 'Mutasi Masuk' : 'Mutasi Keluar'}
+                    </p>
+
+                    <div className="mt-3 flex flex-col gap-1 text-sm text-[#64748B] sm:flex-row sm:items-center sm:gap-4">
+                      <p>
+                        Ref ID: <span className="font-semibold text-[#1E293B]">{item.id}</span>
+                      </p>
+                      <span className="hidden sm:inline">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                      <p>
+                        Tanggal: <span className="font-semibold text-[#1E293B]">{formatDate(item.createdAt)}</span>
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-[#1E293B]">Alasan: {payload.reason ?? '-'}</p>
+                    <p className="mt-1 text-sm text-[#64748B]">
+                      {payload.toAddress ?? payload.fromAddress ?? '-'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full shrink-0 items-center justify-end gap-3 border-t border-gray-100 pt-4 md:flex md:w-auto md:border-none md:pt-0">
+                  <Button
+                    onClick={() => setViewedMutasi(item)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 md:flex-none"
+                    title="Lihat Keterangan"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => void handleReject(item.id)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-100 md:flex-none"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    <span className="hidden md:inline">Tolak</span>
+                  </Button>
+                  <Button
+                    onClick={() => void handleApprove(item.id)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-600 md:flex-none"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="hidden md:inline">Setujui</span>
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl bg-[#3B82F6] px-5 py-3 text-white">
+        <span className="text-sm">
+          Menampilkan {requests.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} permohonan
+        </span>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" size="icon" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="h-8 w-8 rounded-full bg-white/20 text-white hover:bg-white/30 disabled:opacity-50">
+            {'<'}
+          </Button>
+          <span className="text-sm font-medium">Halaman {currentPage} / {totalPages}</span>
+          <Button type="button" variant="ghost" size="icon" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} className="h-8 w-8 rounded-full bg-white/20 text-white hover:bg-white/30 disabled:opacity-50">
+            {'>'}
+          </Button>
+        </div>
+      </div>
+      </>
       )}
 
       <Dialog open={!!viewedAnggota} onOpenChange={(open) => !open && setViewedAnggota(null)}>
@@ -361,20 +382,32 @@ export default function PermohonanPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex flex-col gap-3">
-            {((viewedAnggota?.payload as { members?: Array<{ nama?: string; relationship?: string; nik?: string; citizenId?: string }> })?.members ?? []).map((anggota, idx) => (
-              <div
-                key={`${anggota.citizenId ?? anggota.nik ?? idx}`}
-                className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4"
-              >
+            {viewedAnggota?.type === 'MEMBER_CREATE' ? (
+              <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4">
                 <div>
-                  <p className="font-bold text-[#1E293B]">{anggota.nama ?? anggota.citizenId ?? '-'}</p>
-                  <p className="text-xs font-semibold text-[#3B82F6]">{anggota.nik ?? '-'}</p>
+                  <p className="font-bold text-[#1E293B]">{(viewedAnggota.payload as any).citizen?.name ?? '-'}</p>
+                  <p className="text-xs font-semibold text-[#3B82F6]">{(viewedAnggota.payload as any).citizen?.nik ?? '-'}</p>
                 </div>
                 <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-gray-600">
-                  {anggota.relationship ?? '-'}
+                  {(viewedAnggota.payload as any).relationship ?? '-'}
                 </span>
               </div>
-            ))}
+            ) : (
+              ((viewedAnggota?.payload as { members?: Array<{ nama?: string; relationship?: string; nik?: string; citizenId?: string }> })?.members ?? []).map((anggota, idx) => (
+                <div
+                  key={`${anggota.citizenId ?? anggota.nik ?? idx}`}
+                  className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4"
+                >
+                  <div>
+                    <p className="font-bold text-[#1E293B]">{anggota.nama ?? anggota.citizenId ?? '-'}</p>
+                    <p className="text-xs font-semibold text-[#3B82F6]">{anggota.nik ?? '-'}</p>
+                  </div>
+                  <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-gray-600">
+                    {anggota.relationship ?? '-'}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

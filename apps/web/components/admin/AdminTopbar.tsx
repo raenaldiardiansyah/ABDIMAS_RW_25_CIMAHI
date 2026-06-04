@@ -57,7 +57,7 @@ export default function AdminTopbar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  
+
   const [profile, setProfile] = useState<AdminProfile>(() => getAdminProfile());
   const [notifStatus, setNotifStatus] = useState<NotifStatus>('default');
   const [helpOpen, setHelpOpen] = useState(false);
@@ -166,7 +166,7 @@ export default function AdminTopbar() {
     }
 
     if (Notification.permission === 'granted') {
-      // Already granted — show a test notification
+      // Already granted ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â show a test notification
       new Notification('Portal RW 25', {
         body: 'Notifikasi sudah aktif! Anda akan menerima pemberitahuan penting.',
         icon: '/favicon.ico',
@@ -177,7 +177,7 @@ export default function AdminTopbar() {
     if (Notification.permission === 'denied') {
       setNotifStatus('denied');
       alert(
-        'Anda telah memblokir izin notifikasi. Silakan klik ikon gembok 🔒 di samping URL browser Anda, lalu izinkan "Notifications" untuk website ini.'
+        'Anda telah memblokir izin notifikasi. Silakan klik ikon gembok ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ di samping URL browser Anda, lalu izinkan "Notifications" untuk website ini.'
       );
       return;
     }
@@ -222,7 +222,7 @@ export default function AdminTopbar() {
                 }}
                 className="h-10 w-full rounded-xl border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] pl-9 text-sm text-[color:var(--admin-heading)] shadow-sm"
               />
-              
+
               {/* Autocomplete Dropdown Bubble */}
               {showDropdown && debouncedQuery && (
                 <div className="absolute top-full left-0 mt-2 w-full rounded-2xl border border-[color:var(--admin-border)] bg-white p-2 shadow-lg z-50 overflow-hidden">
@@ -317,7 +317,7 @@ export default function AdminTopbar() {
             title={
               !notifActive
                 ? notifStatus === 'denied'
-                  ? 'Notifikasi diblokir — aktifkan di pengaturan browser'
+                  ? 'Notifikasi diblokir ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â aktifkan di pengaturan browser'
                   : 'Aktifkan notifikasi'
                 : 'Notifikasi aktif'
             }
@@ -392,32 +392,32 @@ export default function AdminTopbar() {
               </h4>
               <ul className="space-y-2 text-[color:var(--admin-subtle)]">
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Dashboard</strong> — Ringkasan statistik warga, keluarga, dan mutasi penduduk secara real-time.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Dashboard</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ringkasan statistik warga, keluarga, dan mutasi penduduk secara real-time.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Data Penduduk</strong> — Tambah, edit, dan kelola seluruh data warga RW.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Data Penduduk</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Tambah, edit, dan kelola seluruh data warga RW.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Kartu Keluarga</strong> — Kelola data KK beserta anggota keluarga.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Kartu Keluarga</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Kelola data KK beserta anggota keluarga.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Mutasi Penduduk</strong> — Catat perpindahan masuk dan keluar warga.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Mutasi Penduduk</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Catat perpindahan masuk dan keluar warga.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Permohonan</strong> — Terima dan proses permohonan dari warga.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Permohonan</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Terima dan proses permohonan dari warga.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Kegiatan RW</strong> — Jadwalkan dan kelola kegiatan warga.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Kegiatan RW</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Jadwalkan dan kelola kegiatan warga.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0">•</span>
-                  <span><strong className="text-[color:var(--admin-body)]">Laporan</strong> — Ekspor data dan statistik dalam berbagai format.</span>
+                  <span className="shrink-0">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span>
+                  <span><strong className="text-[color:var(--admin-body)]">Laporan</strong> ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ekspor data dan statistik dalam berbagai format.</span>
                 </li>
               </ul>
             </div>
@@ -444,8 +444,15 @@ export default function AdminTopbar() {
                 Informasi
               </h4>
               <div className="space-y-1 text-xs text-[color:var(--admin-subtle)]">
-                <p><strong>Versi:</strong> 1.0.0</p>
-                <p><strong>Dikembangkan oleh:</strong> Tim ABDIMAS — Telkom University</p>
+                <p><strong>Versi:</strong> 1.0.0 (Build 2026.04)</p>
+                <div>
+                  <p><strong>Dikembangkan oleh:</strong> Tim ABDIMAS ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Telkom University</p>
+                  <ol className="list-decimal list-inside ml-2 mt-1 space-y-0.5">
+                    <li>Raenaldi Ardiansyah Sidik - Front End Developer</li>
+                    <li>Faiq Haqqani - UI/UX Designer</li>
+                    <li>Muhammad Riyadhul Jinan Nasution - Back End Developer</li>
+                  </ol>
+                </div>
                 <p><strong>Untuk:</strong> RW 025, Kota Cimahi, Jawa Barat</p>
               </div>
             </div>

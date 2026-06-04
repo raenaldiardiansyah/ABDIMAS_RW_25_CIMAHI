@@ -18,12 +18,12 @@ interface HistoryCardProps {
   children?: ReactNode;
 }
 
-export default function HistoryCard({ 
-  tanggal, 
-  judul, 
-  deskripsi, 
-  status, 
-  statusColor, 
+export default function HistoryCard({
+  tanggal,
+  judul,
+  deskripsi,
+  status,
+  statusColor,
   isExpanded = false,
   onClick,
   children
@@ -34,7 +34,7 @@ export default function HistoryCard({
         type="button"
         onClick={onClick}
         variant="ghost"
-        className="w-full h-auto flex items-center justify-start gap-3 p-4 text-left hover:bg-muted/30 transition-all duration-200 relative rounded-none"
+        className={cn("w-full h-auto flex justify-start gap-3 p-4 text-left hover:bg-muted/30 transition-all duration-200 relative rounded-none", isExpanded ? "items-start" : "items-center")}
       >
         <div className="flex-1 min-w-0 relative z-10">
           <div className="flex items-center gap-2 mb-2.5">
@@ -44,10 +44,14 @@ export default function HistoryCard({
 
           <div className="w-full border-t border-input mb-2.5" />
 
-          <h4 className="text-[15px] font-bold text-foreground truncate">{judul}</h4>
-          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{deskripsi}</p>
+          <h4 className={cn("text-[15px] font-bold text-foreground break-words", !isExpanded && "line-clamp-2")}>
+            {judul}
+          </h4>
+          <p className={cn("text-[12px] text-muted-foreground mt-0.5 break-words", !isExpanded && "line-clamp-3")}>
+            {deskripsi}
+          </p>
         </div>
-        
+
         <div className={`shrink-0 relative z-10 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
           <div className="h-8 w-8 rounded-full bg-muted border border-input flex items-center justify-center">
             <ChevronDown className="w-4 h-4 text-muted-foreground" />

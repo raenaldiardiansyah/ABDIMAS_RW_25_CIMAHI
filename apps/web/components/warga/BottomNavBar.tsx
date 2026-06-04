@@ -18,11 +18,11 @@ export default function BottomNavBar() {
   const pathname = usePathname();
 
   return (
-    <div className="pointer-events-none fixed bottom-[max(env(safe-area-inset-bottom,0px),1.25rem)] left-1/2 z-50 w-full max-w-105 -translate-x-1/2 px-4">
-      <nav className="pointer-events-auto mx-auto flex items-center justify-between gap-1 
-          h-16 w-full max-w-md 
-          rounded-full border border-border 
-          bg-background p-1.5 
+    <div className="pointer-events-none absolute bottom-[max(env(safe-area-inset-bottom,0px),1.25rem)] left-0 z-50 w-full px-4">
+      <nav className="pointer-events-auto mx-auto flex items-center justify-between gap-1
+          h-16 w-full
+          rounded-full border border-border
+          bg-background p-1.5
           shadow-md backdrop-blur">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;

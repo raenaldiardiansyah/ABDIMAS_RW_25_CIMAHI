@@ -7,6 +7,9 @@ import {
   FileText,
   MessageSquareText,
   Sparkles,
+  Users,
+  ArrowRightLeft,
+  FilePlus2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -28,6 +31,7 @@ type QuickActionItem =
       label: string;
       desc: string;
       icon: LucideIcon;
+      href?: string;
       soon: true;
     };
 
@@ -53,12 +57,27 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     href: '/warga/aspirasi',
     icon: MessageSquareText,
   },
+
   {
-    key: 'layanan',
-    label: 'Layanan RT',
-    desc: 'Surat & administrasi',
-    href: '/warga/layanan',
-    icon: FileText,
+    key: 'penduduk',
+    label: 'Data Penduduk',
+    desc: 'Data kependudukan',
+    href: '/warga/penduduk',
+    icon: Users,
+  },
+  {
+    key: 'mutasi',
+    label: 'Mutasi',
+    desc: 'Pindah/Datang',
+    href: '/warga/mutasi/tambah',
+    icon: ArrowRightLeft,
+  },
+  {
+    key: 'nambah_kk',
+    label: 'Tambah KK',
+    desc: 'Pengajuan KK baru',
+    href: '/warga/kk',
+    icon: FilePlus2,
   },
 ];
 
@@ -94,6 +113,24 @@ const QUICK_ACTION_TONE_MAP: Record<
     icon: 'text-[color:var(--accent-mint)]',
     chip: 'bg-[color:var(--accent-mint)]/10 text-[color:var(--accent-mint)]',
     glow: 'bg-[color:var(--accent-mint)]/10',
+  },
+  penduduk: {
+    iconWrap: 'bg-blue-500/10',
+    icon: 'text-blue-500',
+    chip: 'bg-blue-500/10 text-blue-500',
+    glow: 'bg-blue-500/10',
+  },
+  mutasi: {
+    iconWrap: 'bg-emerald-500/10',
+    icon: 'text-emerald-500',
+    chip: 'bg-emerald-500/10 text-emerald-500',
+    glow: 'bg-emerald-500/10',
+  },
+  nambah_kk: {
+    iconWrap: 'bg-amber-500/10',
+    icon: 'text-amber-500',
+    chip: 'bg-amber-500/10 text-amber-500',
+    glow: 'bg-amber-500/10',
   },
 };
 
@@ -132,64 +169,35 @@ export default function QuickActionsPanel({
         )}
       </CardHeader>
 
-      <CardContent className="px-4 pb-4 pt-0">
-        <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex w-max gap-3">
-            {QUICK_ACTIONS.map((item) => {
-              const Icon = item.icon;
-              const isSoon = 'soon' in item && item.soon;
-              const tone =
-                QUICK_ACTION_TONE_MAP[item.key] ?? QUICK_ACTION_TONE_MAP.riwayat;
+      <CardContent className="px-4 pb-6 pt-2">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-6">
+          {QUICK_ACTIONS.map((item) => {
+            const Icon = item.icon;
+            const isSoon = 'soon' in item && item.soon;
+            const tone =
+              QUICK_ACTION_TONE_MAP[item.key] ?? QUICK_ACTION_TONE_MAP.riwayat;
 
-              const content = (
+            const content = (
+              <div className="group flex flex-col items-center justify-start gap-2">
                 <div
                   className={cn(
-                    'group relative h-full w-39 overflow-hidden rounded-3xl border-0 bg-background p-3.5 shadow-sm transition-all duration-300',
-                    !isSoon &&
-                      'hover:-translate-y-0.5 hover:bg-muted/50 hover:shadow-md active:scale-[0.98]'
+                    'flex size-14 items-center justify-center rounded-[1.25rem] transition-all duration-300',
+                    !isSoon && 'group-hover:scale-110 group-hover:shadow-sm group-active:scale-95',
+                    tone.iconWrap,
+                    tone.icon,
+                    isSoon && 'opacity-50 grayscale'
                   )}
                 >
-                  <div
-                    className={cn(
-                      'pointer-events-none absolute -right-6 -top-6 size-20 rounded-full blur-2xl transition-opacity duration-300',
-                      tone.glow,
-                      isSoon ? 'opacity-40' : 'opacity-70 group-hover:opacity-100'
-                    )}
-                  />
-
-                  <div className="relative flex min-h-[124px] flex-col justify-between">
-                    <div>
-                      <div
-                        className={cn(
-                          'mb-3 flex size-11 items-center justify-center rounded-2xl border-0',
-                          tone.iconWrap,
-                          tone.icon
-                        )}
-                      >
-                        <Icon className="size-5" aria-hidden="true" />
-                      </div>
-
-                      <p className="line-clamp-1 text-sm font-bold tracking-tight text-foreground">
-                        {item.label}
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-                        {item.desc}
-                      </p>
-                    </div>
-
-                    <div className="mt-3">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full border-0 px-2.5 py-1 text-[10px] font-bold',
-                          tone.chip
-                        )}
-                      >
-                        {isSoon ? 'Segera' : 'Buka'}
-                      </span>
-                    </div>
-                  </div>
+                  <Icon className="size-6" strokeWidth={1.5} />
                 </div>
-              );
+                <span className={cn(
+                  "text-center text-[11px] font-semibold leading-tight transition-colors",
+                  isSoon ? "text-muted-foreground/50" : "text-muted-foreground group-hover:text-foreground"
+                )}>
+                  {item.label}
+                </span>
+              </div>
+            );
 
               if ('href' in item && !isSoon) {
                 return (
@@ -202,19 +210,17 @@ export default function QuickActionsPanel({
                   </Link>
                 );
               }
-
               return (
                 <button
                   key={item.key}
                   type="button"
                   disabled
-                  className="shrink-0 cursor-not-allowed rounded-3xl text-left opacity-80"
+                  className="focus-visible:outline-none"
                 >
                   {content}
                 </button>
               );
             })}
-          </div>
         </div>
       </CardContent>
     </Card>

@@ -15,6 +15,7 @@ interface FeatureCardProps {
   tone?: 'primary' | 'sky' | 'violet';
   onClick: () => void;
   delay?: number;
+  patternId?: 1 | 2 | 3;
 }
 
 export default function FeatureCard({
@@ -26,8 +27,38 @@ export default function FeatureCard({
   tone = 'primary',
   onClick,
   delay = 0,
+  patternId = 1,
 }: FeatureCardProps) {
   const isLarge = variant === 'large';
+
+  const renderPattern = (id: 1 | 2 | 3) => {
+    switch (id) {
+      case 1:
+        return (
+          <>
+            <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-neutral-100/60 transition-transform duration-500 group-hover:scale-110" />
+            <div className="pointer-events-none absolute right-10 top-8 h-16 w-16 rounded-full bg-neutral-200/40 transition-transform duration-500 group-hover:scale-105" />
+            <div className="pointer-events-none absolute -bottom-4 right-12 h-24 w-24 rounded-full bg-neutral-100/50 transition-transform duration-500 group-hover:scale-110" />
+          </>
+        );
+      case 2:
+        return (
+          <>
+            <div className="pointer-events-none absolute -left-8 -top-8 h-28 w-28 rounded-full bg-neutral-100/50 transition-transform duration-500 group-hover:scale-110" />
+            <div className="pointer-events-none absolute right-4 -bottom-6 h-32 w-32 rounded-full bg-neutral-200/40 transition-transform duration-500 group-hover:scale-105" />
+            <div className="pointer-events-none absolute right-1/2 top-10 h-14 w-14 rounded-full bg-neutral-100/60 transition-transform duration-500 group-hover:scale-110" />
+          </>
+        );
+      case 3:
+        return (
+          <>
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-36 w-36 rounded-full bg-neutral-200/30 transition-transform duration-500 group-hover:scale-110" />
+            <div className="pointer-events-none absolute right-8 top-4 h-20 w-20 rounded-full bg-neutral-100/60 transition-transform duration-500 group-hover:scale-105" />
+            <div className="pointer-events-none absolute left-1/3 -top-6 h-16 w-16 rounded-full bg-neutral-100/40 transition-transform duration-500 group-hover:scale-110" />
+          </>
+        );
+    }
+  };
 
   const iconToneClass =
     tone === 'sky'
@@ -49,15 +80,17 @@ export default function FeatureCard({
       }}
       style={{ animationDelay: `${delay}ms` }}
       className={cn(
-        'relative cursor-pointer overflow-hidden border-none bg-card text-card-foreground shadow-sm transition-all duration-300',
+        'group relative cursor-pointer overflow-hidden border-none bg-card text-card-foreground shadow-sm transition-all duration-300',
         'hover:-translate-y-0.5 hover:shadow-md',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         isLarge ? 'min-h-49.5 rounded-4xl' : 'min-h-53.5 rounded-[1.75rem]'
       )}
     >
+      {renderPattern(patternId)}
+
       <CardContent
         className={cn(
-          'flex h-full flex-col p-5',
+          'relative z-10 flex h-full flex-col p-5',
           isLarge ? 'gap-4' : 'gap-3'
         )}
       >

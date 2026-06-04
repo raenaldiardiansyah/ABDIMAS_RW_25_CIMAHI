@@ -6,6 +6,7 @@ import {
   bansosApplicationAttachmentSchema,
   createBansosApplicationRequestSchema,
   createHouseholdRequestSchema,
+  createMemberRequestSchema,
   createMutationRequestSchema,
   idParamSchema,
   requestListQuerySchema,
@@ -209,6 +210,63 @@ export const userRequestsRoutes = new Hono<{ Variables: { sessionUser: { id: str
     });
 
     const payload = { success: true as const, data: await mapRequest(createdRow) };
+    serviceRequestResponseSchema.parse(payload);
+    return created(c, payload.data);
+  })
+  .post("/member-create", async (c) => {
+    const sessionUser = c.get("sessionUser");
+    const body = await parseJson(c.req.raw, createMemberRequestSchema);
+    const db = getDb();
+
+    const [citizenRow] = await db
+      .select()
+      .from(citizen)
+      .where(and(eq(citizen.userId, sessionUser.id), eq(citizen.isArchived, false)))
+      .limit(1);
+    if (!citizenRow) throw notFound("Citizen profile not found");
+
+    const [existingMembership] = await db
+      .select({ id: householdMember.id, householdId: householdMember.householdId })
+      .from(householdMember)
+      .where(eq(householdMember.citizenId, citizenRow.id))
+      .limit(1);
+    if (!existingMembership) {
+      throw conflict("You must belong to an active household to add a member");
+    }
+
+    const [createdRow] = await db
+      .insert(serviceRequest)
+      .values({
+        type: "MEMBER_CREATE",
+        status: "PENDING",
+        requestedBy: sessionUser.id,
+        payload: {
+          householdId: existingMembership.householdId,
+          citizen: {
+            nik: body.nik,
+            name: body.name,
+            birthPlace: body.birthPlace || "-",
+            birthDate: body.birthDate || new Date().toISOString().slice(0, 10),
+            gender: body.gender,
+            religion: body.religion || "-",
+            maritalStatus: body.maritalStatus || "-",
+            education: body.education || "-",
+          },
+          relationship: body.relationship,
+        },
+      })
+      .returning();
+
+    await createRequestHistoryEntry({
+      userId: sessionUser.id,
+      requestId: createdRow.id,
+      type: "MEMBER_CREATE" as any,
+      status: "PENDING",
+      title: "Permohonan Tambah Anggota",
+      description: `Permohonan penambahan anggota keluarga (${body.name}) telah dikirim.`,
+    });
+
+    const payload = { success: true as const, data: mapRequest(createdRow) };
     serviceRequestResponseSchema.parse(payload);
     return created(c, payload.data);
   })

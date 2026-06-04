@@ -71,6 +71,13 @@
       "when": 1780701000000,
       "tag": "0009_bansos_schedule_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780704600000,
+      "tag": "0010_member_create_request_type",
+      "breakpoints": true
     }
   ]
 }
